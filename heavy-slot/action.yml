@@ -13,7 +13,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # GitHub does not enforce a composite action's required inputs, and an empty prefix would match every runner.
+    # GitHub does not enforce required inputs, and an empty prefix would match every runner.
     - name: check the inputs
       shell: bash
       env:

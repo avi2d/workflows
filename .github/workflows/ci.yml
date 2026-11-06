@@ -8,10 +8,10 @@ on:
 permissions:
   contents: read
   statuses: write
-  # A dispatched run carries no pull request, so the title lookup needs read access.
+  # The title lookup on a dispatched run needs pull request read access.
   pull-requests: read
 
-# Only a pull request's newer push cancels a run, so a dispatched run always finishes and reports its status.
+# Dispatched runs get a group of their own, so nothing cancels them.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
@@ -21,12 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      # The head, not GitHub's merge ref, so the tree the gates read is the commit the range ends at.
-      # The whole history, since the range starts where the head branched from the base branch.
+      # The head, not the merge ref, so the gates read the commit the range ends at.
+      # Whole history: the range starts where the head branched off the base.
       - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -37,7 +36,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-commit-title
-      # Branch protection requires a commitlint check, which no job of that name reports.
+      # Branch protection needs a commitlint check; no job has that name.
       - name: report the title as commitlint
         if: always()
         uses: ./commitlint-status
@@ -52,7 +51,7 @@ jobs:
         run: |
           want=failure
           if [ "$OUTCOME" = success ]; then want=success; fi
-          # The statuses list can lag the write that just landed, so an empty read waits for it.
+          # The statuses list can lag the write, so an empty read waits.
           for _ in 1 2 3 4 5 6; do
             got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "commitlint")][0].state')
             if [ -n "$got" ] && [ "$got" != null ]; then break; fi
@@ -69,10 +68,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-      # A pull request's default commit is GitHub's merge commit, so landing on the head shows setup took the ref input.
-      # The asked commit holds the actions too, since the post steps read them from the workspace.
+      # Without ref, a pull request checks out GitHub's merge commit, not the head.
       - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -94,7 +91,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -140,12 +136,11 @@ jobs:
           test "$CODE" = false
           test "$NONE" = false
   head-status:
-    # A dispatched run's status lands on the branch head, where a failure status would show on the pull request.
+    # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -163,7 +158,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           state() {
-            # The statuses list can lag the write that just landed, so an empty read waits for it.
+            # The statuses list can lag the write, so an empty read waits.
             for _ in 1 2 3 4 5 6; do
               got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state")
               if [ -n "$got" ] && [ "$got" != null ]; then break; fi
@@ -177,7 +172,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -202,7 +196,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -251,7 +244,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # This repository is public and sets no CI_RUNS_ON, so GitHub starts the probe and the pick is hosted.
+      # Public and with no CI_RUNS_ON, so the pick is always hosted.
       - name: a pick other than ubuntu-latest on this public repository fails
         env:
           RUNS_ON: ${{ needs.runner.outputs.runs-on }}
@@ -259,13 +252,12 @@ jobs:
           echo "runner pick: $RUNS_ON"
           test "$RUNS_ON" = ubuntu-latest
   checks:
-    # Branch protection requires the checks context alone and passes a skipped one, so the job runs after a failed part and fails on it.
+    # Branch protection passes a skipped check, so this runs after a failed part and fails.
     needs: [static, setup, docs-only, head-status, playwright, heavy-slot, runner-output]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # The report step below is a local action, so the checkout comes before the part that can fail.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -286,9 +278,9 @@ jobs:
           test "$PLAYWRIGHT" = success
           test "$HEAVY_SLOT" = success
           test "$RUNNER_OUTPUT" = success
-          # The head-status job runs on pull requests alone.
+          # head-status runs only on pull requests, so a dispatch may skip it.
           test "$HEAD_STATUS" = success || { test "$EVENT" != pull_request && test "$HEAD_STATUS" = skipped; }
-      # GitHub keeps a dispatched run's check off the pull request, so the job reports its result there as a commit status.
+      # A dispatched run's check stays off the pull request, so this reports a commit status.
       - name: report the result on the head commit
         if: always() && github.event_name == 'workflow_dispatch'
         uses: ./head-status

@@ -41,7 +41,7 @@ runs:
           sleep "$((attempt * 10))"
           attempt=$((attempt + 1))
         done
-    # A self-hosted runner holds its system packages already, and installing them there needs root.
+    # Self-hosted runners already hold system packages, and installing them there needs root.
     - if: runner.environment == 'github-hosted'
       shell: bash
       env:
