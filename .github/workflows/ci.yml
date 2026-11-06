@@ -66,16 +66,16 @@ jobs:
     steps:
       # A local action is read from the workspace, so the repository is checked out before the first one runs.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # A pull request's default commit is GitHub's merge commit, so landing on the head shows setup took the ref input.
+      # The asked commit holds the actions too, since the post steps read them from the workspace.
       - uses: ./actions/setup
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           cache: "true"
       - name: a shallow checkout or a commit other than the asked one fails
         env:
-          WANT: ${{ github.event.pull_request.base.sha || github.sha }}
+          WANT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test "$(git rev-parse --is-shallow-repository)" = false
           test "$(git rev-parse HEAD)" = "$WANT"
