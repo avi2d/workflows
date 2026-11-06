@@ -4,7 +4,7 @@ audience: consumers
 ---
 # The shared actions
 
-Each action is a composite action, called as `avi2d/workflows/actions/<name>@<full commit SHA>`, that runs as steps inside the caller's job on the caller's runner.
+Each action is a composite action, called as `avi2d/workflows/<name>@v1`, that runs as steps inside the caller's job on the caller's runner.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
 
 ## setup
