@@ -1,0 +1,285 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+  # A dispatched run carries no pull request, so the title lookup needs read access.
+  pull-requests: read
+
+# Only a pull request's newer push cancels a run, so a dispatched run always finishes and reports its status.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # The head, not GitHub's merge ref, so the tree the gates read is the commit the range ends at.
+      # The whole history, since the range starts where the head branched from the base branch.
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - id: title
+        name: lint the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-commit-title
+      # Branch protection requires a commitlint check, which no job of that name reports.
+      - name: report the title as commitlint
+        if: always()
+        uses: ./actions/commitlint-status
+        with:
+          outcome: ${{ steps.title.outcome }}
+      - name: a commitlint status that disagrees with the title lint fails
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          OUTCOME: ${{ steps.title.outcome }}
+        run: |
+          want=failure
+          if [ "$OUTCOME" = success ]; then want=success; fi
+          got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "commitlint")][0].state')
+          echo "commitlint status: $got, title lint: $OUTCOME"
+          test "$got" = "$want"
+      - run: bun run lint
+      - name: lint the workflows
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12 "$RUNNER_TEMP"
+          "$RUNNER_TEMP/actionlint" -color
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # A pull request's default commit is GitHub's merge commit, so landing on the head shows setup took the ref input.
+      # The asked commit holds the actions too, since the post steps read them from the workspace.
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          cache: "true"
+      - name: a shallow checkout or a commit other than the asked one fails
+        env:
+          WANT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse --is-shallow-repository)" = false
+          test "$(git rev-parse HEAD)" = "$WANT"
+      - name: a Bun other than the one .bun-version names fails
+        run: test "$(bun --version)" = "$(cat .bun-version)"
+      - name: missing or relocked dependencies fail
+        run: |
+          test -x node_modules/.bin/checks-docs-only
+          git diff --exit-code
+  docs-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - id: commits
+        name: commit a docs change, then a code change
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo smoke >> README.md
+          git commit -qam "docs: smoke"
+          echo "docs=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo smoke > smoke.txt
+          git add smoke.txt
+          git commit -qm "chore: smoke"
+          echo "code=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - id: docs
+        uses: ./actions/docs-only
+        with:
+          base: ${{ steps.commits.outputs.base }}
+          head: ${{ steps.commits.outputs.docs }}
+      - id: code
+        uses: ./actions/docs-only
+        with:
+          base: ${{ steps.commits.outputs.docs }}
+          head: ${{ steps.commits.outputs.code }}
+      - id: none
+        uses: ./actions/docs-only
+        with:
+          base: ""
+      - name: a code change read as docs-only or a README change read as code fails
+        env:
+          DOCS: ${{ steps.docs.outputs.docs-only }}
+          CODE: ${{ steps.code.outputs.docs-only }}
+          NONE: ${{ steps.none.outputs.docs-only }}
+        run: |
+          echo "docs=$DOCS code=$CODE none=$NONE"
+          test "$DOCS" = true
+          test "$CODE" = false
+          test "$NONE" = false
+  head-status:
+    # A dispatched run's status lands on the branch head, where a failure status would show on the pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/head-status
+        with:
+          job-status: success
+          context: smoke/head-status-success
+      - uses: ./actions/head-status
+        with:
+          job-status: cancelled
+          context: smoke/head-status-cancelled
+          attempts: "2"
+      - name: a cancelled job reported as success fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state() {
+            gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state"
+          }
+          test "$(state smoke/head-status-success)" = success
+          test "$(state smoke/head-status-cancelled)" = failure
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/playwright
+        with:
+          browsers: webkit
+      - name: a webkit that cannot open a page fails
+        run: |
+          bun -e "
+            const { webkit } = require('playwright-core');
+            const browser = await webkit.launch();
+            const page = await browser.newPage();
+            await page.setContent('<title>smoke</title>');
+            const title = await page.title();
+            await browser.close();
+            if (title !== 'smoke') throw new Error('webkit read the title as ' + title);
+          "
+  heavy-slot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: put a stand-in slot command on the PATH
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          cat > "$RUNNER_TEMP/bin/heavy-slot-stub" <<'EOF'
+          #!/bin/sh
+          echo "$1" >> "$RUNNER_TEMP/heavy-slot.log"
+          EOF
+          chmod +x "$RUNNER_TEMP/bin/heavy-slot-stub"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - uses: ./actions/heavy-slot
+        with:
+          action: acquire
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - uses: ./actions/heavy-slot
+        with:
+          action: acquire
+          runner-prefix: no-such-runner-
+          command: heavy-slot-stub
+      - uses: ./actions/heavy-slot
+        with:
+          action: release
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - id: unknown
+        uses: ./actions/heavy-slot
+        continue-on-error: true
+        with:
+          action: take
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - name: a slot call on another runner or an unknown action that passes fails
+        env:
+          UNKNOWN: ${{ steps.unknown.outcome }}
+        run: |
+          cat "$RUNNER_TEMP/heavy-slot.log"
+          test "$(cat "$RUNNER_TEMP/heavy-slot.log")" = "$(printf 'acquire\nrelease')"
+          test "$UNKNOWN" = failure
+  runner:
+    uses: ./.github/workflows/runner.yml
+  runner-output:
+    needs: runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # This repository is public and sets no CI_RUNS_ON, so GitHub starts the probe and the pick is hosted.
+      - name: a pick other than ubuntu-latest on this public repository fails
+        env:
+          RUNS_ON: ${{ needs.runner.outputs.runs-on }}
+        run: |
+          echo "runner pick: $RUNS_ON"
+          test "$RUNS_ON" = ubuntu-latest
+  checks:
+    # Branch protection requires the checks context alone and passes a skipped one, so the job runs after a failed part and fails on it.
+    needs: [static, setup, docs-only, head-status, playwright, heavy-slot, runner-output]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The report step below is a local action, so the checkout comes before the part that can fail.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: require every part
+        env:
+          STATIC: ${{ needs.static.result }}
+          SETUP: ${{ needs.setup.result }}
+          DOCS_ONLY: ${{ needs.docs-only.result }}
+          HEAD_STATUS: ${{ needs.head-status.result }}
+          PLAYWRIGHT: ${{ needs.playwright.result }}
+          HEAVY_SLOT: ${{ needs.heavy-slot.result }}
+          RUNNER_OUTPUT: ${{ needs.runner-output.result }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          test "$STATIC" = success
+          test "$SETUP" = success
+          test "$DOCS_ONLY" = success
+          test "$PLAYWRIGHT" = success
+          test "$HEAVY_SLOT" = success
+          test "$RUNNER_OUTPUT" = success
+          # The head-status job runs on pull requests alone.
+          test "$HEAD_STATUS" = success || { test "$EVENT" != pull_request && test "$HEAD_STATUS" = skipped; }
+      # GitHub keeps a dispatched run's check off the pull request, so the job reports its result there as a commit status.
+      - name: report the result on the head commit
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: ./actions/head-status
+        with:
+          job-status: ${{ job.status }}

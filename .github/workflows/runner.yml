@@ -1,0 +1,21 @@
+name: runner
+on:
+  workflow_call:
+    outputs:
+      runs-on:
+        description: ubuntu-latest while GitHub starts hosted jobs, else the caller's CI_RUNS_ON variable, else ubuntu-latest.
+        value: ${{ jobs.hosted-minutes.outputs.runs-on || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+permissions:
+  contents: read
+jobs:
+  # Billing is readable only with org admin scope, so the free minutes are read by whether GitHub starts a hosted job.
+  # A job GitHub refuses for want of minutes fails at once instead of queueing, and continue-on-error keeps that refusal off the caller's result.
+  hosted-minutes:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 1
+    outputs:
+      runs-on: ${{ steps.started.outputs.runs-on }}
+    steps:
+      - id: started
+        run: echo "runs-on=ubuntu-latest" >> "$GITHUB_OUTPUT"

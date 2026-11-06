@@ -1,0 +1,42 @@
+name: playwright
+description: Restore the Playwright browser cache, install the named browsers, and install their system packages on a GitHub-hosted runner only.
+inputs:
+  browsers:
+    description: The browsers to install, separated by spaces.
+    default: webkit
+  cache:
+    description: Whether to restore and save ~/.cache/ms-playwright, keyed on the browsers and bun.lock.
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        read -r -a names <<< "$BROWSERS"
+        if [ "${#names[@]}" -eq 0 ]; then
+          echo "::error::browsers names no browser"
+          exit 1
+        fi
+        (IFS=-; echo "browsers=${names[*]}") >> "$GITHUB_OUTPUT"
+    - if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+    - shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        read -r -a names <<< "$BROWSERS"
+        bunx playwright-core install "${names[@]}"
+    # A self-hosted runner holds its system packages already, and installing them there needs root.
+    - if: runner.environment == 'github-hosted'
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        read -r -a names <<< "$BROWSERS"
+        bunx playwright-core install-deps "${names[@]}"
