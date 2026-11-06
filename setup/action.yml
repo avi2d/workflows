@@ -21,7 +21,7 @@ runs:
         ref: ${{ inputs.ref }}
         fetch-depth: ${{ inputs.fetch-depth }}
         persist-credentials: ${{ inputs.persist-credentials }}
-    # setup-bun falls back to the latest Bun when the file is missing, so the version would drift without a word.
+    # Without the file, setup-bun falls back to the latest Bun, so the version drifts silently.
     - name: require .bun-version
       shell: bash
       run: |

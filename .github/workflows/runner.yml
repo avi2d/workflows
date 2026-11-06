@@ -8,8 +8,8 @@ on:
 permissions:
   contents: read
 jobs:
-  # Billing is readable only with org admin scope, so the free minutes are read by whether GitHub starts a hosted job.
-  # A job GitHub refuses for want of minutes fails at once instead of queueing, and continue-on-error keeps that refusal off the caller's result.
+  # Billing needs org admin scope, so a hosted job starting stands in for it.
+  # Out of minutes, the job fails at once instead of queueing; continue-on-error keeps that off the caller.
   hosted-minutes:
     runs-on: ubuntu-latest
     continue-on-error: true
