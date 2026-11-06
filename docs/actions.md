@@ -63,7 +63,9 @@ Tells whether a change touches only documentation, through `checks-docs-only` fr
 
 Restores the Playwright browser cache, installs the named browsers through `playwright-core`, and installs their system packages on a GitHub-hosted runner only.
 The caller's dependencies hold `playwright-core`.
-Each `install` and `install-deps` call gets 3 minutes per attempt and 3 attempts, and the step fails with an error line when every attempt stalls or fails.
+Each `install` and `install-deps` call gets 3 minutes per attempt and 3 attempts.
+An attempt that runs out of time has its processes stopped before the next one.
+The step fails with an error line when every attempt stalls or fails.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
