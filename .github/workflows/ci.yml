@@ -27,7 +27,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       # The head, not GitHub's merge ref, so the tree the gates read is the commit the range ends at.
       # The whole history, since the range starts where the head branched from the base branch.
-      - uses: ./actions/setup
+      - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
       # Branch protection requires a commitlint check, which no job of that name reports.
       - name: report the title as commitlint
         if: always()
-        uses: ./actions/commitlint-status
+        uses: ./commitlint-status
         with:
           outcome: ${{ steps.title.outcome }}
       - name: a commitlint status that disagrees with the title lint fails
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       # A pull request's default commit is GitHub's merge commit, so landing on the head shows setup took the ref input.
       # The asked commit holds the actions too, since the post steps read them from the workspace.
-      - uses: ./actions/setup
+      - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -93,7 +93,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./actions/setup
+      - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -111,17 +111,17 @@ jobs:
           git commit -qm "chore: smoke"
           echo "code=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - id: docs
-        uses: ./actions/docs-only
+        uses: ./docs-only
         with:
           base: ${{ steps.commits.outputs.base }}
           head: ${{ steps.commits.outputs.docs }}
       - id: code
-        uses: ./actions/docs-only
+        uses: ./docs-only
         with:
           base: ${{ steps.commits.outputs.docs }}
           head: ${{ steps.commits.outputs.code }}
       - id: none
-        uses: ./actions/docs-only
+        uses: ./docs-only
         with:
           base: ""
       - name: a code change read as docs-only or a README change read as code fails
@@ -144,11 +144,11 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./actions/head-status
+      - uses: ./head-status
         with:
           job-status: success
           context: smoke/head-status-success
-      - uses: ./actions/head-status
+      - uses: ./head-status
         with:
           job-status: cancelled
           context: smoke/head-status-cancelled
@@ -170,10 +170,10 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./actions/setup
+      - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./actions/playwright
+      - uses: ./playwright
         with:
           browsers: webkit
       - name: a webkit that cannot open a page fails
@@ -204,23 +204,23 @@ jobs:
           EOF
           chmod +x "$RUNNER_TEMP/bin/heavy-slot-stub"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-      - uses: ./actions/heavy-slot
+      - uses: ./heavy-slot
         with:
           action: acquire
           runner-prefix: ${{ runner.name }}
           command: heavy-slot-stub
-      - uses: ./actions/heavy-slot
+      - uses: ./heavy-slot
         with:
           action: acquire
           runner-prefix: no-such-runner-
           command: heavy-slot-stub
-      - uses: ./actions/heavy-slot
+      - uses: ./heavy-slot
         with:
           action: release
           runner-prefix: ${{ runner.name }}
           command: heavy-slot-stub
       - id: unknown
-        uses: ./actions/heavy-slot
+        uses: ./heavy-slot
         continue-on-error: true
         with:
           action: take
@@ -280,6 +280,6 @@ jobs:
       # GitHub keeps a dispatched run's check off the pull request, so the job reports its result there as a commit status.
       - name: report the result on the head commit
         if: always() && github.event_name == 'workflow_dispatch'
-        uses: ./actions/head-status
+        uses: ./head-status
         with:
           job-status: ${{ job.status }}
