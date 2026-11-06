@@ -158,7 +158,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           state() {
-            gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state"
+            # The statuses list can lag the write that just landed, so an empty read waits for it.
+            for _ in 1 2 3 4 5 6; do
+              got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state")
+              if [ -n "$got" ] && [ "$got" != null ]; then break; fi
+              sleep 5
+            done
+            echo "$got"
           }
           test "$(state smoke/head-status-success)" = success
           test "$(state smoke/head-status-cancelled)" = failure
