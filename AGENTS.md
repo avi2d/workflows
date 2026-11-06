@@ -4,7 +4,7 @@ workflows holds the shared GitHub Actions plumbing the avi2d repositories call, 
 
 ## Before you change a part
 
-- An action folder at the root, such as `setup/`: keep its steps doing what the step text it came from does, and update [The shared actions](docs/actions.md) with it.
+- An action folder such as `setup/`: keep its steps doing what their step text says, and update [The shared actions](docs/actions.md).
 - Any file: this repository is public, so a private setting reaches the code only as [What a private caller supplies](README.md#what-a-private-caller-supplies) lists.
 - A file under `.github/workflows/`: it merges only on the captain's word.
 - A smoke job in `.github/workflows/ci.yml`: each step's name says the wrong behaviour it rejects.
