@@ -13,24 +13,31 @@ A private caller passes its own settings in as inputs, as secrets it names, or t
 
 ## Install
 
-To call an action from a workflow:
+To call an action from a workflow, pin it to a version tag:
 
-1. Find the commit a release tag points at, taking the line that ends in `^{}` for an annotated tag:
+```yaml
+- uses: avi2d/workflows/setup@v1
+  with:
+    fetch-depth: 0
+```
 
-   ```sh
-   git ls-remote https://github.com/avi2d/workflows 'refs/tags/<tag>*'
-   ```
+The `v1` tag moves: the maintainer points it at each new `v1.x.y` release, so a caller on `v1` takes each release as it lands.
+A caller that wants one fixed version uses its exact tag, such as `v1.1.0`, which never moves.
 
-1. Pin the action to that full commit SHA, with the tag in a trailing comment:
+A caller that wants a SHA pin can still use one, with the tag in a trailing comment.
+Find the commit a tag points at, taking the line that ends in `^{}` for an annotated tag:
 
-   ```yaml
-   - uses: avi2d/workflows/actions/setup@<full commit SHA> # <tag>
-     with:
-       fetch-depth: 0
-   ```
+```sh
+git ls-remote https://github.com/avi2d/workflows 'refs/tags/v1.1.0*'
+```
 
-A tag can move and a commit cannot, so the pin keeps the job on the code that was reviewed.
-The pin also lets the caller turn on `sha_pinning_required` without an edit.
+```yaml
+- uses: avi2d/workflows/setup@<full commit SHA> # v1.1.0
+  with:
+    fetch-depth: 0
+```
+
+A SHA pin keeps the job on the commit that was reviewed, and `sha_pinning_required` accepts only that form.
 [The shared actions](docs/actions.md) lists what each action takes and returns.
 
 ## Pick the runner
@@ -40,7 +47,7 @@ A private caller runs a job on hosted runners while GitHub starts them, and on i
 ```yaml
 jobs:
   runner:
-    uses: avi2d/workflows/.github/workflows/runner.yml@<full commit SHA> # <tag>
+    uses: avi2d/workflows/.github/workflows/runner.yml@v1
   checks:
     needs: runner
     runs-on: ${{ needs.runner.outputs.runs-on }}
@@ -67,7 +74,7 @@ To have Dependabot move the pin to each new tag:
 
 1. Merge each pull request Dependabot opens once its CI passes.
 
-Dependabot reads each `owner/repo@ref` in the workflows and moves both the SHA and the trailing tag comment to the newest tag.
+Dependabot reads each `owner/repo@ref` in the workflows and, for a SHA pin, moves the SHA and the trailing tag comment to the newest tag.
 It leaves `./` references alone.
 The same file bumps every other action the caller pins, such as `actions/checkout`.
 
@@ -86,7 +93,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `actions/` | the composite actions, one directory each |
+| `<name>/` | the composite actions at the root, one directory each |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
