@@ -31,7 +31,16 @@ runs:
         BROWSERS: ${{ inputs.browsers }}
       run: |
         read -r -a names <<< "$BROWSERS"
-        bunx playwright-core install "${names[@]}"
+        attempt=1
+        until bash "${{ github.action_path }}/attempt.sh" playwright-core install "${names[@]}"; do
+          if [ "$attempt" -ge 3 ]; then
+            echo "::error::playwright-core install failed or stalled on all 3 attempts, each stopped at 180 seconds"
+            exit 1
+          fi
+          echo "playwright-core install attempt $attempt failed or stalled, retrying"
+          sleep "$((attempt * 10))"
+          attempt=$((attempt + 1))
+        done
     # A self-hosted runner holds its system packages already, and installing them there needs root.
     - if: runner.environment == 'github-hosted'
       shell: bash
@@ -39,4 +48,13 @@ runs:
         BROWSERS: ${{ inputs.browsers }}
       run: |
         read -r -a names <<< "$BROWSERS"
-        bunx playwright-core install-deps "${names[@]}"
+        attempt=1
+        until bash "${{ github.action_path }}/attempt.sh" playwright-core install-deps "${names[@]}"; do
+          if [ "$attempt" -ge 3 ]; then
+            echo "::error::playwright-core install-deps failed or stalled on all 3 attempts, each stopped at 180 seconds"
+            exit 1
+          fi
+          echo "playwright-core install-deps attempt $attempt failed or stalled, retrying"
+          sleep "$((attempt * 10))"
+          attempt=$((attempt + 1))
+        done
