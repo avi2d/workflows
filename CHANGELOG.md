@@ -2,12 +2,6 @@
 
 Every release of `workflows`, newest first.
 
-## Unreleased
-
-### Fixes
-
-- **playwright:** bound each `install` and `install-deps` attempt at 3 minutes and try it 3 times, so a stall fails with an error line before the job limit.
-
 ## 1.1.0
 
 Released 2026-11-06.
