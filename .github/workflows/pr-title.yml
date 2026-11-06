@@ -1,0 +1,40 @@
+name: pr-title
+
+# ci lints the title on each push, so an edit to the title alone reruns only this rather than the whole suite.
+on:
+  pull_request:
+    types: [edited]
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    if: github.event.changes.title
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A local action is read from the workspace, so the repository is checked out before the first one runs.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - id: title
+        name: lint the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-commit-title
+      # Branch protection requires a commitlint check, which no job of that name reports.
+      - name: report the title as commitlint
+        if: always()
+        uses: ./actions/commitlint-status
+        with:
+          outcome: ${{ steps.title.outcome }}

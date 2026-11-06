@@ -1,0 +1,15 @@
+{
+  "name": "workflows",
+  "private": true,
+  "license": "MIT",
+  "author": "avi2d <avi2dg@gmail.com>",
+  "repository": "https://github.com/avi2d/workflows",
+  "type": "module",
+  "scripts": {
+    "lint": "checks-lint"
+  },
+  "devDependencies": {
+    "@avi2dg/checks": "0.67.0",
+    "playwright-core": "1.63.0"
+  }
+}

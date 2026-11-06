@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # The composite actions under actions/ pin their own actions, and Dependabot reads only the directories it is given.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /actions/*
+    schedule:
+      interval: weekly
