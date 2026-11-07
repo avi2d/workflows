@@ -244,6 +244,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       # Public and with no CI_RUNS_ON, so the pick is always hosted.
       - name: a pick other than ubuntu-latest on this public repository fails
         env:
@@ -251,6 +257,8 @@ jobs:
         run: |
           echo "runner pick: $RUNS_ON"
           test "$RUNS_ON" = ubuntu-latest
+      - name: a pick that prefers the probe over CI_RUNS_ON or probes with CI_RUNS_ON set fails
+        run: bun ./scripts/runner-pick-check.ts
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
     needs: [static, setup, docs-only, head-status, playwright, heavy-slot, runner-output]

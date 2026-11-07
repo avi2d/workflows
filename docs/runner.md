@@ -24,7 +24,7 @@ A caller without `CI_RUNS_ON` gets `ubuntu-latest` after one hosted probe job.
 - A caller without `CI_RUNS_ON` pays one rounded up hosted minute for the probe in each workflow run.
 - A caller without `CI_RUNS_ON` that runs out of hosted minutes sees the probe as a failed job, because GitHub refuses it before any step runs.
 - `continue-on-error` keeps that refused probe off the caller's result, and the caller's own hosted jobs are refused the same way.
-- This repository's CI proves only the path without `CI_RUNS_ON`, because this repository sets no such variable.
+- This repository's CI proves the path without `CI_RUNS_ON` live and checks the `CI_RUNS_ON` path against the pick expression and guard.
 
 ## Related topics
 
