@@ -9,7 +9,7 @@
     "lint": "checks-lint"
   },
   "devDependencies": {
-    "@avi2dg/checks": "0.68.2",
+    "@avi2dg/checks": "0.71.0",
     "playwright-core": "1.63.0"
   }
 }
