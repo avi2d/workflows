@@ -42,7 +42,7 @@ A SHA pin keeps the job on the commit that was reviewed, and `sha_pinning_requir
 
 ## Pick the runner
 
-A private caller runs a job on hosted runners while GitHub starts them, and on its own self-hosted runner once the hosted minutes run out:
+A private caller runs a job on its own self-hosted runner when it names one, and on `ubuntu-latest` otherwise:
 
 ```yaml
 jobs:
@@ -53,8 +53,8 @@ jobs:
     runs-on: ${{ needs.runner.outputs.runs-on }}
 ```
 
-Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the jobs fall back to.
-A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted fallback.
+Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the jobs run on.
+A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
 [The runner pick](docs/runner.md) says how it decides and what it costs.
 
 ## Bump the pin with Dependabot
@@ -82,7 +82,7 @@ The same file bumps every other action the caller pins, such as `actions/checkou
 
 | Setting | How it reaches the shared code |
 | --- | --- |
-| The self-hosted fallback label | the caller's `CI_RUNS_ON` repository variable, which the runner pick reads in the caller's context |
+| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick reads in the caller's context |
 | A token other than the job's own | the `token` input of commitlint-status or head-status, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
