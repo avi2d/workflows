@@ -1,8 +1,8 @@
-import { Effect } from "effect";
+import { readFileSync } from "node:fs";
 
 const probeGuard = "${{ !vars.CI_RUNS_ON }}";
 const pickGuard = "${{ vars.CI_RUNS_ON }}";
-const pickRunner = "${{ vars.CI_RUNS_ON }}";
+const pickRunner = "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}";
 const hostedRunner = "ubuntu-latest";
 const runsOnOutput = "${{ vars.CI_RUNS_ON || jobs.hosted-minutes.outputs.runs-on || 'ubuntu-latest' }}";
 
@@ -61,19 +61,27 @@ function checkRunnerPick(text: string): string | null {
   return null;
 }
 
-const program = Effect.gen(function* () {
-  const text = yield* Effect.promise(() => Bun.file(".github/workflows/runner.yml").text());
-  const failure = yield* Effect.try({
-    try: () => checkRunnerPick(text),
-    catch: (cause) => new Error(cause instanceof Error ? cause.message : String(cause)),
-  });
-  if (failure !== null) {
-    return yield* Effect.fail(new Error(failure));
-  }
-  yield* Effect.log("runner pick skips the probe with CI_RUNS_ON set and always leaves a job running");
-});
-
-Effect.runPromise(program).catch((cause) => {
-  console.error(`runner-pick-check: ${String(cause)}`);
+function fail(cause: unknown): never {
+  console.error(`runner-pick-check: ${cause instanceof Error ? cause.message : String(cause)}`);
   process.exit(1);
-});
+}
+
+let text: string;
+try {
+  text = readFileSync(".github/workflows/runner.yml", "utf8");
+} catch (cause) {
+  fail(cause);
+}
+
+let failure: string | null;
+try {
+  failure = checkRunnerPick(text);
+} catch (cause) {
+  fail(cause);
+}
+
+if (failure !== null) {
+  fail(new Error(failure));
+}
+
+console.log("runner pick skips the probe with CI_RUNS_ON set and always leaves a job running");

@@ -22,7 +22,7 @@ jobs:
   # Without a job that runs, a caller with CI_RUNS_ON set would see its runner job skipped.
   pick:
     if: ${{ vars.CI_RUNS_ON }}
-    runs-on: ${{ vars.CI_RUNS_ON }}
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 1
     steps:
       - run: 'echo "runner pick: $RUNS_ON"'
