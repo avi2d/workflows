@@ -257,7 +257,7 @@ jobs:
         run: |
           echo "runner pick: $RUNS_ON"
           test "$RUNS_ON" = ubuntu-latest
-      - name: a pick that prefers the probe over CI_RUNS_ON or probes with CI_RUNS_ON set fails
+      - name: a pick that leaves no job running, probes with CI_RUNS_ON set or prefers the probe fails
         run: bun ./scripts/runner-pick-check.ts
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.

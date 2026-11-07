@@ -19,3 +19,10 @@ jobs:
     steps:
       - id: started
         run: echo "runs-on=ubuntu-latest" >> "$GITHUB_OUTPUT"
+  # Without a job that runs, a caller with CI_RUNS_ON set would see its runner job skipped.
+  pick:
+    if: ${{ vars.CI_RUNS_ON }}
+    runs-on: ${{ vars.CI_RUNS_ON }}
+    timeout-minutes: 1
+    steps:
+      - run: echo "runs-on=${{ vars.CI_RUNS_ON }}"
