@@ -10,20 +10,24 @@ The runner pick is the reusable workflow `.github/workflows/runner.yml`, whose `
 
 | Output | Value |
 | --- | --- |
-| `runs-on` | `ubuntu-latest` when GitHub starts the hosted probe job, else the caller's `CI_RUNS_ON` variable, else `ubuntu-latest` |
+| `runs-on` | The caller's `CI_RUNS_ON` variable when it is set, else `ubuntu-latest` |
 
-Billing is readable only with organization admin scope, so the pick reads the free minutes by whether GitHub starts its one hosted job.
-A job GitHub refuses for want of minutes fails at once instead of queueing.
-GitHub always assigns and bills a called workflow's hosted runners in the caller's context, and reads `vars` from the caller's repository.
-So the probe spends the caller's minutes, and `CI_RUNS_ON` is the caller's own label.
-The caller's jobs then run on the caller's own runners, whatever owner the caller has.
+GitHub reads `vars` from the caller's repository and always assigns and bills a called workflow's hosted runners in the caller's context.
+So `CI_RUNS_ON` is the caller's own label, and the caller's jobs run on the caller's own runners, whatever owner the caller has.
+A caller that sets `CI_RUNS_ON` gets that label after one pick job on the caller's own runner.
+A caller without `CI_RUNS_ON` gets `ubuntu-latest` after one hosted probe job.
 
 ## Costs
 
-- The probe bills one rounded up hosted minute for each workflow run while minutes remain.
-- A refused probe shows as a failed job in the run, although `continue-on-error` keeps it off the caller's result.
-- A hosted outage looks the same as an empty minutes balance, and both fall back to `CI_RUNS_ON`.
-- This repository's CI proves only the hosted answer, because GitHub always starts its probe.
+- A caller that sets `CI_RUNS_ON` sees the probe job as skipped, never as failed, and the pick bills it no hosted minute.
+- A caller that sets `CI_RUNS_ON` holds one of its own runners for one pick job on every run.
+- The pick always runs one job, so jobs that need the runner pick still run when the probe is skipped.
+- A caller with `CI_RUNS_ON` runs on its own runners even while hosted minutes remain.
+- A caller without `CI_RUNS_ON` pays one rounded up hosted minute for the probe in each workflow run.
+- A caller without `CI_RUNS_ON` that runs out of hosted minutes sees the probe as a failed job, because GitHub refuses it before any step runs.
+- `continue-on-error` keeps that refused probe off the caller's result, and the caller's own hosted jobs are refused the same way.
+- This repository's CI does not call the pick, because a pull request from a fork could edit it to run on a `CI_RUNS_ON` runner.
+- Only a run in a caller proves the pick.
 
 ## Related topics
 

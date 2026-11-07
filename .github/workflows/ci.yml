@@ -237,23 +237,9 @@ jobs:
           cat "$RUNNER_TEMP/heavy-slot.log"
           test "$(cat "$RUNNER_TEMP/heavy-slot.log")" = "$(printf 'acquire\nrelease')"
           test "$UNKNOWN" = failure
-  runner:
-    uses: ./.github/workflows/runner.yml
-  runner-output:
-    needs: runner
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      # Public and with no CI_RUNS_ON, so the pick is always hosted.
-      - name: a pick other than ubuntu-latest on this public repository fails
-        env:
-          RUNS_ON: ${{ needs.runner.outputs.runs-on }}
-        run: |
-          echo "runner pick: $RUNS_ON"
-          test "$RUNS_ON" = ubuntu-latest
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, docs-only, head-status, playwright, heavy-slot, runner-output]
+    needs: [static, setup, docs-only, head-status, playwright, heavy-slot]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -269,7 +255,6 @@ jobs:
           HEAD_STATUS: ${{ needs.head-status.result }}
           PLAYWRIGHT: ${{ needs.playwright.result }}
           HEAVY_SLOT: ${{ needs.heavy-slot.result }}
-          RUNNER_OUTPUT: ${{ needs.runner-output.result }}
           EVENT: ${{ github.event_name }}
         run: |
           test "$STATIC" = success
@@ -277,7 +262,6 @@ jobs:
           test "$DOCS_ONLY" = success
           test "$PLAYWRIGHT" = success
           test "$HEAVY_SLOT" = success
-          test "$RUNNER_OUTPUT" = success
           # head-status runs only on pull requests, so a dispatch may skip it.
           test "$HEAD_STATUS" = success || { test "$EVENT" != pull_request && test "$HEAD_STATUS" = skipped; }
       # A dispatched run's check stays off the pull request, so this reports a commit status.
