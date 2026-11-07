@@ -232,6 +232,17 @@ function fieldValue(field: unknown, labels: Labels): Scalar {
   return evaluate(parseExpression(match[1] ?? ""), labels);
 }
 
+function guardValue(guard: unknown, labels: Labels): Scalar {
+  if (typeof guard === "boolean") {
+    return guard;
+  }
+  if (typeof guard !== "string") {
+    throw new Error("runner pick holds a guard the check cannot read");
+  }
+  const match = /^\$\{\{([\s\S]*)\}\}$/.exec(guard.trim());
+  return evaluate(parseExpression(match === null ? guard : match[1] ?? ""), labels);
+}
+
 function jobShape(id: string, job: unknown): JobShape {
   if (!isRecord(job)) {
     throw new Error(`runner pick job ${id} holds no mapping`);
@@ -287,11 +298,11 @@ function verify(shape: PickShape): string | null {
     { labels: { caller: "", probe: "" }, output: "ubuntu-latest", hostedRuns: true, pickRuns: false },
   ];
   for (const current of cases) {
-    const hostedRuns = isTruthy(fieldValue(shape.hosted.guard, current.labels));
+    const hostedRuns = isTruthy(guardValue(shape.hosted.guard, current.labels));
     if (hostedRuns !== current.hostedRuns) {
       return current.labels.caller === "" ? "runner pick skips the hosted probe without CI_RUNS_ON" : "runner pick runs the hosted probe with CI_RUNS_ON set";
     }
-    const pickRuns = isTruthy(fieldValue(shape.pick.guard, current.labels));
+    const pickRuns = isTruthy(guardValue(shape.pick.guard, current.labels));
     if (pickRuns !== current.pickRuns) {
       return current.labels.caller === "" ? "runner pick runs the pick job without CI_RUNS_ON" : "runner pick leaves no job running with CI_RUNS_ON set";
     }
@@ -300,7 +311,7 @@ function verify(shape: PickShape): string | null {
     }
     const runners: string[] = [];
     for (const [id, job] of Object.entries(shape.jobs)) {
-      const runs = id === "hosted-minutes" ? hostedRuns : id === "pick" ? pickRuns : isTruthy(fieldValue(job.guard, current.labels));
+      const runs = id === "hosted-minutes" ? hostedRuns : id === "pick" ? pickRuns : isTruthy(guardValue(job.guard, current.labels));
       if (runs) {
         const runner = fieldValue(job.runner, current.labels);
         if (typeof runner !== "string" || runner === "") {

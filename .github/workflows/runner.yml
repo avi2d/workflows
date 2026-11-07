@@ -25,4 +25,6 @@ jobs:
     runs-on: ${{ vars.CI_RUNS_ON }}
     timeout-minutes: 1
     steps:
-      - run: echo "runs-on=${{ vars.CI_RUNS_ON }}"
+      - run: 'echo "runner pick: $RUNS_ON"'
+        env:
+          RUNS_ON: ${{ vars.CI_RUNS_ON }}
