@@ -16,6 +16,8 @@ A caller with neither fails the job with a message naming both.
 The `baseline` mode restores the last incremental state, runs Stryker incremental and uploads the reports.
 The `compare` mode scopes the head against the merge base and restores the baseline state.
 It runs the scoped head and files one advisory comment on the pull request.
+On a fork pull request the run skips the comment and writes the note to the job summary instead.
+The job token is read-only on a fork, so filing a comment would fail.
 The `refresh` mode splits the tree into shards from the last full report.
 It runs one shard per job and merges the shard reports into a new full report.
 `bunx stryker` runs the mutation engine itself and stays as it is in every caller.

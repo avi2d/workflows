@@ -220,11 +220,15 @@ jobs:
           else
             echo "::notice::mutation: no baseline report restores, so the comparison stops here"
           fi
+      # A fork pull request runs with a read-only token, so filing a comment fails and the note goes to the summary instead.
       - name: File the advisory comment
-        if: env.COMMENT == 'true'
+        if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/comment.md"
+      - name: Write the note to the summary on a fork
+        if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name != github.repository
+        run: cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
   refresh-plan:
     if: inputs.mode == 'refresh'
     runs-on: ubuntu-latest
