@@ -15,6 +15,16 @@ jobs:
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
         with:
           persist-credentials: "false"
-      - run: ./node_modules/.bin/checks-advisories --all --issue
+      # The kit repository holds the scan as source and never installs its own bin.
+      - name: run the scan from the kit install, else from the kit source
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -e ./node_modules/.bin/checks-advisories ]; then
+            exec ./node_modules/.bin/checks-advisories --all --issue
+          elif [ -f src/dependencies/advisories.ts ]; then
+            exec bun src/dependencies/advisories.ts --all --issue
+          else
+            echo "::error::advisories needs @avi2dg/checks in the caller's devDependencies, or the kit's own src/dependencies/advisories.ts"
+            exit 1
+          fi

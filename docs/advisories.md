@@ -4,11 +4,13 @@ audience: consumers
 ---
 # The advisory scan
 
-The advisory scan is the reusable workflow `.github/workflows/advisories.yml`, which runs `checks-advisories --all --issue` from the caller's install of the `@avi2dg/checks` kit.
+The advisory scan is the reusable workflow `.github/workflows/advisories.yml`, which runs `checks-advisories --all --issue` from the caller's install of the `@avi2dg/checks` kit, or from the kit's own source when the caller is the kit.
 
 ## What it does
 
 It checks out the commit the caller's run names through the setup action, installs the locked dependencies and runs `checks-advisories --all --issue`.
+A caller with no `node_modules/.bin/checks-advisories` but a `src/dependencies/advisories.ts`, which only the kit's own repository holds, runs that file with `bun` in its place.
+A caller with neither fails the job with a message naming both.
 A run on `refs/heads/main` files its verdict as one GitHub issue labelled `advisories`, and a later passing run closes it, as [checks-advisories](https://github.com/avi2d/checks/blob/main/docs/gates/checks-advisories.md#how-it-files-an-issue) says.
 A run on any other ref files no issue.
 The job fails whenever the scan fails, after it files the issue.
