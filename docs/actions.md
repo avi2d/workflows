@@ -93,4 +93,5 @@ A composite action has no post step, so the caller calls it twice, freeing the s
 
 - [The runner pick](runner.md)
 - [The advisory scan](advisories.md)
+- [The mutation runs](mutation.md)
 - [workflows](../README.md)

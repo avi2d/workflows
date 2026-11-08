@@ -116,6 +116,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `<name>/` | the composite actions at the root, one directory each |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
+| `.github/workflows/mutation.yml` | the reusable mutation runs |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
@@ -124,4 +125,5 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 - [The shared actions](docs/actions.md)
 - [The runner pick](docs/runner.md)
 - [The advisory scan](docs/advisories.md)
+- [The mutation runs](docs/mutation.md)
 - [Changelog](CHANGELOG.md)

@@ -33,4 +33,5 @@ This repository scans itself every Monday at 05:35 UTC from the workflow's own `
 
 - [The runner pick](runner.md)
 - [The shared actions](actions.md)
+- [The mutation runs](mutation.md)
 - [workflows](../README.md)

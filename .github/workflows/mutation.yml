@@ -52,10 +52,29 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      # The kit repository holds the commands as source and never installs its own bins.
+      - name: Resolve the mutation commands from the kit install, else from the kit source
+        run: |
+          mkdir -p "$RUNNER_TEMP/checks-bin"
+          for cmd in checks-mutation-baseline; do
+            if [ -e "./node_modules/.bin/$cmd" ]; then
+              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
+            else
+              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
+              if [ -n "$src" ] && [ -f "$src" ]; then
+                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
+              else
+                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
+                exit 1
+              fi
+            fi
+            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
+          done
+          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
       - name: Restore previous baseline state
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bunx checks-mutation-baseline reports/stryker-incremental.json
+        run: checks-mutation-baseline reports/stryker-incremental.json
       - name: Run the incremental baseline
         run: bunx stryker run --incremental
       - name: Score the baseline
@@ -85,7 +104,7 @@ jobs:
       - name: Prune superseded baselines
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bunx checks-mutation-baseline --prune
+        run: checks-mutation-baseline --prune
   compare:
     if: inputs.mode == 'compare'
     runs-on: ubuntu-latest
@@ -99,13 +118,32 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      # The kit repository holds the commands as source and never installs its own bins.
+      - name: Resolve the mutation commands from the kit install, else from the kit source
+        run: |
+          mkdir -p "$RUNNER_TEMP/checks-bin"
+          for cmd in checks-mutation-baseline checks-mutation-scope checks-mutation-compare; do
+            if [ -e "./node_modules/.bin/$cmd" ]; then
+              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
+            else
+              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
+              if [ -n "$src" ] && [ -f "$src" ]; then
+                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
+              else
+                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
+                exit 1
+              fi
+            fi
+            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
+          done
+          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
       - name: Select mutation scope
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           base="$(git merge-base HEAD origin/main)"
-          bunx checks-mutation-baseline --full "$RUNNER_TEMP/baseline-full/mutation.json"
-          bunx checks-mutation-scope "$base" "$RUNNER_TEMP/baseline-full/mutation.json" >> "$GITHUB_ENV"
+          checks-mutation-baseline --full "$RUNNER_TEMP/baseline-full/mutation.json"
+          checks-mutation-scope "$base" "$RUNNER_TEMP/baseline-full/mutation.json" >> "$GITHUB_ENV"
       - name: Report empty scope
         if: env.SCOPE == ''
         run: |
@@ -147,7 +185,7 @@ jobs:
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bunx checks-mutation-baseline reports/stryker-incremental.json "$RUNNER_TEMP/baseline/mutation.json"
+        run: checks-mutation-baseline reports/stryker-incremental.json "$RUNNER_TEMP/baseline/mutation.json"
       # A test that reads a changed file counts as changed, so its stored results go before the run.
       - name: Drop stale tests from the restored state
         if: env.SCOPE != '' && env.OVER_CAP != 'true' && env.STALE_TESTS != ''
@@ -166,7 +204,7 @@ jobs:
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
         run: |
           if [ -f "$RUNNER_TEMP/baseline/mutation.json" ]; then
-            bunx checks-mutation-compare --advisory "$RUNNER_TEMP/baseline/mutation.json" reports/mutation/mutation.json | tee "$RUNNER_TEMP/compare.txt"
+            checks-mutation-compare --advisory "$RUNNER_TEMP/baseline/mutation.json" reports/mutation/mutation.json | tee "$RUNNER_TEMP/compare.txt"
             report=reports/mutation/mutation.json
             read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
             {
@@ -199,17 +237,36 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      # The kit repository holds the commands as source and never installs its own bins.
+      - name: Resolve the mutation commands from the kit install, else from the kit source
+        run: |
+          mkdir -p "$RUNNER_TEMP/checks-bin"
+          for cmd in checks-mutation-baseline checks-mutation-scope; do
+            if [ -e "./node_modules/.bin/$cmd" ]; then
+              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
+            else
+              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
+              if [ -n "$src" ] && [ -f "$src" ]; then
+                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
+              else
+                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
+                exit 1
+              fi
+            fi
+            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
+          done
+          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
       - name: Restore the last full report
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bunx checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
+        run: checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
       - id: shards
         name: Split the tree into shards
         run: |
           if [ -f "$RUNNER_TEMP/last-full/mutation.json" ]; then
-            line=$(bunx checks-mutation-scope --shards "${{ inputs.shards }}" "$RUNNER_TEMP/last-full/mutation.json" | grep '^SHARDS=')
+            line=$(checks-mutation-scope --shards "${{ inputs.shards }}" "$RUNNER_TEMP/last-full/mutation.json" | grep '^SHARDS=')
           else
-            line=$(bunx checks-mutation-scope --shards "${{ inputs.shards }}" | grep '^SHARDS=')
+            line=$(checks-mutation-scope --shards "${{ inputs.shards }}" | grep '^SHARDS=')
           fi
           echo "shards=${line#SHARDS=}" >> "$GITHUB_OUTPUT"
 
@@ -250,12 +307,31 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      # The kit repository holds the commands as source and never installs its own bins.
+      - name: Resolve the mutation commands from the kit install, else from the kit source
+        run: |
+          mkdir -p "$RUNNER_TEMP/checks-bin"
+          for cmd in checks-mutation-baseline checks-mutation-merge; do
+            if [ -e "./node_modules/.bin/$cmd" ]; then
+              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
+            else
+              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
+              if [ -n "$src" ] && [ -f "$src" ]; then
+                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
+              else
+                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
+                exit 1
+              fi
+            fi
+            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
+          done
+          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: mutation-shard-*
           path: shards
       - name: Merge the shard reports
-        run: bunx checks-mutation-merge reports/mutation/mutation.json shards/mutation-shard-*/mutation.json
+        run: checks-mutation-merge reports/mutation/mutation.json shards/mutation-shard-*/mutation.json
       - name: Score the refresh
         if: always()
         run: |
@@ -275,7 +351,7 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Slim the merged report
-        run: bunx checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
+        run: checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-baseline-full
@@ -285,5 +361,5 @@ jobs:
       - name: Prune superseded baselines
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bunx checks-mutation-baseline --prune
+        run: checks-mutation-baseline --prune
 
