@@ -1,7 +1,7 @@
 # workflows
 
 Shared GitHub Actions plumbing for the avi2d repositories.
-It holds composite actions that run inside the caller's own job, a reusable workflow that picks the runner and one that scans for advisories.
+It holds composite actions that run inside the caller's own job and reusable workflows that pick the runner, scan for advisories and run mutation.
 The repository is public, so every avi2d and azalialaw repository can call it, and it holds no secret, no runner name and no customer data.
 A private caller passes its own settings in as inputs, as secrets it names, or through its own repository variables.
 
