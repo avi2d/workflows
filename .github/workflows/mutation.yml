@@ -1,0 +1,289 @@
+name: mutation
+on:
+  # Firstmate starts the refresh by hand from here every 28 days, since a schedule is not allowed.
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Which run to do, one of baseline, compare or refresh.
+        type: choice
+        options: [baseline, compare, refresh]
+        default: baseline
+      shards:
+        description: How many shard jobs a refresh splits the full run into.
+        type: number
+        default: 4
+      mutant-cap:
+        description: How many scoped mutants a compare runs before it skips with a note.
+        type: number
+        default: 1500
+  workflow_call:
+    inputs:
+      mode:
+        description: Which run to do, one of baseline, compare or refresh.
+        type: string
+        default: baseline
+      shards:
+        description: How many shard jobs a refresh splits the full run into.
+        type: number
+        default: 4
+      mutant-cap:
+        description: How many scoped mutants a compare runs before it skips with a note.
+        type: number
+        default: 1500
+
+permissions:
+  contents: read
+  actions: write
+  pull-requests: write
+
+# One job per push, and a newer push cancels the run it supersedes.
+concurrency:
+  group: mutation-${{ inputs.mode }}-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    if: inputs.mode == 'baseline'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+      - name: Name the runner environment
+        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
+      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - name: Restore previous baseline state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-mutation-baseline reports/stryker-incremental.json
+      - name: Run the incremental baseline
+        run: bunx stryker run --incremental
+      - name: Score the baseline
+        if: always()
+        run: |
+          report=reports/mutation/mutation.json
+          {
+            echo "## mutation baseline"
+            echo
+            if [ -f "$report" ]; then
+              read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
+              if [ "$total" -gt 0 ]; then
+                echo "Detected $detected of $total mutants ($(( (100 * detected + total / 2) / total ))%)."
+              else
+                echo "Detected $detected of $total mutants."
+              fi
+            else
+              echo "No report was written."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-baseline
+          path: reports/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Prune superseded baselines
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-mutation-baseline --prune
+  compare:
+    if: inputs.mode == 'compare'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+      - name: Name the runner environment
+        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
+      # The head is what the run judges, and the scope diffs it against the base, so the checkout holds the whole history.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Select mutation scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="$(git merge-base HEAD origin/main)"
+          bunx checks-mutation-baseline --full "$RUNNER_TEMP/baseline-full/mutation.json"
+          bunx checks-mutation-scope "$base" "$RUNNER_TEMP/baseline-full/mutation.json" >> "$GITHUB_ENV"
+      - name: Report empty scope
+        if: env.SCOPE == ''
+        run: |
+          echo "::notice::mutation: no source files changed, so neither the run nor the comparison starts"
+      - name: Count scoped mutants
+        if: env.SCOPE != ''
+        env:
+          MUTANT_CAP: ${{ inputs['mutant-cap'] }}
+        run: |
+          if [ -f "$RUNNER_TEMP/baseline-full/mutation.json" ]; then
+            scoped=$(jq -r --arg scope "$SCOPE" '
+              ($scope | split(",")) as $globs
+              | [$globs[] | gsub("\\[\\*\\]"; "*") | gsub("\\[\\?\\]"; "?") | gsub("\\[\\(\\]"; "(") | gsub("\\[\\)\\]"; ")") | gsub("\\[\\{\\]"; "{") | gsub("\\[\\}\\]"; "}")] as $plain
+              | [$plain[] | gsub("\\[\\[\\]"; "[") | gsub("\\[\\]\\]"; "]")] as $files
+              | (.files | with_entries(select(.key as $key | $files | index($key)))) as $scoped
+              | [$scoped[] | .mutants | map(select(.static != true and .status != "Ignored" and .status != "NoCoverage")) | length] as $counts
+              | (if ($counts | length) == 0 then 1 else ((($counts | add) / ($counts | length)) | ceil) end) as $average
+              | (($counts | add // 0) + (($files | length) - ($scoped | length)) * $average)
+            ' "$RUNNER_TEMP/baseline-full/mutation.json")
+          else
+            scoped=$(echo "$SCOPE" | tr ',' '\n' | wc -l)
+          fi
+          echo "SCOPED_MUTANTS=$scoped" >> "$GITHUB_ENV"
+          if [ "$scoped" -gt "$MUTANT_CAP" ]; then
+            echo "OVER_CAP=true" >> "$GITHUB_ENV"
+          fi
+      - name: Note a scope over the cap
+        if: env.OVER_CAP == 'true'
+        run: |
+          echo "::notice::mutation: $SCOPED_MUTANTS scoped mutants pass the ${{ inputs['mutant-cap'] }} mutant cap, so the run stops here"
+          {
+            echo "## mutation compare"
+            echo
+            echo "$SCOPED_MUTANTS scoped mutants pass the ${{ inputs['mutant-cap'] }} mutant cap, so the run stops here."
+            echo "Split the pull request and push again for a scoped run."
+          } > "$RUNNER_TEMP/comment.md"
+          echo "COMMENT=true" >> "$GITHUB_ENV"
+      - name: Restore the baseline state and report
+        if: env.SCOPE != '' && env.OVER_CAP != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-mutation-baseline reports/stryker-incremental.json "$RUNNER_TEMP/baseline/mutation.json"
+      # A test that reads a changed file counts as changed, so its stored results go before the run.
+      - name: Drop stale tests from the restored state
+        if: env.SCOPE != '' && env.OVER_CAP != 'true' && env.STALE_TESTS != ''
+        run: |
+          if [ -f reports/stryker-incremental.json ]; then
+            tmp="$(mktemp)"
+            jq --arg tests "$STALE_TESTS" '
+              ($tests | split(",")) as $drop
+              | .testFiles |= with_entries(select(.key as $key | $drop | index($key) | not))
+            ' reports/stryker-incremental.json > "$tmp" && mv "$tmp" reports/stryker-incremental.json
+          fi
+      - name: Run the scoped head
+        if: env.SCOPE != '' && env.OVER_CAP != 'true'
+        run: bunx stryker run --incremental --mutate "$SCOPE"
+      - name: Compare the head against the baseline
+        if: env.SCOPE != '' && env.OVER_CAP != 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/baseline/mutation.json" ]; then
+            bunx checks-mutation-compare --advisory "$RUNNER_TEMP/baseline/mutation.json" reports/mutation/mutation.json | tee "$RUNNER_TEMP/compare.txt"
+            report=reports/mutation/mutation.json
+            read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
+            {
+              echo "## mutation compare"
+              echo
+              echo "Detected $detected of $total scoped mutants."
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/compare.txt"
+              echo '```'
+            } > "$RUNNER_TEMP/comment.md"
+            echo "COMMENT=true" >> "$GITHUB_ENV"
+          else
+            echo "::notice::mutation: no baseline report restores, so the comparison stops here"
+          fi
+      - name: File the advisory comment
+        if: env.COMMENT == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/comment.md"
+  refresh-plan:
+    if: inputs.mode == 'refresh'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+      - name: Name the runner environment
+        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
+      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - name: Restore the last full report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
+      - id: shards
+        name: Split the tree into shards
+        run: |
+          if [ -f "$RUNNER_TEMP/last-full/mutation.json" ]; then
+            line=$(bunx checks-mutation-scope --shards "${{ inputs.shards }}" "$RUNNER_TEMP/last-full/mutation.json" | grep '^SHARDS=')
+          else
+            line=$(bunx checks-mutation-scope --shards "${{ inputs.shards }}" | grep '^SHARDS=')
+          fi
+          echo "shards=${line#SHARDS=}" >> "$GITHUB_OUTPUT"
+
+  refresh-shard:
+    if: inputs.mode == 'refresh'
+    needs: refresh-plan
+    strategy:
+      matrix:
+        shard: ${{ fromJSON(needs.refresh-plan.outputs.shards) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+      - name: Name the runner environment
+        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
+      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - name: Run one shard
+        env:
+          # The preset skips static mutants and their timing run only in a refresh.
+          CHECKS_MUTATION_MODE: refresh
+        run: bunx stryker run --mutate "${{ matrix.shard }}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-shard-${{ strategy.job-index }}
+          path: reports/mutation/mutation.json
+          retention-days: 1
+          if-no-files-found: error
+
+  refresh-merge:
+    if: inputs.mode == 'refresh'
+    needs: [refresh-plan, refresh-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+      - name: Name the runner environment
+        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
+      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: mutation-shard-*
+          path: shards
+      - name: Merge the shard reports
+        run: bunx checks-mutation-merge reports/mutation/mutation.json shards/mutation-shard-*/mutation.json
+      - name: Score the refresh
+        if: always()
+        run: |
+          report=reports/mutation/mutation.json
+          {
+            echo "## mutation refresh"
+            echo
+            if [ -f "$report" ]; then
+              read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
+              if [ "$total" -gt 0 ]; then
+                echo "Detected $detected of $total mutants ($(( (100 * detected + total / 2) / total ))%)."
+              else
+                echo "Detected $detected of $total mutants."
+              fi
+            else
+              echo "No report was written."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Slim the merged report
+        run: bunx checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-baseline-full
+          path: ${{ runner.temp }}/full/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Prune superseded baselines
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-mutation-baseline --prune
+
