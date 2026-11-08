@@ -11,6 +11,12 @@ GitHub does not enforce a composite action's required inputs, so an action that 
 
 Checks out the repository, fails when `.bun-version` is missing, installs the Bun version that file names and runs `bun install --frozen-lockfile`.
 
+When the caller installs the `@avi2dg/checks` kit, it restores `~/.cache/avi2dg-checks/gitleaks` and saves it at the end of the job.
+`checks-secrets` and `checks-pr-text` then find the pinned gitleaks there and download nothing.
+The cache key holds the runner OS and architecture and the hash of the kit file that pins the gitleaks release.
+A kit that pins a new release misses once and saves its own copy.
+A job that never runs gitleaks saves nothing.
+
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `fetch-depth` | `1` | how many commits to fetch, `0` for the whole history |

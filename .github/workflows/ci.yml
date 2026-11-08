@@ -89,6 +89,34 @@ jobs:
         run: |
           test -x node_modules/.bin/checks-docs-only
           git diff --exit-code
+  gitleaks-cache-fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: a kit that cannot fetch or run its pinned gitleaks fails
+        run: bunx checks-secrets HEAD
+  gitleaks-cache:
+    # The fill job's cache save runs in its post step, which ends before this job starts.
+    needs: gitleaks-cache-fill
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: a gitleaks the next job has to download again fails
+        run: |
+          find ~/.cache/avi2dg-checks/gitleaks -type f -name gitleaks
+          test -n "$(find ~/.cache/avi2dg-checks/gitleaks -type f -name gitleaks -perm -u+x)"
   docs-only:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -241,7 +269,7 @@ jobs:
           test "$UNKNOWN" = failure
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, docs-only, head-status, playwright, heavy-slot]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -253,6 +281,8 @@ jobs:
         env:
           STATIC: ${{ needs.static.result }}
           SETUP: ${{ needs.setup.result }}
+          GITLEAKS_CACHE_FILL: ${{ needs.gitleaks-cache-fill.result }}
+          GITLEAKS_CACHE: ${{ needs.gitleaks-cache.result }}
           DOCS_ONLY: ${{ needs.docs-only.result }}
           HEAD_STATUS: ${{ needs.head-status.result }}
           PLAYWRIGHT: ${{ needs.playwright.result }}
@@ -261,6 +291,8 @@ jobs:
         run: |
           test "$STATIC" = success
           test "$SETUP" = success
+          test "$GITLEAKS_CACHE_FILL" = success
+          test "$GITLEAKS_CACHE" = success
           test "$DOCS_ONLY" = success
           test "$PLAYWRIGHT" = success
           test "$HEAVY_SLOT" = success

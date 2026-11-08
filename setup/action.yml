@@ -1,5 +1,5 @@
 name: setup
-description: Check out the repository, install the Bun version its .bun-version names and install the locked dependencies.
+description: Check out the repository, install the Bun version its .bun-version names, install the locked dependencies and cache the gitleaks the kit pins.
 inputs:
   fetch-depth:
     description: How many commits to fetch, 0 for the whole history.
@@ -39,3 +39,9 @@ runs:
         key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
     - shell: bash
       run: bun install --frozen-lockfile
+    - name: cache the gitleaks the kit pins
+      if: hashFiles('node_modules/@avi2dg/checks/src/delivery/gitleaks.ts') != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/avi2dg-checks/gitleaks
+        key: gitleaks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('node_modules/@avi2dg/checks/src/delivery/gitleaks.ts') }}
