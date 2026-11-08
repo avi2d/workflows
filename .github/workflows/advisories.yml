@@ -1,0 +1,20 @@
+name: advisories
+on:
+  workflow_call:
+  schedule:
+    - cron: "35 5 * * 1"
+permissions:
+  contents: read
+  issues: write
+jobs:
+  advisories:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    steps:
+      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+        with:
+          persist-credentials: "false"
+      - run: ./node_modules/.bin/checks-advisories --all --issue
+        env:
+          GH_TOKEN: ${{ github.token }}

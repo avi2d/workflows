@@ -86,4 +86,5 @@ A composite action has no post step, so the caller calls it twice, freeing the s
 ## Related topics
 
 - [The runner pick](runner.md)
+- [The advisory scan](advisories.md)
 - [workflows](../README.md)
