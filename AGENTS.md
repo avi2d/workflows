@@ -1,6 +1,7 @@
 # Project agent memory
 
 workflows holds the shared GitHub Actions plumbing the avi2d repositories call, and `README.md` holds what a person reads.
+`docs/vision.md` holds what workflows is for and what it will not do, so read it before adding scope.
 
 ## Before you change a part
 
