@@ -26,7 +26,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       # The head, not the merge ref, so the gates read the commit the range ends at.
       # Whole history: the range starts where the head branched off the base.
-      - uses: ./setup
+      - id: setup
+        uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -61,6 +62,7 @@ jobs:
           test "$got" = "$want"
       - run: bun run lint
       - name: lint the workflows
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: |
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12 "$RUNNER_TEMP"
           "$RUNNER_TEMP/actionlint" -color
