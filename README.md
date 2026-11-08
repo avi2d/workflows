@@ -1,7 +1,7 @@
 # workflows
 
 Shared GitHub Actions plumbing for the avi2d repositories.
-It holds composite actions that run inside the caller's own job, and a reusable workflow that picks the runner.
+It holds composite actions that run inside the caller's own job, a reusable workflow that picks the runner and one that scans for advisories.
 The repository is public, so every avi2d and azalialaw repository can call it, and it holds no secret, no runner name and no customer data.
 A private caller passes its own settings in as inputs, as secrets it names, or through its own repository variables.
 
@@ -57,6 +57,26 @@ Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the j
 A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
 [The runner pick](docs/runner.md) says how it decides and what it costs.
 
+## Scan for advisories weekly
+
+A caller runs `checks-advisories --all --issue` every week, which files a GitHub issue while `bun.lock` on `main` holds an advisory:
+
+```yaml
+on:
+  schedule:
+    - cron: "15 5 * * 1"
+  workflow_dispatch:
+jobs:
+  advisories:
+    permissions:
+      contents: read
+      issues: write
+    uses: avi2d/workflows/.github/workflows/advisories.yml@v1
+```
+
+A private caller drops the `schedule` trigger and starts the scan with `gh workflow run`.
+[The advisory scan](docs/advisories.md) says what it needs from the caller.
+
 ## Bump the pin with Dependabot
 
 To have Dependabot move the pin to each new tag:
@@ -95,6 +115,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | --- | --- |
 | `<name>/` | the composite actions at the root, one directory each |
 | `.github/workflows/runner.yml` | the reusable runner pick |
+| `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
@@ -102,4 +123,5 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 - [The shared actions](docs/actions.md)
 - [The runner pick](docs/runner.md)
+- [The advisory scan](docs/advisories.md)
 - [Changelog](CHANGELOG.md)

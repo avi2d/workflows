@@ -32,4 +32,5 @@ A caller without `CI_RUNS_ON` gets `ubuntu-latest` after one hosted probe job.
 ## Related topics
 
 - [The shared actions](actions.md)
+- [The advisory scan](advisories.md)
 - [workflows](../README.md)
