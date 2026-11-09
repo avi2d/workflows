@@ -318,10 +318,9 @@ jobs:
       - uses: ./setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      # A term written out here would be in the scanned commit, so the scan would refuse it.
       - id: pack
         name: build a pack whose term no tracked file holds
-        run: printf 'json={"names":["%b"]}\n' 'smoke\x2dpack\x2dterm' >> "$GITHUB_OUTPUT"
+        run: bun ci/smoke-pack.ts
       - uses: ./secrets-pack
         with:
           pack: ${{ steps.pack.outputs.json }}

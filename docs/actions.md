@@ -117,10 +117,11 @@ The caller checks out the whole history and puts both commands on the `PATH` fir
 ## secrets-pack
 
 Writes the private secrets pack to `$RUNNER_TEMP/secrets-pack.json` and exports that path as `CHECKS_SECRETS_PACK`, so the kit's `checks-secrets` and `checks-pr-text` in later steps read the pack.
-The pack reaches it as an input the caller writes, never through `${{ }}` inside a `run:` line:
+The pack reaches it as an input the caller writes, never through `${{ }}` inside a `run:` line.
+The caller pins it to the commit the release tag points at, found as [Install](../README.md#install) shows:
 
 ```yaml
-- uses: avi2d/workflows/secrets-pack@v1
+- uses: avi2d/workflows/secrets-pack@<full commit SHA> # v1.3.0
   with:
     pack: ${{ secrets.CHECKS_SECRETS_PACK }}
 ```
