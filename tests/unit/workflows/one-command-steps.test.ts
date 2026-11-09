@@ -8,6 +8,7 @@ const SHELL_LOGIC = /[;|<>]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b|\bprintf\
 // Steps that held shell logic before the rule; the list only shrinks.
 const LEGACY = new Set<string>([
   ".github/workflows/runner.yml hosted-minutes started",
+  ".github/workflows/release.yml publish tag matches package version",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

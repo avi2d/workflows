@@ -5,5 +5,6 @@
 | Number | Title | Status | Governs |
 | --- | --- | --- | --- |
 | [0001](0001-mutation-runs-in-one-shared-advisory-workflow.md) | Mutation runs in one shared advisory workflow | Accepted | `.github/workflows/mutation.yml` |
+| [0002](0002-release-skeleton-runs-in-shared-reusable-workflows.md) | Release skeleton runs in shared reusable workflows | Accepted | `.github/workflows/release-pr.yml`, `.github/workflows/release.yml` |
 
 <!-- end generated adr-index -->
