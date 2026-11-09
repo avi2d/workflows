@@ -61,6 +61,7 @@ jobs:
           echo "commitlint status: $got, title lint: $OUTCOME"
           test "$got" = "$want"
       - run: bun run lint
+      - run: bun run typecheck
       - run: bun run test
       - name: lint the workflows
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
@@ -329,9 +330,43 @@ jobs:
           base-ref: ${{ github.event.pull_request.base.ref }}
       - name: a scope taken from anything but the merge base with main fails
         run: bun ci/mutation-scope-smoke.ts verify
+  secrets-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # A term written out here would be in the scanned commit, so the scan would refuse it.
+      - id: pack
+        name: build a pack whose term no tracked file holds
+        run: printf 'json={"names":["%b"]}\n' 'smoke\x2dpack\x2dterm' >> "$GITHUB_OUTPUT"
+      - uses: ./secrets-pack
+        with:
+          pack: ${{ steps.pack.outputs.json }}
+      - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, or changed on the way, fails
+        env:
+          PACK: ${{ steps.pack.outputs.json }}
+        run: |
+          test "$CHECKS_SECRETS_PACK" = "$RUNNER_TEMP/secrets-pack.json"
+          printf '%s' "$PACK" | cmp - "$CHECKS_SECRETS_PACK"
+      - name: a pack the kit's secret scan does not read fails
+        run: bunx checks-secrets HEAD | grep -F 'the private pack CHECKS_SECRETS_PACK names ran'
+      - id: empty
+        uses: ./secrets-pack
+        continue-on-error: true
+        with:
+          pack: ""
+      - name: an empty pack that passes fails
+        env:
+          EMPTY: ${{ steps.empty.outcome }}
+        run: test "$EMPTY" = failure
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

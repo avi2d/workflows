@@ -114,6 +114,26 @@ The caller checks out the whole history and puts both commands on the `PATH` fir
 | --- | --- | --- |
 | `base-ref` | empty | the branch the head merges into |
 
+## secrets-pack
+
+Writes the private secrets pack to `$RUNNER_TEMP/secrets-pack.json` and exports that path as `CHECKS_SECRETS_PACK`, so the kit's `checks-secrets` and `checks-pr-text` in later steps read the pack.
+The pack reaches it as an input the caller writes, never through `${{ }}` inside a `run:` line:
+
+```yaml
+- uses: avi2d/workflows/secrets-pack@v1
+  with:
+    pack: ${{ secrets.CHECKS_SECRETS_PACK }}
+```
+
+It runs `secrets-pack/write.ts` with Bun, so the caller runs setup first.
+It installs its own pinned dependencies in its checkout, apart from the caller's.
+An empty pack fails the step and writes nothing.
+A caller whose secret may be unset guards the call with an `if:`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
+
 ## Related topics
 
 - [The runner pick](runner.md)
