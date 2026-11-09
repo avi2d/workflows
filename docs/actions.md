@@ -101,6 +101,17 @@ The caller runs setup first, since the action runs on the Bun that setup install
 | --- | --- | --- |
 | `commands` | required | the kit commands to put on the `PATH`, separated by spaces |
 
+## mutation-scope
+
+Writes the `SCOPE` of a mutation compare to the job's environment.
+It restores the full baseline report with `checks-mutation-baseline --full` and passes the head's merge base with `origin/<base-ref>` to `checks-mutation-scope`.
+An empty `base-ref` scopes against `origin/main`.
+The caller checks out the whole history and puts both commands on the `PATH` first, as [kit-bin](#kit-bin) does.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `base-ref` | empty | the branch the head merges into |
+
 ## Related topics
 
 - [The runner pick](runner.md)

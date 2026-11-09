@@ -292,9 +292,27 @@ jobs:
         env:
           MISSING: ${{ steps.missing.outcome }}
         run: bun ci/kit-bin-smoke.ts verify
+  mutation-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: put stand-in mutation commands on the PATH
+        run: bun ci/mutation-scope-smoke.ts stand-ins
+      - uses: ./mutation-scope
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
+      - name: a scope taken from anything but the merge base with main fails
+        run: bun ci/mutation-scope-smoke.ts verify
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
