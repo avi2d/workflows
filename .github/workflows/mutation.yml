@@ -106,13 +106,11 @@ jobs:
         with:
           commands: checks-mutation-baseline checks-mutation-scope checks-mutation-compare
       - name: Select mutation scope
+        uses: avi2d/workflows/mutation-scope@2c01573c59ebb0d94e1f6e29cd51b1400ca325e4
         env:
           GH_TOKEN: ${{ github.token }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          base="$(git merge-base HEAD "origin/${BASE_REF:-main}")"
-          checks-mutation-baseline --full "$RUNNER_TEMP/baseline-full/mutation.json"
-          checks-mutation-scope "$base" "$RUNNER_TEMP/baseline-full/mutation.json" >> "$GITHUB_ENV"
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
       - name: Report empty scope
         if: env.SCOPE == ''
         run: |
