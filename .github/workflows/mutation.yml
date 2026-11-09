@@ -108,8 +108,9 @@ jobs:
       - name: Select mutation scope
         env:
           GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          base="$(git merge-base HEAD origin/main)"
+          base="$(git merge-base HEAD "origin/${BASE_REF:-main}")"
           checks-mutation-baseline --full "$RUNNER_TEMP/baseline-full/mutation.json"
           checks-mutation-scope "$base" "$RUNNER_TEMP/baseline-full/mutation.json" >> "$GITHUB_ENV"
       - name: Report empty scope
