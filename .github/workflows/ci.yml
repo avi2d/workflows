@@ -61,6 +61,7 @@ jobs:
           echo "commitlint status: $got, title lint: $OUTCOME"
           test "$got" = "$want"
       - run: bun run lint
+      - run: bun run test
       - name: lint the workflows
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: |
@@ -267,9 +268,40 @@ jobs:
           cat "$RUNNER_TEMP/heavy-slot.log"
           test "$(cat "$RUNNER_TEMP/heavy-slot.log")" = "$(printf 'acquire\nrelease')"
           test "$UNKNOWN" = failure
+  kit-bin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: map a command to its source the way the kit's own package.json does
+        run: |
+          echo 'console.log("from source")' > smoke-kit-source.ts
+          jq '.bin = {"smoke-kit-source": "smoke-kit-source.ts"}' package.json > "$RUNNER_TEMP/package.json"
+          mv "$RUNNER_TEMP/package.json" package.json
+      - uses: ./kit-bin
+        with:
+          commands: checks-docs-only smoke-kit-source
+      - id: missing
+        uses: ./kit-bin
+        continue-on-error: true
+        with:
+          commands: no-such-kit-command
+      - name: a command off the shims, a source command that does not run, or a missing command that passes fails
+        env:
+          MISSING: ${{ steps.missing.outcome }}
+        run: |
+          test "$(command -v checks-docs-only)" = "$RUNNER_TEMP/checks-bin/checks-docs-only"
+          test "$(checks-docs-only)" = docs-only=false
+          test "$(smoke-kit-source)" = "from source"
+          test "$MISSING" = failure
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -287,6 +319,7 @@ jobs:
           HEAD_STATUS: ${{ needs.head-status.result }}
           PLAYWRIGHT: ${{ needs.playwright.result }}
           HEAVY_SLOT: ${{ needs.heavy-slot.result }}
+          KIT_BIN: ${{ needs.kit-bin.result }}
           EVENT: ${{ github.event_name }}
         run: |
           test "$STATIC" = success
@@ -296,6 +329,7 @@ jobs:
           test "$DOCS_ONLY" = success
           test "$PLAYWRIGHT" = success
           test "$HEAVY_SLOT" = success
+          test "$KIT_BIN" = success
           # head-status runs only on pull requests, so a dispatch may skip it.
           test "$HEAD_STATUS" = success || { test "$EVENT" != pull_request && test "$HEAD_STATUS" = skipped; }
       # A dispatched run's check stays off the pull request, so this reports a commit status.

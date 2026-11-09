@@ -89,6 +89,18 @@ A composite action has no post step, so the caller calls it twice, freeing the s
 | `runner-prefix` | required | the runner name prefix of the machines that hold a slot, matched without case as `startsWith` matches |
 | `command` | required | the slot command, called with the action as its one argument |
 
+## kit-bin
+
+Puts the `@avi2dg/checks` commands the caller names on the `PATH`, so later steps call them by name.
+A command the caller's kit install holds runs from `node_modules/.bin`.
+A command missing there runs its source with `bun`, as the caller's `package.json` maps it under `bin`, which only the kit's own repository does.
+A command with neither fails the step with a message naming both.
+The caller runs setup first, since the action runs on the Bun that setup installs.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `commands` | required | the kit commands to put on the `PATH`, separated by spaces |
+
 ## Related topics
 
 - [The runner pick](runner.md)
