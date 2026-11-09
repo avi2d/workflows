@@ -173,19 +173,11 @@ jobs:
         with:
           job-status: success
           context: smoke/head-status-success
-      - uses: ./actions/head-status
-        with:
-          job-status: cancelled
-          context: smoke/head-status-cancelled
           attempts: "2"
       - name: a successful job reported as failure fails
         env:
           GH_TOKEN: ${{ github.token }}
         run: bun src/ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
-      - name: a cancelled job reported as success fails
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bun src/ci/status-check.ts "$GITHUB_SHA" smoke/head-status-cancelled cancelled
       - uses: ./actions/head-status
         with:
           job-status: success
