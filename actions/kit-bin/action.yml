@@ -1,0 +1,18 @@
+name: kit-bin
+description: Put the @avi2dg/checks commands the caller names on the PATH, from the caller's install of the kit, else from the kit's own source.
+inputs:
+  commands:
+    description: The kit commands to put on the PATH, separated by spaces.
+    required: true
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install of the kit holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: put the commands on the PATH
+      shell: bash
+      env:
+        COMMANDS: ${{ inputs.commands }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

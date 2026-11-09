@@ -1,0 +1,39 @@
+name: playwright
+description: Restore the Playwright browser cache, install the named browsers, and install their system packages on a GitHub-hosted runner only.
+inputs:
+  browsers:
+    description: The browsers to install, separated by spaces.
+    default: webkit
+  cache:
+    description: Whether to restore and save ~/.cache/ms-playwright, keyed on the browsers and bun.lock.
+    default: "true"
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: key
+      name: name the browsers in the cache key
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts" cache-key
+    - if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+    - name: install the browsers
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts" install
+    # Self-hosted runners already hold system packages, and installing them there needs root.
+    - name: install the browsers' system packages
+      if: runner.environment == 'github-hosted'
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts" install-deps

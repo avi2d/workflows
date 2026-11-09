@@ -1,0 +1,22 @@
+name: docs-only
+description: Tell whether the change between two commits touches only documentation, through checks-docs-only from the caller's @avi2dg/checks install.
+inputs:
+  base:
+    description: The commit the change starts from. Empty skips the classification and reports false.
+    default: ${{ github.event.pull_request.base.sha }}
+  head:
+    description: The commit the change ends at.
+    default: HEAD
+outputs:
+  docs-only:
+    description: true when the change touches only documentation, else false.
+    value: ${{ steps.classify.outputs.docs-only }}
+runs:
+  using: composite
+  steps:
+    - id: classify
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base }}
+        HEAD_REF: ${{ inputs.head }}
+      run: bash "$GITHUB_ACTION_PATH/main.sh"

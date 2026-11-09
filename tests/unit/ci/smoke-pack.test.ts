@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SMOKE_TERM, writeSmokePack } from "../../../ci/smoke-pack.ts";
+import { SMOKE_TERM, writeSmokePack } from "../../../src/ci/smoke-pack.ts";
 
 const UNSPELLED_TERM = ["smoke", "pack", "term"].join("-");
 
