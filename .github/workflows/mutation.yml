@@ -220,6 +220,19 @@ jobs:
               cat "$RUNNER_TEMP/compare.txt"
               echo '```'
             } > "$RUNNER_TEMP/comment.md"
+            if [ "$(wc -c < "$RUNNER_TEMP/comment.md" | tr -d ' ')" -gt 60000 ]; then
+              head -c 59000 "$RUNNER_TEMP/compare.txt" | sed '$d' > "$RUNNER_TEMP/compare-head.txt"
+              {
+                echo "## mutation compare"
+                echo
+                echo "Detected $detected of $total scoped mutants."
+                echo
+                echo '```'
+                cat "$RUNNER_TEMP/compare-head.txt"
+                echo "Report cut: the full text is in the step log."
+                echo '```'
+              } > "$RUNNER_TEMP/comment.md"
+            fi
             echo "COMMENT=true" >> "$GITHUB_ENV"
           else
             echo "::notice::mutation: no baseline report restores, so the comparison stops here"
