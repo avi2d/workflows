@@ -115,6 +115,28 @@ The caller checks out the whole history and puts both commands on the `PATH` fir
 | --- | --- | --- |
 | `base-ref` | empty | the branch the head merges into |
 
+## mutation
+
+Runs one part of [the mutation runs](mutation.md) on the reports in the caller's workspace and `$RUNNER_TEMP`.
+The `compare` and `shards` parts call `checks-mutation-compare` and `checks-mutation-scope`, which the caller puts on the `PATH` first, as [kit-bin](#kit-bin) does.
+
+| Part | What it does |
+| --- | --- |
+| `score` | writes the detected share of `reports/mutation/mutation.json` to the step summary |
+| `count-scope` | estimates the mutants in `SCOPE` from the full baseline report and writes `SCOPED_MUTANTS`, and `OVER_CAP=true` past the cap |
+| `over-cap` | writes the over-cap note to `$RUNNER_TEMP/comment.md` |
+| `drop-stale-tests` | drops the `STALE_TESTS` files from the restored incremental state |
+| `compare` | writes the advisory comparison to `$RUNNER_TEMP/comment.md`, cut under GitHub's comment limit |
+| `shards` | writes the shard list as the `shards` output |
+| `fork-summary` | copies `$RUNNER_TEMP/comment.md` to the step summary |
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `part` | required | the part to run |
+| `mode` | empty | the run `score` names in its heading, `baseline` or `refresh` |
+| `mutant-cap` | `1500` | the scoped mutants `count-scope` and `over-cap` allow |
+| `shards` | `4` | how many shards `shards` splits the tree into |
+
 ## secrets-pack
 
 Writes the private secrets pack to `$RUNNER_TEMP/secrets-pack.json` and exports that path as `CHECKS_SECRETS_PACK`, so the kit's `checks-secrets` and `checks-pr-text` in later steps read the pack.
