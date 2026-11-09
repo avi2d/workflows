@@ -19,4 +19,4 @@ runs:
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_REF: ${{ inputs.head }}
-      run: bunx checks-docs-only ${BASE_SHA:+"$BASE_SHA" "$HEAD_REF"} >> "$GITHUB_OUTPUT"
+      run: bash "$GITHUB_ACTION_PATH/../../src/docs-only/classify.sh"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { Config, Console, Duration, Effect, Option, Schema } from "effect";
+import { stateOf } from "../lib/commit-status.ts";
 import { commandOutput, runCheck } from "../lib/run.ts";
 
 export const READ_TRIES = 6;
@@ -34,10 +35,6 @@ export const waitForStatus = <E, R>(read: Effect.Effect<Option.Option<Status>, E
     }
   });
 
-export function wantedState(outcome: string): string {
-  return outcome === "success" ? "success" : "failure";
-}
-
 export function statusProblem(found: Option.Option<Status>, state: string, description: Option.Option<string>): Option.Option<string> {
   if (Option.isNone(found)) return Option.some(`no status, where ${state} was wanted`);
   const { state: got, description: told } = found.value;
@@ -63,7 +60,7 @@ const check = Effect.gen(function* () {
   }
   const repository = yield* Config.String("GITHUB_REPOSITORY");
   const found = yield* waitForStatus(readStatus(repository, sha, context), READ_TRIES, READ_WAIT);
-  const problem = statusProblem(found, wantedState(outcome), Option.fromUndefinedOr(description));
+  const problem = statusProblem(found, stateOf(outcome), Option.fromUndefinedOr(description));
   yield* Console.log(`${context} on ${sha}: ${Option.getOrElse(problem, () => "as wanted")}`);
   return Option.isNone(problem);
 });

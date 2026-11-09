@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Fiber, Option } from "effect";
 import { TestClock } from "effect/testing";
-import { newestStatus, READ_TRIES, READ_WAIT, statusProblem, waitForStatus, wantedState, type Status } from "../../../src/ci/status-check.ts";
+import { newestStatus, READ_TRIES, READ_WAIT, statusProblem, waitForStatus, type Status } from "../../../src/ci/status-check.ts";
 
 const FOUND: Status = { state: "success", description: "the chosen head and description" };
 
@@ -64,15 +64,6 @@ describe("newestStatus", () => {
     ];
     expect(newestStatus(statuses, "commitlint")).toEqual(Option.some({ state: "success", description: null }));
     expect(Option.isNone(newestStatus(statuses, "missing"))).toBe(true);
-  });
-});
-
-describe("wantedState", () => {
-  test("an outcome other than success read as success, or success read as failure, fails", () => {
-    expect(wantedState("success")).toBe("success");
-    expect(wantedState("failure")).toBe("failure");
-    expect(wantedState("cancelled")).toBe("failure");
-    expect(wantedState("skipped")).toBe("failure");
   });
 });
 

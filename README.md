@@ -10,7 +10,7 @@ A private caller passes its own settings in as inputs, as secrets it names, or t
 - A Bun repository whose root holds `package.json`, `bun.lock` and `.bun-version`, which the setup action reads.
 - The `@avi2dg/checks` kit installed for the docs-only action, which runs its `checks-docs-only` bin.
 - A job with `statuses: write` for the commitlint-status and head-status actions.
-- Bun on the runner for the secrets-pack action, which the setup action installs.
+- Bun on the runner for every action but setup and heavy-slot, which the setup action installs.
 
 ## Install
 

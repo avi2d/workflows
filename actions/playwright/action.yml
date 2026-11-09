@@ -10,51 +10,30 @@ inputs:
 runs:
   using: composite
   steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/../.."
     - id: key
+      name: name the browsers in the cache key
       shell: bash
       env:
         BROWSERS: ${{ inputs.browsers }}
-      run: |
-        read -r -a names <<< "$BROWSERS"
-        if [ "${#names[@]}" -eq 0 ]; then
-          echo "::error::browsers names no browser"
-          exit 1
-        fi
-        (IFS=-; echo "browsers=${names[*]}") >> "$GITHUB_OUTPUT"
+      run: bun "$GITHUB_ACTION_PATH/../../src/playwright/playwright.ts" cache-key
     - if: inputs.cache == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-    - shell: bash
-      env:
-        BROWSERS: ${{ inputs.browsers }}
-      run: |
-        read -r -a names <<< "$BROWSERS"
-        attempt=1
-        until bash "${{ github.action_path }}/../../src/playwright/attempt.sh" playwright-core install "${names[@]}"; do
-          if [ "$attempt" -ge 3 ]; then
-            echo "::error::playwright-core install failed or stalled on all 3 attempts, each stopped at 180 seconds"
-            exit 1
-          fi
-          echo "playwright-core install attempt $attempt failed or stalled, retrying"
-          sleep "$((attempt * 10))"
-          attempt=$((attempt + 1))
-        done
-    # Self-hosted runners already hold system packages, and installing them there needs root.
-    - if: runner.environment == 'github-hosted'
+    - name: install the browsers
       shell: bash
       env:
         BROWSERS: ${{ inputs.browsers }}
-      run: |
-        read -r -a names <<< "$BROWSERS"
-        attempt=1
-        until bash "${{ github.action_path }}/../../src/playwright/attempt.sh" playwright-core install-deps "${names[@]}"; do
-          if [ "$attempt" -ge 3 ]; then
-            echo "::error::playwright-core install-deps failed or stalled on all 3 attempts, each stopped at 180 seconds"
-            exit 1
-          fi
-          echo "playwright-core install-deps attempt $attempt failed or stalled, retrying"
-          sleep "$((attempt * 10))"
-          attempt=$((attempt + 1))
-        done
+      run: bun "$GITHUB_ACTION_PATH/../../src/playwright/playwright.ts" install
+    # Self-hosted runners already hold system packages, and installing them there needs root.
+    - name: install the browsers' system packages
+      if: runner.environment == 'github-hosted'
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: bun "$GITHUB_ACTION_PATH/../../src/playwright/playwright.ts" install-deps

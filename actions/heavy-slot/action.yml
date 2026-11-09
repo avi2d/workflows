@@ -13,22 +13,13 @@ inputs:
 runs:
   using: composite
   steps:
-    # GitHub does not enforce required inputs, and an empty prefix would match every runner.
     - name: check the inputs
       shell: bash
       env:
         ACTION: ${{ inputs.action }}
         RUNNER_PREFIX: ${{ inputs.runner-prefix }}
         COMMAND: ${{ inputs.command }}
-      run: |
-        case "$ACTION" in
-          acquire | release) ;;
-          *) echo "::error::action must be acquire or release, not '$ACTION'"; exit 1 ;;
-        esac
-        if [ -z "$RUNNER_PREFIX" ] || [ -z "$COMMAND" ]; then
-          echo "::error::heavy-slot needs runner-prefix and command"
-          exit 1
-        fi
+      run: bash "$GITHUB_ACTION_PATH/../../src/heavy-slot/check-inputs.sh"
     - if: startsWith(runner.name, inputs.runner-prefix)
       shell: bash
       env:

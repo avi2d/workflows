@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const REPOSITORY = join(import.meta.dir, "../../..");
-const SHELL_LOGIC = /[;|]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b/;
+const SHELL_LOGIC = /[;|<>]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b|\bprintf\b/;
 
 // Steps that held shell logic before the rule; the list only shrinks.
 const LEGACY = new Set<string>([
@@ -17,6 +17,13 @@ const LEGACY = new Set<string>([
   ".github/workflows/ci.yml playwright a webkit that cannot open a page fails",
   ".github/workflows/ci.yml heavy-slot put a stand-in slot command on the PATH",
   ".github/workflows/ci.yml heavy-slot a slot call on another runner or an unknown action that passes fails",
+  ".github/workflows/mutation.yml baseline Name the runner environment",
+  ".github/workflows/mutation.yml compare Name the runner environment",
+  ".github/workflows/mutation.yml compare Write the note to the summary on a fork",
+  ".github/workflows/mutation.yml refresh-plan Name the runner environment",
+  ".github/workflows/mutation.yml refresh-shard Name the runner environment",
+  ".github/workflows/mutation.yml refresh-merge Name the runner environment",
+  ".github/workflows/runner.yml hosted-minutes started",
   ".github/workflows/mutation.yml baseline Score the baseline",
   ".github/workflows/mutation.yml compare Count scoped mutants",
   ".github/workflows/mutation.yml compare Note a scope over the cap",
@@ -24,13 +31,6 @@ const LEGACY = new Set<string>([
   ".github/workflows/mutation.yml compare Compare the head against the baseline",
   ".github/workflows/mutation.yml refresh-plan Split the tree into shards",
   ".github/workflows/mutation.yml refresh-merge Score the refresh",
-  "actions/commitlint-status/action.yml runs 0",
-  "actions/head-status/action.yml runs 0",
-  "actions/heavy-slot/action.yml runs check the inputs",
-  "actions/playwright/action.yml runs key",
-  "actions/playwright/action.yml runs 2",
-  "actions/playwright/action.yml runs 3",
-  "actions/setup/action.yml runs require .bun-version",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
