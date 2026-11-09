@@ -220,6 +220,42 @@ jobs:
               cat "$RUNNER_TEMP/compare.txt"
               echo '```'
             } > "$RUNNER_TEMP/comment.md"
+            if [ "$(wc -c < "$RUNNER_TEMP/comment.md" | tr -d ' ')" -gt 60000 ]; then
+              head -c 59000 "$RUNNER_TEMP/compare.txt" | sed '$d' > "$RUNNER_TEMP/compare-head.txt"
+              {
+                echo "## mutation compare"
+                echo
+                echo "Detected $detected of $total scoped mutants."
+                echo
+                echo '```'
+                cat "$RUNNER_TEMP/compare-head.txt"
+                echo "Report cut: the full text is in the job summary."
+                echo '```'
+              } > "$RUNNER_TEMP/comment.md"
+              if [ "$(wc -c < "$RUNNER_TEMP/compare.txt" | tr -d ' ')" -gt 900000 ]; then
+                head -c 900000 "$RUNNER_TEMP/compare.txt" | sed '$d' > "$RUNNER_TEMP/compare-summary.txt"
+                {
+                  echo "## mutation compare"
+                  echo
+                  echo "Detected $detected of $total scoped mutants."
+                  echo
+                  echo '```'
+                  cat "$RUNNER_TEMP/compare-summary.txt"
+                  echo "Report cut: the remainder passes the job summary limit."
+                  echo '```'
+                } >> "$GITHUB_STEP_SUMMARY"
+              else
+                {
+                  echo "## mutation compare"
+                  echo
+                  echo "Detected $detected of $total scoped mutants."
+                  echo
+                  echo '```'
+                  cat "$RUNNER_TEMP/compare.txt"
+                  echo '```'
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
             echo "COMMENT=true" >> "$GITHUB_ENV"
           else
             echo "::notice::mutation: no baseline report restores, so the comparison stops here"
