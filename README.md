@@ -10,6 +10,7 @@ A private caller passes its own settings in as inputs, as secrets it names, or t
 - A Bun repository whose root holds `package.json`, `bun.lock` and `.bun-version`, which the setup action reads.
 - The `@avi2dg/checks` kit installed for the docs-only action, which runs its `checks-docs-only` bin.
 - A job with `statuses: write` for the commitlint-status and head-status actions.
+- Bun on the runner for the secrets-pack action, which the setup action installs.
 
 ## Install
 
@@ -106,6 +107,7 @@ The same file bumps every other action the caller pins, such as `actions/checkou
 | A token other than the job's own | the `token` input of commitlint-status or head-status, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
+| The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
 
 A composite action cannot read the caller's `secrets` context, so a secret reaches it only as an input the caller writes.
 
@@ -114,6 +116,8 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | Path | What it holds |
 | --- | --- |
 | `<name>/` | the composite actions at the root, one directory each |
+| `ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
+| `tests/unit/` | the tests of the TypeScript an action or a CI smoke job runs |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |

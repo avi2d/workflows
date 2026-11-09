@@ -41,7 +41,7 @@ Call it with `if: always()` so a failed title lint still reports.
 
 ## head-status
 
-Reports a job's result as a commit status on `GITHUB_SHA`, since GitHub keeps a dispatched run's check off the pull request.
+Reports a job's result as a commit status on `GITHUB_SHA`, or on the commit `head-sha` names, since GitHub keeps a dispatched run's check off the pull request.
 Only the status `success` reports success.
 Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 
@@ -49,6 +49,8 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 | --- | --- | --- |
 | `job-status` | required | the job's status, as `${{ job.status }}` |
 | `context` | the job id | the status name, which a required check of that name counts |
+| `head-sha` | empty, `GITHUB_SHA` | the commit the status lands on, such as the pull request head on an `issue_comment` run, where `GITHUB_SHA` is the default branch |
+| `description` | empty, none | the status description |
 | `token` | the job's token | the token that writes the status |
 | `attempts` | `1` | how many times to try, waiting 10 seconds longer after each failure |
 
@@ -111,6 +113,27 @@ The caller checks out the whole history and puts both commands on the `PATH` fir
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `base-ref` | empty | the branch the head merges into |
+
+## secrets-pack
+
+Writes the private secrets pack to `$RUNNER_TEMP/secrets-pack.json` and exports that path as `CHECKS_SECRETS_PACK`, so the kit's `checks-secrets` and `checks-pr-text` in later steps read the pack.
+The pack reaches it as an input the caller writes, never through `${{ }}` inside a `run:` line.
+The caller pins it to the commit the release tag points at, found as [Install](../README.md#install) shows:
+
+```yaml
+- uses: avi2d/workflows/secrets-pack@<full commit SHA> # v1.3.0
+  with:
+    pack: ${{ secrets.CHECKS_SECRETS_PACK }}
+```
+
+It runs `secrets-pack/write.ts` with Bun, so the caller runs setup first.
+It installs its own pinned dependencies in its checkout, apart from the caller's.
+An empty pack fails the step and writes nothing.
+A caller whose secret may be unset guards the call with an `if:`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
 
 ## Related topics
 

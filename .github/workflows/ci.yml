@@ -49,18 +49,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           OUTCOME: ${{ steps.title.outcome }}
-        run: |
-          want=failure
-          if [ "$OUTCOME" = success ]; then want=success; fi
-          # The statuses list can lag the write, so an empty read waits.
-          for _ in 1 2 3 4 5 6; do
-            got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "commitlint")][0].state')
-            if [ -n "$got" ] && [ "$got" != null ]; then break; fi
-            sleep 5
-          done
-          echo "commitlint status: $got, title lint: $OUTCOME"
-          test "$got" = "$want"
+        run: bun ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
       - run: bun run lint
+      - run: bun run typecheck
       - run: bun run test
       - name: lint the workflows
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
@@ -175,6 +166,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./head-status
         with:
           job-status: success
@@ -184,21 +178,25 @@ jobs:
           job-status: cancelled
           context: smoke/head-status-cancelled
           attempts: "2"
+      - name: a successful job reported as failure fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
       - name: a cancelled job reported as success fails
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          state() {
-            # The statuses list can lag the write, so an empty read waits.
-            for _ in 1 2 3 4 5 6; do
-              got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state")
-              if [ -n "$got" ] && [ "$got" != null ]; then break; fi
-              sleep 5
-            done
-            echo "$got"
-          }
-          test "$(state smoke/head-status-success)" = success
-          test "$(state smoke/head-status-cancelled)" = failure
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-cancelled cancelled
+      - uses: ./head-status
+        with:
+          job-status: success
+          context: smoke/head-status-head-sha
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          description: the chosen head and description
+      - name: a status written to GITHUB_SHA in place of the chosen head, or without its description, fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -310,9 +308,38 @@ jobs:
           base-ref: ${{ github.event.pull_request.base.ref }}
       - name: a scope taken from anything but the merge base with main fails
         run: bun ci/mutation-scope-smoke.ts verify
+  secrets-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: pack
+        name: build a pack whose term no tracked file holds
+        run: bun ci/smoke-pack.ts
+      - uses: ./secrets-pack
+        with:
+          pack: ${{ steps.pack.outputs.json }}
+      - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, changed on the way or unread by the kit's scan fails
+        env:
+          PACK: ${{ steps.pack.outputs.json }}
+        run: bun ci/pack-check.ts
+      - id: empty
+        uses: ./secrets-pack
+        continue-on-error: true
+        with:
+          pack: ""
+      - name: an empty pack that passes fails
+        env:
+          EMPTY: ${{ steps.empty.outcome }}
+        run: test "$EMPTY" = failure
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

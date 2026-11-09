@@ -1,0 +1,4 @@
+{
+  "extends": "@avi2dg/checks/tsconfig.effect.json",
+  "compilerOptions": { "types": ["bun"], "allowImportingTsExtensions": true, "noEmit": true }
+}

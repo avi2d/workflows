@@ -1,1 +1,1 @@
-{"format": ["typescript"], "ignore": ["**/*.d.ts"], "path": ["ci", "kit-bin", "lib", "mutation-scope", "tests"]}
+{"format": ["typescript"], "ignore": ["**/*.d.ts"], "path": ["ci", "kit-bin", "lib", "mutation-scope", "secrets-pack", "tests"]}

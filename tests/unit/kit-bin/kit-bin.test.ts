@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { commandsOf, shimFor, writeShims } from "../../../kit-bin/kit-bin.ts";
+import { commandsOf, type KitBinError, shimFor, writeShims } from "../../../kit-bin/kit-bin.ts";
 
 let root = "";
 
@@ -27,7 +27,7 @@ function mapSource(command: string, source: string, write: boolean): void {
   writeFileSync(join(root, source), "");
 }
 
-function failureOf(effect: Effect.Effect<unknown, { readonly message: string }>): string {
+function failureOf<A>(effect: Effect.Effect<A, KitBinError>): string {
   return Effect.runSync(Effect.flip(effect)).message;
 }
 
