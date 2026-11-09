@@ -49,17 +49,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           OUTCOME: ${{ steps.title.outcome }}
-        run: |
-          want=failure
-          if [ "$OUTCOME" = success ]; then want=success; fi
-          # The statuses list can lag the write, so an empty read waits.
-          for _ in 1 2 3 4 5 6; do
-            got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "commitlint")][0].state')
-            if [ -n "$got" ] && [ "$got" != null ]; then break; fi
-            sleep 5
-          done
-          echo "commitlint status: $got, title lint: $OUTCOME"
-          test "$got" = "$want"
+        run: bun ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
@@ -176,6 +166,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./head-status
         with:
           job-status: success
@@ -185,21 +178,14 @@ jobs:
           job-status: cancelled
           context: smoke/head-status-cancelled
           attempts: "2"
+      - name: a successful job reported as failure fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
       - name: a cancelled job reported as success fails
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          state() {
-            # The statuses list can lag the write, so an empty read waits.
-            for _ in 1 2 3 4 5 6; do
-              got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/statuses" --jq "[.[] | select(.context == \"$1\")][0].state")
-              if [ -n "$got" ] && [ "$got" != null ]; then break; fi
-              sleep 5
-            done
-            echo "$got"
-          }
-          test "$(state smoke/head-status-success)" = success
-          test "$(state smoke/head-status-cancelled)" = failure
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-cancelled cancelled
       - uses: ./head-status
         with:
           job-status: success
@@ -210,15 +196,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # The statuses list can lag the write, so an empty read waits.
-          for _ in 1 2 3 4 5 6; do
-            got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "smoke/head-status-head-sha")][0] | "\(.state) \(.description)"')
-            if [ -n "$got" ] && [ "$got" != "null null" ]; then break; fi
-            sleep 5
-          done
-          echo "status on the head: $got"
-          test "$got" = "success the chosen head and description"
+        run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -347,14 +325,10 @@ jobs:
       - uses: ./secrets-pack
         with:
           pack: ${{ steps.pack.outputs.json }}
-      - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, or changed on the way, fails
+      - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, changed on the way or unread by the kit's scan fails
         env:
           PACK: ${{ steps.pack.outputs.json }}
-        run: |
-          test "$CHECKS_SECRETS_PACK" = "$RUNNER_TEMP/secrets-pack.json"
-          printf '%s' "$PACK" | cmp - "$CHECKS_SECRETS_PACK"
-      - name: a pack the kit's secret scan does not read fails
-        run: bunx checks-secrets HEAD | grep -F 'the private pack CHECKS_SECRETS_PACK names ran'
+        run: bun ci/pack-check.ts
       - id: empty
         uses: ./secrets-pack
         continue-on-error: true

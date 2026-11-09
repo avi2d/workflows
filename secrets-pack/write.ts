@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import { BunRuntime, BunServices } from "@effect/platform-bun";
-import { Config, Console, Effect, Exit, FileSystem, Path, Schema } from "effect";
+import { Config, Effect, FileSystem, Path, Schema } from "effect";
+import { runCheck } from "../lib/run.ts";
 
 const PACK_VARIABLE = "CHECKS_SECRETS_PACK";
 
@@ -27,15 +27,7 @@ const fromEnv = Effect.gen(function* () {
     githubEnv: Config.String("GITHUB_ENV"),
   });
   yield* writePack(target);
+  return true;
 });
 
-const main = fromEnv.pipe(
-  Effect.as(0),
-  Effect.catch((failure) => Console.log(`::error::${failure.message}`).pipe(Effect.as(1))),
-);
-
-if (import.meta.main) {
-  BunRuntime.runMain(main.pipe(Effect.provide(BunServices.layer)), {
-    teardown: (exit, onExit) => onExit(Exit.isSuccess(exit) && typeof exit.value === "number" ? exit.value : 1),
-  });
-}
+if (import.meta.main) runCheck(fromEnv);

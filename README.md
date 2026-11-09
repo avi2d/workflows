@@ -116,7 +116,8 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | Path | What it holds |
 | --- | --- |
 | `<name>/` | the composite actions at the root, one directory each |
-| `tests/unit/` | the tests of the TypeScript an action runs |
+| `ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
+| `tests/unit/` | the tests of the TypeScript an action or a CI smoke job runs |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
