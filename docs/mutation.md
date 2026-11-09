@@ -10,11 +10,14 @@ It runs the `checks-mutation-*` commands from the caller's install of the `@avi2
 ## What it does
 
 It checks out the commit the caller's run names through the setup action, installs the locked dependencies and runs the mode the caller names.
+It puts the commands each mode runs on the `PATH` through the [kit-bin](actions.md#kit-bin) action.
 A caller with no `node_modules/.bin/checks-mutation-*` runs the source files with `bun` in their place.
 Only the kit's own repository holds those files, which its `package.json` maps from the command names.
 A caller with neither fails the job with a message naming both.
 The `baseline` mode restores the last incremental state, runs Stryker incremental and uploads the reports.
-The `compare` mode scopes the head against the merge base and restores the baseline state.
+The `compare` mode scopes the head against its merge base with the pull request's base branch and restores the baseline state.
+A run with no pull request scopes against the `main` branch.
+The [mutation-scope](actions.md#mutation-scope) action selects that scope.
 It runs the scoped head and files one advisory comment on the pull request.
 The advisory comment counts only the mutants in the scoped files.
 On a fork pull request the run skips the comment and writes the note to the job summary instead.

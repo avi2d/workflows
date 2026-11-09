@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "workflows",
+      "dependencies": {
+        "effect": "4.0.0",
+      },
       "devDependencies": {
         "@avi2dg/checks": "0.86.0",
         "playwright-core": "1.63.0",
