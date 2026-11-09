@@ -17,20 +17,7 @@ const LEGACY = new Set<string>([
   ".github/workflows/ci.yml playwright a webkit that cannot open a page fails",
   ".github/workflows/ci.yml heavy-slot put a stand-in slot command on the PATH",
   ".github/workflows/ci.yml heavy-slot a slot call on another runner or an unknown action that passes fails",
-  ".github/workflows/mutation.yml baseline Name the runner environment",
-  ".github/workflows/mutation.yml compare Name the runner environment",
-  ".github/workflows/mutation.yml compare Write the note to the summary on a fork",
-  ".github/workflows/mutation.yml refresh-plan Name the runner environment",
-  ".github/workflows/mutation.yml refresh-shard Name the runner environment",
-  ".github/workflows/mutation.yml refresh-merge Name the runner environment",
   ".github/workflows/runner.yml hosted-minutes started",
-  ".github/workflows/mutation.yml baseline Score the baseline",
-  ".github/workflows/mutation.yml compare Count scoped mutants",
-  ".github/workflows/mutation.yml compare Note a scope over the cap",
-  ".github/workflows/mutation.yml compare Drop stale tests from the restored state",
-  ".github/workflows/mutation.yml compare Compare the head against the baseline",
-  ".github/workflows/mutation.yml refresh-plan Split the tree into shards",
-  ".github/workflows/mutation.yml refresh-merge Score the refresh",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
