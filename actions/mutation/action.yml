@@ -13,6 +13,10 @@ inputs:
   shards:
     description: How many shards the shards part splits the tree into.
     default: "4"
+outputs:
+  shards:
+    description: The shard list the shards part writes, as a JSON array of mutate globs.
+    value: ${{ steps.part.outputs.shards }}
 runs:
   using: composite
   steps:
@@ -20,7 +24,8 @@ runs:
     - name: install the script's own dependencies
       shell: bash
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
-    - name: run the mutation part
+    - id: part
+      name: run the mutation part
       shell: bash
       env:
         PART: ${{ inputs.part }}
