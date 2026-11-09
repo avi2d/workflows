@@ -1,0 +1,30 @@
+name: mutation
+description: Run one part of the shared mutation workflow on the report files in the caller's workspace.
+inputs:
+  part:
+    description: The part to run, one of score, count-scope, over-cap, drop-stale-tests, compare, shards or fork-summary.
+    required: true
+  mode:
+    description: The run the score part names in its summary heading, baseline or refresh.
+    default: ""
+  mutant-cap:
+    description: How many scoped mutants count-scope and over-cap allow.
+    default: "1500"
+  shards:
+    description: How many shards the shards part splits the tree into.
+    default: "4"
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: run the mutation part
+      shell: bash
+      env:
+        PART: ${{ inputs.part }}
+        MODE: ${{ inputs.mode }}
+        MUTANT_CAP: ${{ inputs.mutant-cap }}
+        SHARDS: ${{ inputs.shards }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"
