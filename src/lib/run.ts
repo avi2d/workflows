@@ -16,7 +16,7 @@ export function runCheck<E extends { readonly message: string }>(check: Effect.E
 export const commandPasses = Effect.fn("commandPasses")(
   function* (program: string, args: readonly string[]) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdout: "inherit", stderr: "inherit" }));
+    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdin: "inherit", stdout: "inherit", stderr: "inherit" }));
     return (yield* handle.exitCode) === ChildProcessSpawner.ExitCode(0);
   },
   Effect.scoped,
