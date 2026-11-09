@@ -10,6 +10,7 @@ It runs the `checks-mutation-*` commands from the caller's install of the `@avi2
 ## What it does
 
 It checks out the commit the caller's run names through the setup action, installs the locked dependencies and runs the mode the caller names.
+It puts the commands each mode runs on the `PATH` through the [kit-bin](actions.md#kit-bin) action.
 A caller with no `node_modules/.bin/checks-mutation-*` runs the source files with `bun` in their place.
 Only the kit's own repository holds those files, which its `package.json` maps from the command names.
 A caller with neither fails the job with a message naming both.

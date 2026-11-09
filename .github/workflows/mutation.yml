@@ -52,25 +52,9 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      # The kit repository holds the commands as source and never installs its own bins.
-      - name: Resolve the mutation commands from the kit install, else from the kit source
-        run: |
-          mkdir -p "$RUNNER_TEMP/checks-bin"
-          for cmd in checks-mutation-baseline; do
-            if [ -e "./node_modules/.bin/$cmd" ]; then
-              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
-            else
-              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
-              if [ -n "$src" ] && [ -f "$src" ]; then
-                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
-              else
-                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
-                exit 1
-              fi
-            fi
-            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
-          done
-          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
+      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+        with:
+          commands: checks-mutation-baseline
       - name: Restore previous baseline state
         env:
           GH_TOKEN: ${{ github.token }}
@@ -118,25 +102,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      # The kit repository holds the commands as source and never installs its own bins.
-      - name: Resolve the mutation commands from the kit install, else from the kit source
-        run: |
-          mkdir -p "$RUNNER_TEMP/checks-bin"
-          for cmd in checks-mutation-baseline checks-mutation-scope checks-mutation-compare; do
-            if [ -e "./node_modules/.bin/$cmd" ]; then
-              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
-            else
-              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
-              if [ -n "$src" ] && [ -f "$src" ]; then
-                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
-              else
-                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
-                exit 1
-              fi
-            fi
-            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
-          done
-          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
+      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+        with:
+          commands: checks-mutation-baseline checks-mutation-scope checks-mutation-compare
       - name: Select mutation scope
         env:
           GH_TOKEN: ${{ github.token }}
@@ -258,25 +226,9 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      # The kit repository holds the commands as source and never installs its own bins.
-      - name: Resolve the mutation commands from the kit install, else from the kit source
-        run: |
-          mkdir -p "$RUNNER_TEMP/checks-bin"
-          for cmd in checks-mutation-baseline checks-mutation-scope; do
-            if [ -e "./node_modules/.bin/$cmd" ]; then
-              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
-            else
-              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
-              if [ -n "$src" ] && [ -f "$src" ]; then
-                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
-              else
-                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
-                exit 1
-              fi
-            fi
-            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
-          done
-          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
+      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+        with:
+          commands: checks-mutation-baseline checks-mutation-scope
       - name: Restore the last full report
         env:
           GH_TOKEN: ${{ github.token }}
@@ -328,25 +280,9 @@ jobs:
         run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      # The kit repository holds the commands as source and never installs its own bins.
-      - name: Resolve the mutation commands from the kit install, else from the kit source
-        run: |
-          mkdir -p "$RUNNER_TEMP/checks-bin"
-          for cmd in checks-mutation-baseline checks-mutation-merge; do
-            if [ -e "./node_modules/.bin/$cmd" ]; then
-              printf '#!/bin/sh\nexec "./node_modules/.bin/%s" "$@"\n' "$cmd" > "$RUNNER_TEMP/checks-bin/$cmd"
-            else
-              src=$(jq -r --arg cmd "$cmd" '.bin[$cmd] // empty' package.json)
-              if [ -n "$src" ] && [ -f "$src" ]; then
-                printf '#!/bin/sh\nexec bun "%s" "$@"\n' "$src" > "$RUNNER_TEMP/checks-bin/$cmd"
-              else
-                echo "::error::mutation needs ./node_modules/.bin/$cmd from @avi2dg/checks, or the kit's own ${src:-source for $cmd}"
-                exit 1
-              fi
-            fi
-            chmod +x "$RUNNER_TEMP/checks-bin/$cmd"
-          done
-          echo "$RUNNER_TEMP/checks-bin" >> "$GITHUB_PATH"
+      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+        with:
+          commands: checks-mutation-baseline checks-mutation-merge
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: mutation-shard-*
