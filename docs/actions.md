@@ -41,7 +41,7 @@ Call it with `if: always()` so a failed title lint still reports.
 
 ## head-status
 
-Reports a job's result as a commit status on `GITHUB_SHA`, since GitHub keeps a dispatched run's check off the pull request.
+Reports a job's result as a commit status on `GITHUB_SHA`, or on the commit `head-sha` names, since GitHub keeps a dispatched run's check off the pull request.
 Only the status `success` reports success.
 Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 
@@ -49,6 +49,8 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 | --- | --- | --- |
 | `job-status` | required | the job's status, as `${{ job.status }}` |
 | `context` | the job id | the status name, which a required check of that name counts |
+| `head-sha` | empty, `GITHUB_SHA` | the commit the status lands on, such as the pull request head on an `issue_comment` run, where `GITHUB_SHA` is the default branch |
+| `description` | empty, none | the status description |
 | `token` | the job's token | the token that writes the status |
 | `attempts` | `1` | how many times to try, waiting 10 seconds longer after each failure |
 

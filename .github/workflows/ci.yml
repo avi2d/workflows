@@ -199,6 +199,25 @@ jobs:
           }
           test "$(state smoke/head-status-success)" = success
           test "$(state smoke/head-status-cancelled)" = failure
+      - uses: ./head-status
+        with:
+          job-status: success
+          context: smoke/head-status-head-sha
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          description: the chosen head and description
+      - name: a status written to GITHUB_SHA in place of the chosen head, or without its description, fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # The statuses list can lag the write, so an empty read waits.
+          for _ in 1 2 3 4 5 6; do
+            got=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "smoke/head-status-head-sha")][0] | "\(.state) \(.description)"')
+            if [ -n "$got" ] && [ "$got" != "null null" ]; then break; fi
+            sleep 5
+          done
+          echo "status on the head: $got"
+          test "$got" = "success the chosen head and description"
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 15
