@@ -4,7 +4,7 @@ audience: consumers
 ---
 # The shared actions
 
-Each action is a composite action, called as `avi2d/workflows/<name>@v1`, that runs as steps inside the caller's job on the caller's runner.
+Each action is a composite action, called as `avi2d/workflows/actions/<name>@v2`, that runs as steps inside the caller's job on the caller's runner.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
 
 ## setup
@@ -121,12 +121,12 @@ The pack reaches it as an input the caller writes, never through `${{ }}` inside
 The caller pins it to the commit the release tag points at, found as [Install](../README.md#install) shows:
 
 ```yaml
-- uses: avi2d/workflows/secrets-pack@<full commit SHA> # v1.3.0
+- uses: avi2d/workflows/actions/secrets-pack@<full commit SHA> # v2.0.0
   with:
     pack: ${{ secrets.CHECKS_SECRETS_PACK }}
 ```
 
-It runs `secrets-pack/write.ts` with Bun, so the caller runs setup first.
+It runs `src/secrets-pack/write.ts` with Bun, so the caller runs setup first.
 It installs its own pinned dependencies in its checkout, apart from the caller's.
 An empty pack fails the step and writes nothing.
 A caller whose secret may be unset guards the call with an `if:`.

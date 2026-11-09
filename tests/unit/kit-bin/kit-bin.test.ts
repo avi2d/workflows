@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { commandsOf, type KitBinError, shimFor, writeShims } from "../../../kit-bin/kit-bin.ts";
+import { commandsOf, type KitBinError, shimFor, writeShims } from "../../../src/kit-bin/kit-bin.ts";
 
 let root = "";
 

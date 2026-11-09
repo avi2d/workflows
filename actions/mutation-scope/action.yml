@@ -11,9 +11,9 @@ runs:
     # The script resolves effect beside itself, and the caller's install of the kit holds it only by chance.
     - name: install the script's own dependencies
       shell: bash
-      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/.."
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/../.."
     - name: select the mutation scope
       shell: bash
       env:
         BASE_REF: ${{ inputs.base-ref }}
-      run: bun "$GITHUB_ACTION_PATH/mutation-scope.ts"
+      run: bun "$GITHUB_ACTION_PATH/../../src/mutation-scope/mutation-scope.ts"

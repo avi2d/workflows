@@ -24,13 +24,13 @@ const LEGACY = new Set<string>([
   ".github/workflows/mutation.yml compare Compare the head against the baseline",
   ".github/workflows/mutation.yml refresh-plan Split the tree into shards",
   ".github/workflows/mutation.yml refresh-merge Score the refresh",
-  "commitlint-status/action.yml runs 0",
-  "head-status/action.yml runs 0",
-  "heavy-slot/action.yml runs check the inputs",
-  "playwright/action.yml runs key",
-  "playwright/action.yml runs 2",
-  "playwright/action.yml runs 3",
-  "setup/action.yml runs require .bun-version",
+  "actions/commitlint-status/action.yml runs 0",
+  "actions/head-status/action.yml runs 0",
+  "actions/heavy-slot/action.yml runs check the inputs",
+  "actions/playwright/action.yml runs key",
+  "actions/playwright/action.yml runs 2",
+  "actions/playwright/action.yml runs 3",
+  "actions/setup/action.yml runs require .bun-version",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -50,9 +50,7 @@ function stepGroups(file: string): [string, readonly unknown[]][] {
 
 function stepFiles(): string[] {
   const workflows = readdirSync(join(REPOSITORY, ".github/workflows")).map((name) => `.github/workflows/${name}`);
-  const actions = readdirSync(REPOSITORY, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && readdirSync(join(REPOSITORY, entry.name)).includes("action.yml"))
-    .map((entry) => `${entry.name}/action.yml`);
+  const actions = readdirSync(join(REPOSITORY, "actions")).map((name) => `actions/${name}/action.yml`);
   return [...workflows, ...actions].filter((file) => file.endsWith(".yml")).sort();
 }
 

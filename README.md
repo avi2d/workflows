@@ -17,23 +17,24 @@ A private caller passes its own settings in as inputs, as secrets it names, or t
 To call an action from a workflow, pin it to a version tag:
 
 ```yaml
-- uses: avi2d/workflows/setup@v1
+- uses: avi2d/workflows/actions/setup@v2
   with:
     fetch-depth: 0
 ```
 
-The `v1` tag moves: the maintainer points it at each new `v1.x.y` release, so a caller on `v1` takes each release as it lands.
-A caller that wants one fixed version uses its exact tag, such as `v1.1.0`, which never moves.
+The `v2` tag moves: the maintainer points it at each new `v2.x.y` release, so a caller on `v2` takes each release as it lands.
+A caller that wants one fixed version uses its exact tag, such as `v2.0.0`, which never moves.
+The `v1` tags hold the actions at the repository root, so `avi2d/workflows/<name>@v1` still resolves.
 
 A caller that wants a SHA pin can still use one, with the tag in a trailing comment.
 Find the commit a tag points at, taking the line that ends in `^{}` for an annotated tag:
 
 ```sh
-git ls-remote https://github.com/avi2d/workflows 'refs/tags/v1.1.0*'
+git ls-remote https://github.com/avi2d/workflows 'refs/tags/v2.0.0*'
 ```
 
 ```yaml
-- uses: avi2d/workflows/setup@<full commit SHA> # v1.1.0
+- uses: avi2d/workflows/actions/setup@<full commit SHA> # v2.0.0
   with:
     fetch-depth: 0
 ```
@@ -48,7 +49,7 @@ A private caller runs a job on its own self-hosted runner when it names one, and
 ```yaml
 jobs:
   runner:
-    uses: avi2d/workflows/.github/workflows/runner.yml@v1
+    uses: avi2d/workflows/.github/workflows/runner.yml@v2
   checks:
     needs: runner
     runs-on: ${{ needs.runner.outputs.runs-on }}
@@ -72,7 +73,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: avi2d/workflows/.github/workflows/advisories.yml@v1
+    uses: avi2d/workflows/.github/workflows/advisories.yml@v2
 ```
 
 A private caller drops the `schedule` trigger and starts the scan with `gh workflow run`.
@@ -115,9 +116,11 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `<name>/` | the composite actions at the root, one directory each |
-| `ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
-| `tests/unit/` | the tests of the TypeScript an action or a CI smoke job runs |
+| `actions/<name>/` | the composite actions, one directory each, whose steps call the code under `src/` |
+| `src/<name>/` | the TypeScript and shell files an action or a reusable workflow runs |
+| `src/lib/` | the code those files share |
+| `src/ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
+| `tests/` | the tests of the code under `src/`, in the same folders |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |

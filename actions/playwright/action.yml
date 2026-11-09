@@ -32,7 +32,7 @@ runs:
       run: |
         read -r -a names <<< "$BROWSERS"
         attempt=1
-        until bash "${{ github.action_path }}/attempt.sh" playwright-core install "${names[@]}"; do
+        until bash "${{ github.action_path }}/../../src/playwright/attempt.sh" playwright-core install "${names[@]}"; do
           if [ "$attempt" -ge 3 ]; then
             echo "::error::playwright-core install failed or stalled on all 3 attempts, each stopped at 180 seconds"
             exit 1
@@ -49,7 +49,7 @@ runs:
       run: |
         read -r -a names <<< "$BROWSERS"
         attempt=1
-        until bash "${{ github.action_path }}/attempt.sh" playwright-core install-deps "${names[@]}"; do
+        until bash "${{ github.action_path }}/../../src/playwright/attempt.sh" playwright-core install-deps "${names[@]}"; do
           if [ "$attempt" -ge 3 ]; then
             echo "::error::playwright-core install-deps failed or stalled on all 3 attempts, each stopped at 180 seconds"
             exit 1

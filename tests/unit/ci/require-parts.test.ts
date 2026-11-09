@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Effect } from "effect";
-import { failedParts, resultsOf } from "../../../ci/require-parts.ts";
+import { failedParts, resultsOf } from "../../../src/ci/require-parts.ts";
 
 const PARTS = ["static", "setup", "gitleaks-cache-fill", "gitleaks-cache", "docs-only", "head-status", "playwright", "heavy-slot", "kit-bin"];
 

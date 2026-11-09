@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Fiber, Option } from "effect";
 import { TestClock } from "effect/testing";
-import { newestStatus, READ_TRIES, READ_WAIT, statusProblem, waitForStatus, wantedState, type Status } from "../../../ci/status-check.ts";
+import { newestStatus, READ_TRIES, READ_WAIT, statusProblem, waitForStatus, wantedState, type Status } from "../../../src/ci/status-check.ts";
 
 const FOUND: Status = { state: "success", description: "the chosen head and description" };
 

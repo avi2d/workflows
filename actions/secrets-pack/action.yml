@@ -10,9 +10,9 @@ runs:
     # The action's own checkout holds no node_modules, so write.ts would find no effect to import.
     - name: install the action's dependencies
       shell: bash
-      run: bun install --frozen-lockfile --production --cwd "$GITHUB_ACTION_PATH/.."
+      run: bun install --frozen-lockfile --production --cwd "$GITHUB_ACTION_PATH/../.."
     - name: write the pack
       shell: bash
       env:
         PACK: ${{ inputs.pack }}
-      run: bun "$GITHUB_ACTION_PATH/write.ts"
+      run: bun "$GITHUB_ACTION_PATH/../../src/secrets-pack/write.ts"

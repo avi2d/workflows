@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const REPOSITORY = join(import.meta.dir, "../../..");
 const HISTORY = join(REPOSITORY, "tests/fixtures/mutation-scope/history.bundle");
-const SCRIPT = join(REPOSITORY, "mutation-scope/mutation-scope.ts");
+const SCRIPT = join(REPOSITORY, "src/mutation-scope/mutation-scope.ts");
 
 let root = "";
 
