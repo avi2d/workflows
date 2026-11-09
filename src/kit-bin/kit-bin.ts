@@ -1,7 +1,6 @@
 import { Console, Data, Effect } from "effect";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runMain } from "../lib/run-main.ts";
 
 const COMMAND_NAME = /^[A-Za-z0-9._-]+$/;
 
@@ -69,7 +68,7 @@ function required(name: string): Effect.Effect<string, KitBinError> {
   return value === undefined || value === "" ? Effect.fail(new KitBinError({ message: `kit-bin needs ${name} set` })) : Effect.succeed(value);
 }
 
-const main = Effect.gen(function* () {
+export const main = Effect.gen(function* () {
   const commands = yield* commandsOf(process.env["COMMANDS"] ?? "");
   const binDir = join(yield* required("RUNNER_TEMP"), "checks-bin");
   const githubPath = yield* required("GITHUB_PATH");
@@ -80,5 +79,3 @@ const main = Effect.gen(function* () {
   });
   yield* Console.log(`kit-bin: ${commands.join(" ")} on the PATH from ${binDir}`);
 });
-
-if (import.meta.main) runMain(main);

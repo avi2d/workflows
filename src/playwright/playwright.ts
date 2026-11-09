@@ -2,7 +2,7 @@
 import { Config, Console, Data, Duration, Effect, FileSystem } from "effect";
 import { join } from "node:path";
 import { retryWithGrowingWait } from "../lib/retry.ts";
-import { commandPasses, runCheck } from "../lib/run.ts";
+import { commandPasses } from "../lib/run.ts";
 
 const ATTEMPTS = 3;
 const WAIT = Duration.seconds(10);
@@ -39,12 +39,10 @@ const writeCacheKey = Effect.fn("writeCacheKey")(function* (browsers: readonly s
   return true;
 });
 
-const main = Effect.gen(function* () {
+export const main = Effect.gen(function* () {
   const browsers = yield* browsersOf(yield* Config.String("BROWSERS").pipe(Config.withDefault("")));
   const mode = process.argv[2];
   if (mode === "cache-key") return yield* writeCacheKey(browsers);
   if (mode === "install" || mode === "install-deps") return yield* installBrowsers(mode, browsers);
   return yield* new PlaywrightInputError({ message: `playwright.ts takes cache-key, install or install-deps, not ${mode ?? "nothing"}` });
 });
-
-if (import.meta.main) runCheck(main);

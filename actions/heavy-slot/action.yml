@@ -19,7 +19,7 @@ runs:
         ACTION: ${{ inputs.action }}
         RUNNER_PREFIX: ${{ inputs.runner-prefix }}
         COMMAND: ${{ inputs.command }}
-      run: bash "$GITHUB_ACTION_PATH/../../src/heavy-slot/check-inputs.sh"
+      run: bash "$GITHUB_ACTION_PATH/main.sh"
     - if: startsWith(runner.name, inputs.runner-prefix)
       shell: bash
       env:

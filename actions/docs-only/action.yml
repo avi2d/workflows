@@ -19,4 +19,4 @@ runs:
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_REF: ${{ inputs.head }}
-      run: bash "$GITHUB_ACTION_PATH/../../src/docs-only/classify.sh"
+      run: bash "$GITHUB_ACTION_PATH/main.sh"

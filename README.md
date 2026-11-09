@@ -116,7 +116,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `actions/<name>/` | the composite actions, one directory each, whose steps call the code under `src/` |
+| `actions/<name>/` | the composite actions, one directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
 | `src/<name>/` | the TypeScript and shell files an action or a reusable workflow runs |
 | `src/lib/` | the code those files share |
 | `src/ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |

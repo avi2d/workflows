@@ -25,7 +25,7 @@ runs:
     # The script resolves effect beside itself, and the caller's install holds it only by chance.
     - name: install the script's own dependencies
       shell: bash
-      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/../.."
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
     - name: report the job status
       shell: bash
       env:
@@ -35,4 +35,4 @@ runs:
         HEAD_SHA: ${{ inputs.head-sha }}
         DESCRIPTION: ${{ inputs.description }}
         ATTEMPTS: ${{ inputs.attempts }}
-      run: bun "$GITHUB_ACTION_PATH/../../src/head-status/head-status.ts"
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

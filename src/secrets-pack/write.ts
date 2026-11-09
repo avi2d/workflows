@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 import { Config, Effect, FileSystem, Path, Schema } from "effect";
-import { runCheck } from "../lib/run.ts";
 
 const PACK_VARIABLE = "CHECKS_SECRETS_PACK";
 
@@ -20,7 +19,7 @@ export const writePack = Effect.fn("writePack")(function* ({ pack, runnerTemp, g
   yield* fs.writeFileString(githubEnv, `${PACK_VARIABLE}=${file}\n`, { flag: "a" });
 });
 
-const fromEnv = Effect.gen(function* () {
+export const main = Effect.gen(function* () {
   const target = yield* Config.all({
     pack: Config.String("PACK").pipe(Config.withDefault("")),
     runnerTemp: Config.String("RUNNER_TEMP"),
@@ -29,5 +28,3 @@ const fromEnv = Effect.gen(function* () {
   yield* writePack(target);
   return true;
 });
-
-if (import.meta.main) runCheck(fromEnv);

@@ -1,7 +1,6 @@
 import { Data, Effect } from "effect";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { runMain } from "../lib/run-main.ts";
 
 export class MutationScopeError extends Data.TaggedError("MutationScopeError")<{ readonly message: string }> {}
 
@@ -27,7 +26,7 @@ function required(name: string): Effect.Effect<string, MutationScopeError> {
   return value === undefined || value === "" ? Effect.fail(new MutationScopeError({ message: `mutation-scope needs ${name} set` })) : Effect.succeed(value);
 }
 
-const main = Effect.gen(function* () {
+export const main = Effect.gen(function* () {
   const report = join(yield* required("RUNNER_TEMP"), "baseline-full", "mutation.json");
   const githubEnv = yield* required("GITHUB_ENV");
   const base = (yield* run(["git", "merge-base", "HEAD", baseBranchOf(process.env["BASE_REF"])], "pipe")).trim();
@@ -38,5 +37,3 @@ const main = Effect.gen(function* () {
     catch: (cause) => new MutationScopeError({ message: `mutation-scope cannot write GITHUB_ENV: ${String(cause)}` }),
   });
 });
-
-if (import.meta.main) runMain(main);
