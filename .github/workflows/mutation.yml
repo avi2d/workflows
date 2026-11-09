@@ -206,7 +206,11 @@ jobs:
           if [ -f "$RUNNER_TEMP/baseline/mutation.json" ]; then
             checks-mutation-compare --advisory "$RUNNER_TEMP/baseline/mutation.json" reports/mutation/mutation.json | tee "$RUNNER_TEMP/compare.txt"
             report=reports/mutation/mutation.json
-            read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
+            read -r detected total < <(jq -r --arg scope "$SCOPE" '
+              ($scope | split(",")) as $globs
+              | [$globs[] | gsub("\\[\\*\\]"; "*") | gsub("\\[\\?\\]"; "?") | gsub("\\[\\(\\]"; "(") | gsub("\\[\\)\\]"; ")") | gsub("\\[\\{\\]"; "{") | gsub("\\[\\}\\]"; "}")] as $plain
+              | [$plain[] | gsub("\\[\\[\\]"; "[") | gsub("\\[\\]\\]"; "]")] as $files
+              | [.files | with_entries(select(.key as $key | $files | index($key))) | .[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
             {
               echo "## mutation compare"
               echo
