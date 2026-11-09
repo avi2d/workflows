@@ -279,10 +279,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: map a command to its source the way the kit's own package.json does
-        run: |
-          echo 'console.log("from source")' > smoke-kit-source.ts
-          jq '.bin = {"smoke-kit-source": "smoke-kit-source.ts"}' package.json > "$RUNNER_TEMP/package.json"
-          mv "$RUNNER_TEMP/package.json" package.json
+        run: bun ci/kit-bin-smoke.ts fixture
       - uses: ./kit-bin
         with:
           commands: checks-docs-only smoke-kit-source
@@ -294,11 +291,7 @@ jobs:
       - name: a command off the shims, a source command that does not run, or a missing command that passes fails
         env:
           MISSING: ${{ steps.missing.outcome }}
-        run: |
-          test "$(command -v checks-docs-only)" = "$RUNNER_TEMP/checks-bin/checks-docs-only"
-          test "$(checks-docs-only)" = docs-only=false
-          test "$(smoke-kit-source)" = "from source"
-          test "$MISSING" = failure
+        run: bun ci/kit-bin-smoke.ts verify
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
     needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin]
@@ -309,29 +302,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: require every part
         env:
-          STATIC: ${{ needs.static.result }}
-          SETUP: ${{ needs.setup.result }}
-          GITLEAKS_CACHE_FILL: ${{ needs.gitleaks-cache-fill.result }}
-          GITLEAKS_CACHE: ${{ needs.gitleaks-cache.result }}
-          DOCS_ONLY: ${{ needs.docs-only.result }}
-          HEAD_STATUS: ${{ needs.head-status.result }}
-          PLAYWRIGHT: ${{ needs.playwright.result }}
-          HEAVY_SLOT: ${{ needs.heavy-slot.result }}
-          KIT_BIN: ${{ needs.kit-bin.result }}
+          NEEDS: ${{ toJSON(needs) }}
           EVENT: ${{ github.event_name }}
-        run: |
-          test "$STATIC" = success
-          test "$SETUP" = success
-          test "$GITLEAKS_CACHE_FILL" = success
-          test "$GITLEAKS_CACHE" = success
-          test "$DOCS_ONLY" = success
-          test "$PLAYWRIGHT" = success
-          test "$HEAVY_SLOT" = success
-          test "$KIT_BIN" = success
-          # head-status runs only on pull requests, so a dispatch may skip it.
-          test "$HEAD_STATUS" = success || { test "$EVENT" != pull_request && test "$HEAD_STATUS" = skipped; }
+        run: bun ci/require-parts.ts
       # A dispatched run's check stays off the pull request, so this reports a commit status.
       - name: report the result on the head commit
         if: always() && github.event_name == 'workflow_dispatch'

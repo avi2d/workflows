@@ -1,6 +1,7 @@
 import { Console, Data, Effect } from "effect";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { runMain } from "../lib/run-main.ts";
 
 const COMMAND_NAME = /^[A-Za-z0-9._-]+$/;
 
@@ -78,10 +79,6 @@ const main = Effect.gen(function* () {
     catch: (cause) => new KitBinError({ message: `kit-bin cannot write GITHUB_PATH: ${String(cause)}` }),
   });
   yield* Console.log(`kit-bin: ${commands.join(" ")} on the PATH from ${binDir}`);
-}).pipe(
-  Effect.catchTag("KitBinError", (error) =>
-    Console.log(`::error::${error.message}`).pipe(Effect.andThen(Effect.sync(() => (process.exitCode = 1)))),
-  ),
-);
+});
 
-if (import.meta.main) Effect.runSync(main);
+if (import.meta.main) runMain(main);
