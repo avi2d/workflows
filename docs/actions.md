@@ -4,9 +4,10 @@ audience: consumers
 ---
 # The shared actions
 
-Each action is a composite action, called as `avi2d/workflows/actions/<name>@v2`, that runs as steps inside the caller's job on the caller's runner.
+Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
+A caller calls it as `avi2d/workflows/actions/<name>@v2`, or as `avi2d/workflows/actions/<area>/<name>@v2` when its heading names an area.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
-Every action but setup and heavy-slot runs its step on the Bun that setup installs, so the caller runs setup first.
+Every action but setup, heavy-slot, read-main-tip, require-success and cloudflare-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
 An action whose script imports a package installs this repository's pinned dependencies in its own checkout, apart from the caller's.
 
 ## setup
@@ -159,6 +160,200 @@ A caller whose secret may be unset guards the call with an `if:`.
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
+
+## The site actions
+
+The site actions stage, publish and preview a static site on Cloudflare Pages and GitHub Pages.
+The caller names every project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
+Each heading below names the action's path under `actions/`.
+No action prints a secret, and an action that needs a secret fails with a message when the caller passes it empty.
+A caller whose Cloudflare secrets may be unset checks them with [cloudflare-secrets-check](#previewcloudflare-secrets-check) and guards the Cloudflare steps with an `if:`.
+
+### pages/read-main-tip
+
+Writes the commit a branch points at as the `sha` output, so later jobs build the same commit after the branch moves.
+It fails when the answer is not a full commit SHA.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `branch` | `main` | the branch to read |
+| `repository` | the caller's repository | the repository the branch lives in |
+| `token` | the job's token | the token that reads the repository |
+
+| Output | Value |
+| --- | --- |
+| `sha` | the full SHA the branch points at |
+
+### pages/pages-deploy
+
+Deploys a built folder to a Cloudflare Pages project with wrangler, which it runs under Node 24.
+When `address` is set, it first fails unless the project serves `https://<project host>/` at that address, so a build that points at another host never ships.
+The commit message it records ends with the first 7 characters of `commit-hash`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `project` | required | the Cloudflare Pages project |
+| `api-token` | required | the Cloudflare API token, from a secret the caller names |
+| `account-id` | required | the Cloudflare account ID, from a secret the caller names |
+| `branch` | `main` | the Pages branch the deployment goes to |
+| `commit-hash` | the run's commit | the commit the deployment records |
+| `commit-message` | empty, wrangler's own | the message the deployment records |
+| `address` | empty, no check | the address the build points to |
+| `directory` | `dist` | the built folder to deploy |
+| `commit-dirty` | `false` | whether wrangler marks the commit as differing from the working tree |
+| `wrangler-version` | `4.156.1` | the wrangler release `bunx` runs |
+
+### pages/production-staged-commit
+
+Writes the commit a Cloudflare Pages project serves in production as the `sha` output, so a production publish ships exactly what staging serves.
+It fails unless the served deployment finished, its commit is on `branch`, and a green run of `workflow` holds that commit.
+It also fails when `deploy-key` is empty, so a run that cannot publish stops before its tests.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `project` | required | the Cloudflare Pages project that stages the site |
+| `api-token` | required | the Cloudflare API token, from a secret the caller names |
+| `account-id` | required | the Cloudflare account ID, from a secret the caller names |
+| `deploy-key` | required | the deploy key the later publish pushes with |
+| `branch` | `main` | the branch the served commit must be on |
+| `workflow` | `pages.yml` | the workflow file whose green run must hold the commit |
+| `token` | the job's token | the token that reads commits and workflow runs, which needs `actions: read` |
+
+| Output | Value |
+| --- | --- |
+| `sha` | the full SHA of the commit the project serves |
+
+### pages/publish-site
+
+Pushes a built folder to the repository that publishes the site, through a checkout made with the caller's deploy key.
+It fails before any change when that repository's `CNAME` does not name `cname`, since GitHub Pages takes the custom domain from that file.
+It keeps `CNAME`, replaces every other file with the build, adds `.nojekyll` so folders such as `_assets/` survive, and commits as `github-actions[bot]`.
+A build that changes nothing makes no commit.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `repository` | required | the repository that publishes the site, as `owner/name` |
+| `deploy-key` | required | the SSH deploy key with write access to that repository |
+| `cname` | required | the custom domain the `CNAME` file must name |
+| `source-sha` | required | the commit the build comes from, whose first 7 characters end the commit message |
+| `commit-message` | required | the commit message before the source commit |
+| `directory` | `dist` | the built folder to publish |
+| `branch` | `main` | the branch the site publishes from |
+| `path` | `published-site` | where to check that repository out inside the workspace |
+
+### gates/require-success
+
+Fails unless every named result is `success`, and names each one that is not.
+A gate job that `needs` other jobs runs it with `if: always()`, so a skipped or cancelled job fails the gate.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `results` | required | `name=result` pairs separated by whitespace, such as `e2e=${{ needs.e2e.result }}` |
+
+### testing/affected-tests
+
+Runs the always-run tests and the affected test files in one `bun test --randomize` run with one worker per core.
+It then runs the affected screen tests with Bun's ignored paths cleared, since the caller's `bunfig.toml` ignores the folder that holds them.
+A failing first run skips the screen run.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `always` | `./tests/unit` | the test paths every run holds, separated by whitespace |
+| `files` | empty | the affected test files, separated by whitespace |
+| `screens` | empty, no screen run | the affected screen test files, separated by whitespace |
+
+### pages/read-staging-address
+
+Loads a module of the caller's site and writes the address it exports as the `address` output, failing unless that address is `https`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `module` | required | the module that exports the address, relative to the working directory |
+| `export` | required | the dotted path of the address among the module's exports |
+
+| Output | Value |
+| --- | --- |
+| `address` | the https address the module exports |
+
+### preview/cloudflare-secrets-check
+
+Writes whether both Cloudflare secrets reached the job as the `set` output, without printing either.
+When one is empty it prints `missing-note` and writes `false`, and the step itself passes.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `api-token` | empty | the Cloudflare API token |
+| `account-id` | empty | the Cloudflare account ID |
+| `missing-note` | a line saying the Cloudflare steps skip | the line printed when either is empty |
+
+| Output | Value |
+| --- | --- |
+| `set` | `true` when both are set, else `false` |
+
+### preview/preview-address
+
+Writes a branch's preview origin, `https://<alias>.<project host>`, as the `origin` output, so the build can point at it before the deploy.
+Cloudflare names the alias from the branch, lowercased and with every character but a letter or digit turned to `-`.
+It then cuts the alias to 28 characters and trims `-` from both ends.
+The project host is read from Cloudflare, which suffixes it when another account holds the name.
+It creates the project when it is missing.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `project` | required | the Cloudflare Pages project the previews go to |
+| `branch` | the pull request head branch | the branch whose alias the origin names |
+| `api-token` | required | the Cloudflare API token, from a secret the caller names |
+| `account-id` | required | the Cloudflare account ID, from a secret the caller names |
+
+| Output | Value |
+| --- | --- |
+| `origin` | the preview origin, without a trailing slash |
+
+### preview/preview-deploy
+
+Deploys a built folder to a branch of a Cloudflare Pages project with wrangler under Node 24.
+It fails unless wrangler reports the branch alias at `origin`, so a preview never points at another address than it is served from.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `project` | required | the Cloudflare Pages project the previews go to |
+| `origin` | required | the origin the build points to, as [preview-address](#previewpreview-address) writes it |
+| `api-token` | required | the Cloudflare API token, from a secret the caller names |
+| `account-id` | required | the Cloudflare account ID, from a secret the caller names |
+| `branch` | the pull request head branch | the branch the preview deploys as |
+| `commit-hash` | the pull request head | the commit the deployment records |
+| `directory` | `dist` | the built folder to deploy |
+| `commit-dirty` | `false` | whether wrangler marks the commit as differing from the working tree |
+| `wrangler-version` | `4.156.1` | the wrangler release `bunx` runs |
+
+### preview/preview-comment
+
+Posts the preview link on the pull request, and edits the marked comment `author` wrote when one exists, so the pull request holds one preview comment.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `origin` | required | the preview origin, as [preview-address](#previewpreview-address) writes it |
+| `head-sha` | the pull request head | the commit the preview shows |
+| `marker` | required | the hidden first line that marks the preview comment, such as `<!-- site-preview -->` |
+| `token` | the job's token | the token that reads and writes the pull request's comments, which needs `pull-requests: write` |
+| `pull-request` | the event's pull request | the pull request number |
+| `author` | `github-actions[bot]` | the login the token writes as, whose marked comment alone is edited |
+
+### preview/preview-remove
+
+Deletes every preview deployment of a branch from a Cloudflare Pages project, then fails if Cloudflare still lists any.
+It reads every page of deployments before deleting, and edits the marked preview comment to say the preview is gone.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `project` | required | the Cloudflare Pages project the previews go to |
+| `branch` | the pull request head branch | the branch whose deployments go |
+| `api-token` | required | the Cloudflare API token, from a secret the caller names |
+| `account-id` | required | the Cloudflare account ID, from a secret the caller names |
+| `marker` | required | the hidden first line that marks the preview comment, such as `<!-- site-preview -->` |
+| `token` | the job's token | the token that reads and writes the pull request's comments, which needs `pull-requests: write` |
+| `pull-request` | the event's pull request | the pull request number |
+| `author` | `github-actions[bot]` | the login the token writes as, whose marked comment alone is edited |
 
 ## Related topics
 

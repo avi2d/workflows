@@ -27,7 +27,7 @@ function stepGroups(file: string): [string, readonly unknown[]][] {
 
 function stepFiles(): string[] {
   const workflows = readdirSync(join(REPOSITORY, ".github/workflows")).map((name) => `.github/workflows/${name}`);
-  const actions = readdirSync(join(REPOSITORY, "actions")).map((name) => `actions/${name}/action.yml`);
+  const actions = [...new Bun.Glob("actions/**/action.yml").scanSync(REPOSITORY)];
   return [...workflows, ...actions].filter((file) => file.endsWith(".yml")).sort();
 }
 

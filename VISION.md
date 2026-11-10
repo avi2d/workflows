@@ -1,7 +1,7 @@
 # Vision
 
 workflows exists so that every repository calls one shared copy of each CI step instead of keeping its own.
-It serves every avi2d and azalialaw repository, public or private, that calls its composite actions or its reusable workflows.
+It serves every repository its owners hold, public or private, that calls its composite actions or its reusable workflows.
 It owns one thing: the composite actions that run inside the caller's job, with the runner pick and the advisory scan beside them.
 
 ## The caller keeps its job, and the shared copy keeps its steps

@@ -1,5 +1,6 @@
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { Console, Effect, Exit, Stream } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 // Runs a check as a CI step: a false result or a failure exits 1, and a failure prints as an error annotation.
@@ -13,11 +14,31 @@ export function runCheck<E extends { readonly message: string }>(check: Effect.E
   });
 }
 
+const writeChunk = (writer: NodeJS.WritableStream, chunk: Uint8Array) =>
+  Effect.promise(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        writer.write(chunk, (error?: Error | null) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      }),
+  );
+
+const forwardTo = (writer: NodeJS.WritableStream) => (stream: Stream.Stream<Uint8Array, PlatformError>) =>
+  Stream.runForEach(stream, (chunk) => writeChunk(writer, chunk));
+
 export const commandPasses = Effect.fn("commandPasses")(
-  function* (program: string, args: readonly string[]) {
+  function* (program: string, args: readonly string[], env: Readonly<Record<string, string>> = {}) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdin: "inherit", stdout: "inherit", stderr: "inherit" }));
-    return (yield* handle.exitCode) === ChildProcessSpawner.ExitCode(0);
+    const handle = yield* spawner.spawn(
+      ChildProcess.make(program, args, { env, extendEnv: true, stdin: "inherit" }),
+    );
+    const [exitCode] = yield* Effect.all(
+      [handle.exitCode, forwardTo(process.stdout)(handle.stdout), forwardTo(process.stderr)(handle.stderr)],
+      { concurrency: "unbounded" },
+    );
+    return exitCode === ChildProcessSpawner.ExitCode(0);
   },
   Effect.scoped,
 );
@@ -25,10 +46,11 @@ export const commandPasses = Effect.fn("commandPasses")(
 export const commandOutput = Effect.fn("commandOutput")(
   function* (program: string, args: readonly string[], env: Readonly<Record<string, string>> = {}) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { env, extendEnv: true, stdin: "inherit", stderr: "inherit" }));
-    const [stdout, exitCode] = yield* Effect.all([handle.stdout.pipe(Stream.decodeText(), Stream.mkString), handle.exitCode], {
-      concurrency: "unbounded",
-    });
+    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { env, extendEnv: true, stdin: "inherit" }));
+    const [stdout, , exitCode] = yield* Effect.all(
+      [handle.stdout.pipe(Stream.decodeText(), Stream.mkString), forwardTo(process.stderr)(handle.stderr), handle.exitCode],
+      { concurrency: "unbounded" },
+    );
     return { stdout, passed: exitCode === ChildProcessSpawner.ExitCode(0) };
   },
   Effect.scoped,

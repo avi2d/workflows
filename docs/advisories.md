@@ -6,6 +6,26 @@ audience: consumers
 
 The advisory scan is the reusable workflow `.github/workflows/advisories.yml`, which runs `checks-advisories --all --issue` from the caller's install of the `@avi2dg/checks` kit, or from the kit's own source when the caller is the kit.
 
+## Call it weekly
+
+A caller runs `checks-advisories --all --issue` every week, which files a GitHub issue while `bun.lock` on `main` holds an advisory:
+
+```yaml
+on:
+  schedule:
+    - cron: "15 5 * * 1"
+  workflow_dispatch:
+jobs:
+  advisories:
+    permissions:
+      contents: read
+      issues: write
+    uses: avi2d/workflows/.github/workflows/advisories.yml@v2
+```
+
+A private caller drops the `schedule` trigger and starts the scan with `gh workflow run`.
+The rest of this page says what it needs from the caller.
+
 ## What it does
 
 It checks out the commit the caller's run names through the setup action, installs the locked dependencies and runs `checks-advisories --all --issue`.
