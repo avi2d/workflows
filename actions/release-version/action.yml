@@ -1,0 +1,27 @@
+name: release-version
+description: Fail unless the tag names the version a manifest holds, and write that version as the step output version.
+inputs:
+  package-path:
+    description: The manifest holding the released version, relative to the working directory.
+    default: ./package.json
+  tag:
+    description: The tag the version must match, as v<version>. Empty reads the tag the run was started on.
+    default: ""
+outputs:
+  version:
+    description: The version the manifest holds, without the v.
+    value: ${{ steps.version.outputs.version }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: version
+      name: match the tag against the manifest version
+      shell: bash
+      env:
+        PACKAGE_PATH: ${{ inputs.package-path }}
+        TAG: ${{ inputs.tag || github.ref_name }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

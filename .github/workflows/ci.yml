@@ -288,6 +288,35 @@ jobs:
         env:
           EMPTY: ${{ steps.empty.outcome }}
         run: test "$EMPTY" = failure
+  release-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: match
+        uses: ./actions/release-version
+        with:
+          package-path: tests/fixtures/release-version/manifest.json
+          tag: v1.2.3
+      - id: mismatch
+        uses: ./actions/release-version
+        continue-on-error: true
+        with:
+          package-path: tests/fixtures/release-version/manifest.json
+          tag: v1.2.4
+      - name: a matching tag whose version is not written fails
+        env:
+          VERSION: ${{ steps.match.outputs.version }}
+        run: test "$VERSION" = 1.2.3
+      - name: a tag off the manifest version that passes fails
+        env:
+          MISMATCH: ${{ steps.mismatch.outcome }}
+        run: test "$MISMATCH" = failure
   release-pr:
     permissions:
       contents: write
@@ -320,7 +349,7 @@ jobs:
         run: bun src/ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-pr, release-guard]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-version, release-pr, release-guard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

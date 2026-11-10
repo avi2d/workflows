@@ -101,7 +101,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | Area | What its code does |
 | --- | --- |
 | `runner` | prepares the job: setup, kit-bin, heavy-slot, secrets-pack |
-| `gates` | decides whether a change passes: head-status, docs-only, require-success |
+| `gates` | decides whether a change passes: head-status, docs-only, require-success, release-version |
 | `testing` | runs tests: playwright, mutation, mutation-scope, affected-tests |
 | `pages` | stages and publishes a site: read-main-tip, pages-deploy, production-staged-commit, publish-site, read-staging-address |
 | `preview` | a branch preview: cloudflare-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove |
