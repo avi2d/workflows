@@ -13,11 +13,10 @@ export function runCheck<E extends { readonly message: string }>(check: Effect.E
   });
 }
 
-const writeChunk = (fd: number, chunk: Uint8Array) =>
+const writeChunk = (writer: NodeJS.WritableStream, chunk: Uint8Array) =>
   Effect.promise(
     () =>
       new Promise<void>((resolve, reject) => {
-        const writer = fd === 1 ? process.stdout : process.stderr;
         writer.write(chunk, (error?: Error | null) => {
           if (error) reject(error);
           else resolve();
@@ -25,8 +24,8 @@ const writeChunk = (fd: number, chunk: Uint8Array) =>
       }),
   );
 
-const forwardTo = (fd: number) => (stream: Stream.Stream<Uint8Array>) =>
-  Stream.runForEach(stream, (chunk) => writeChunk(fd, chunk));
+const forwardTo = (writer: NodeJS.WritableStream) => (stream: Stream.Stream<Uint8Array>) =>
+  Stream.runForEach(stream, (chunk) => writeChunk(writer, chunk));
 
 export const commandPasses = Effect.fn("commandPasses")(
   function* (program: string, args: readonly string[], env: Readonly<Record<string, string>> = {}) {
@@ -35,7 +34,7 @@ export const commandPasses = Effect.fn("commandPasses")(
       ChildProcess.make(program, args, { env, extendEnv: true, stdin: "inherit" }),
     );
     const [exitCode] = yield* Effect.all(
-      [handle.exitCode, forwardTo(1)(handle.stdout), forwardTo(2)(handle.stderr)],
+      [handle.exitCode, forwardTo(process.stdout)(handle.stdout), forwardTo(process.stderr)(handle.stderr)],
       { concurrency: "unbounded" },
     );
     return exitCode === ChildProcessSpawner.ExitCode(0);
@@ -48,7 +47,7 @@ export const commandOutput = Effect.fn("commandOutput")(
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdin: "inherit" }));
     const [stdout, exitCode] = yield* Effect.all(
-      [handle.stdout.pipe(Stream.decodeText(), Stream.mkString), forwardTo(2)(handle.stderr), handle.exitCode],
+      [handle.stdout.pipe(Stream.decodeText(), Stream.mkString), forwardTo(process.stderr)(handle.stderr), handle.exitCode],
       { concurrency: "unbounded" },
     );
     return { stdout, passed: exitCode === ChildProcessSpawner.ExitCode(0) };

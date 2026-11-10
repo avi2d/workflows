@@ -25,9 +25,11 @@ test("a child's stderr held in an unread pipe, or kept out of the step log, fail
     import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
     runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map(({ stdout }) => stdout === "out\\n")));
   `;
-  const child = Bun.spawn(["bun", "-e", program], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
-  await Bun.sleep(2000);
-  const [stderr, , exitCode] = await Promise.all([new Response(child.stderr).text(), new Response(child.stdout).text(), child.exited]);
+  const child = Bun.spawn(
+    ["bash", "-c", 'bun -e "$PROG" 2>&1 >/dev/null | { sleep 2; wc -c; }; exit ${PIPESTATUS[0]}'],
+    { stdin: "ignore", stdout: "pipe", stderr: "pipe", env: { ...process.env, PROG: program } },
+  );
+  const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
   expect(exitCode).toBe(0);
-  expect(stderr.length).toBe(200_000);
+  expect(Number(output.trim())).toBe(200_000);
 });
