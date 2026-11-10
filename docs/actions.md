@@ -167,7 +167,7 @@ The site actions stage, publish and preview a static site on Cloudflare Pages an
 The caller names every project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
 Each heading below names the action's folder under `actions/`.
 No action prints a secret, and an action that needs a secret fails with a message when the caller passes it empty.
-A caller whose Cloudflare secrets may be unset checks them with [cloudflare-secrets-check](#preview-secrets-check) and guards the Cloudflare steps with an `if:`.
+A caller whose Cloudflare secrets may be unset checks them with [preview-secrets-check](#preview-secrets-check) and guards the Cloudflare steps with an `if:`.
 
 ### pages-main-tip
 

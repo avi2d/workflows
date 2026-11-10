@@ -4,7 +4,7 @@ import { github, repositoryFromEnv } from "../../lib/github.ts";
 import { requiredInput } from "../../lib/inputs.ts";
 import { writeOutputs } from "../../lib/step-output.ts";
 
-const ACTION = "production-staged-commit";
+const ACTION = "pages-staged-commit";
 
 class NotStaged extends Schema.TaggedError<NotStaged>()("NotStaged", {
   message: Schema.String,

@@ -98,13 +98,13 @@ test("a publish to a repository whose CNAME names another domain that pushes pas
 test("an empty deploy key let through the guard passes", async () => {
   const ran = await publish("guard", { DEPLOY_KEY: "" });
   expect(ran.exitCode).toBe(1);
-  expect(ran.stdout).toContain("::error::publish-site needs the deploy-key input, and it is empty");
+  expect(ran.stdout).toContain("::error::pages-publish needs the deploy-key input, and it is empty");
   expect((await publish("guard")).exitCode).toBe(0);
 });
 
 test("a part other than guard or publish that runs either passes", async () => {
   const ran = await publish("both");
   expect(ran.exitCode).toBe(1);
-  expect(ran.stdout).toContain("::error::publish-site takes guard or publish, not both");
+  expect(ran.stdout).toContain("::error::pages-publish takes guard or publish, not both");
   expect(readFileSync(join(root, "site", "CNAME"), "utf8")).toBe("example.com\n");
 });

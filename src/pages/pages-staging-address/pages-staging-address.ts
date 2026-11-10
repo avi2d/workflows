@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { requiredInput } from "../../lib/inputs.ts";
 import { writeOutputs } from "../../lib/step-output.ts";
 
-const ACTION = "read-staging-address";
+const ACTION = "pages-staging-address";
 
 class AddressUnread extends Schema.TaggedError<AddressUnread>()("AddressUnread", {
   message: Schema.String,

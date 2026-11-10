@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { requiredInput } from "../../lib/inputs.ts";
 import { commandOutput, commandPasses } from "../../lib/run.ts";
 
-const ACTION = "publish-site";
+const ACTION = "pages-publish";
 
 const BOT_NAME = "github-actions[bot]";
 const BOT_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com";

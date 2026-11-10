@@ -88,13 +88,13 @@ test("a production that serves a deployment still building read as staged passes
 test("a missing deploy key that is let through to the tests passes", async () => {
   const ran = await stage({ DEPLOY_KEY: "" });
   expect(ran.exitCode).toBe(1);
-  expect(ran.stdout).toContain("::error::production-staged-commit needs the deploy-key input, and it is empty");
+  expect(ran.stdout).toContain("::error::pages-staged-commit needs the deploy-key input, and it is empty");
   expect(stub.requests).toEqual([]);
 });
 
 test("a missing Cloudflare token sent on to the API passes", async () => {
   const ran = await stage({ CLOUDFLARE_API_TOKEN: "" });
   expect(ran.exitCode).toBe(1);
-  expect(ran.stdout).toContain("::error::production-staged-commit needs the api-token and account-id inputs, and api-token is empty");
+  expect(ran.stdout).toContain("::error::pages-staged-commit needs the api-token and account-id inputs, and api-token is empty");
   expect(stub.requests).toEqual([]);
 });
