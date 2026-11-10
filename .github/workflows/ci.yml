@@ -340,12 +340,12 @@ jobs:
       - uses: ./actions/setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: a release pull request that never plans or that tags here fails
+      - name: a release pull request that never plans, that tags here, or that leaves ubuntu-latest with no CI_RUNS_ON set fails
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: bun ci/release-jobs.ts
-      - name: a release whose tag, verify or publish guard drifts, or whose job leaves the hosted runner, fails
+      - name: a release whose tag, verify or publish guard drifts, or whose job leaves the caller's runner pick, fails
         run: bun ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.

@@ -30,6 +30,25 @@ jobs:
       tag-command: bunx checks-release-tag release.yml
 ```
 
+Its tag push publishes the release and creates the GitHub release:
+
+```yaml
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+jobs:
+  release:
+    permissions:
+      contents: write
+      id-token: write
+    uses: avi2d/workflows/.github/workflows/release.yml@v2
+    with:
+      node-version: "24"
+      publish-command: bunx checks-release-publish
+      github-release: true
+```
+
 Each trigger file stays in the caller, beside the publish command only that caller needs.
 
 ## What it does
@@ -49,7 +68,11 @@ It runs the caller tree guard before the build and the caller lint, typecheck an
 It matches the tag against the version in the caller manifest through the [release-version](actions.md#release-version) action.
 The `publish` job runs only after `verify` passes, and it alone holds `id-token: write`.
 It builds the tag again, runs the clean tree check, and sets up Node with the npm registry when the caller names a Node release.
-It then runs the caller publish command with `GH_TOKEN` set, and no lint, test or other caller check runs in it.
+It then runs the caller publish command with `GH_TOKEN` set, when the caller sets one, and no lint, test or other caller check runs in it.
+With `github-release` set, it then reads the version through [release-version](actions.md#release-version) and writes that version's `CHANGELOG.md` section with `checks-release-notes` from the checks kit.
+It creates the GitHub release for the tag, titled with the tag, with that section as its notes.
+A caller that leaves `github-release` unset runs no step after its publish command.
+A call with no publish command and no GitHub release fails instead of publishing nothing.
 The lint, typecheck and test commands default to empty, so a caller opts in only to what the tag itself must run.
 The build and the clean tree check default to the usual commands, and empty skips them.
 A caller whose release pull request already ran the full suite leaves `test-command` empty.
@@ -78,7 +101,8 @@ The publish run takes these inputs.
 | `typecheck-command` | empty, skip the step | the typecheck the tag runs |
 | `test-command` | empty, skip the step | the test suite the tag runs |
 | `node-version` | empty, skip the setup | the Node release set up with the npm registry |
-| `publish-command` | required | the command that publishes the tag |
+| `publish-command` | empty, skip the step | the command that publishes the tag |
+| `github-release` | `false` | whether to create the GitHub release for the tag after the publish command, with its `CHANGELOG.md` section as the notes |
 
 ## What the caller supplies
 
@@ -87,12 +111,25 @@ The publish run takes these inputs.
 - A tree guard command once the caller adopts one, which only checks carries today.
 - A calling job that grants `contents: write`, `pull-requests: write` and `actions: write` to the release pull request call.
 - A calling job that grants `contents: write` and `id-token: write` to the publish call.
-- Nothing for runners: the shared jobs run on `ubuntu-latest`, so a private caller adopts the same file unchanged and spends a few hosted minutes per release.
+- Its `CI_RUNS_ON` repository variable when its release publish runs on its own runner.
+  Every job in `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
+  Every job in `release-pr.yml` runs on `ubuntu-latest`.
+  A caller that sets no `CI_RUNS_ON` runs every release job on `ubuntu-latest`.
+
+## Runners and fork pull requests
+
+A fork pull request never starts these jobs in a caller.
+The caller's trigger files run them only on a manual run, a push to `main` and a tag push.
+Each of those needs write access to the caller, which a fork author does not hold.
+This repository's own CI calls `release-pr.yml` on every pull request, fork pull requests included.
+This repository sets no `CI_RUNS_ON`, so those runs stay on `ubuntu-latest`.
+The `release-guard` CI job fails when the planning job of that call runs anywhere but `ubuntu-latest`.
 
 ## Related topics
 
 - [The shared actions](actions.md)
 - [The advisory scan](advisories.md)
 - [The mutation runs](mutation.md)
+- [The runner pick](runner.md)
 - [Bump the pin with Dependabot](dependabot.md)
 - [workflows](../README.md)
