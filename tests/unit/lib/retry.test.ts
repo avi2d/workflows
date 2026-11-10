@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Duration, Effect, Exit, Fiber } from "effect";
 import { TestClock } from "effect/testing";
-import { parseAttempts, retryWithGrowingWait } from "../../../src/lib/retry.ts";
+import { parseAttempts, retryWithGrowingWait } from "../../../lib/retry.ts";
 
 function countedTries(passFrom: number) {
   let tries = 0;

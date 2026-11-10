@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Config, Effect } from "effect";
-import { reportStatus } from "../../lib/commit-status.ts";
+import { reportStatus } from "../../../lib/commit-status.ts";
 
 const optional = (name: string) => Config.String(name).pipe(Config.withDefault(""));
 

@@ -1,6 +1,6 @@
 import { Console, Effect } from "effect";
-import { requiredInput } from "../../lib/inputs.ts";
-import { threadFromEnv, writeMarked } from "../../lib/marker-comment.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { threadFromEnv, writeMarked } from "../../../lib/marker-comment.ts";
 
 const ACTION = "preview-comment";
 

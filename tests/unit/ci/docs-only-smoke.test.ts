@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { commitsLines, readingProblems } from "../../../src/ci/docs-only-smoke.ts";
+import { commitsLines, readingProblems } from "../../../ci/docs-only-smoke.ts";
 
 describe("readingProblems", () => {
   test("the readings docs-only gives a README change, a code change and an empty base that report a problem fail", () => {

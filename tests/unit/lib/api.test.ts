@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { reasonOf } from "../../../src/lib/api.ts";
+import { reasonOf } from "../../../lib/api.ts";
 
 test("a Cloudflare error list or a GitHub error message left out of the failure fails", () => {
   expect(reasonOf(JSON.stringify({ errors: [{ message: "Authentication error" }, { message: "try again" }] }))).toBe(": Authentication error; try again");

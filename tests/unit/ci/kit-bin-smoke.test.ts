@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mapSourceCommand, type Observed, smokeFailures } from "../../../src/ci/kit-bin-smoke.ts";
+import { mapSourceCommand, type Observed, smokeFailures } from "../../../ci/kit-bin-smoke.ts";
 
 let root = "";
 

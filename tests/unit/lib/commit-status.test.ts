@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type CommitStatus, stateOf, statusArgs } from "../../../src/lib/commit-status.ts";
+import { type CommitStatus, stateOf, statusArgs } from "../../../lib/commit-status.ts";
 
 const STATUS: CommitStatus = {
   repository: "avi2d/workflows",

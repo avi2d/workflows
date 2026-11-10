@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { servedCommitOf } from "../../../src/lib/cloudflare.ts";
+import { servedCommitOf } from "../../../lib/cloudflare.ts";
 
 const SERVED = {
   id: "d1",

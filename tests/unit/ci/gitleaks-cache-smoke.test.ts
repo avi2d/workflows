@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cacheProblem, gitleaksIn } from "../../../src/ci/gitleaks-cache-smoke.ts";
+import { cacheProblem, gitleaksIn } from "../../../ci/gitleaks-cache-smoke.ts";
 
 describe("gitleaksIn", () => {
   test("a file only named like gitleaks taken for it, or a nested gitleaks missed, fails", () => {

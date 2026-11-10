@@ -2,9 +2,9 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SMOKE_TERM } from "../../../src/ci/smoke-pack.ts";
+import { SMOKE_TERM } from "../../../ci/smoke-pack.ts";
 
-const SCRIPT = join(import.meta.dir, "../../../src/ci/pack-check.ts");
+const SCRIPT = join(import.meta.dir, "../../../ci/pack-check.ts");
 const PACK = JSON.stringify({ names: [SMOKE_TERM] });
 const SCAN_TIMEOUT = 60_000;
 

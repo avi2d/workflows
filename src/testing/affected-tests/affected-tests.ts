@@ -1,7 +1,7 @@
 import { Console, Effect } from "effect";
 import { availableParallelism } from "node:os";
-import { optionalInput } from "../../lib/inputs.ts";
-import { commandPasses } from "../../lib/run.ts";
+import { optionalInput } from "../../../lib/inputs.ts";
+import { commandPasses } from "../../../lib/run.ts";
 
 export type Affected = { readonly always: readonly string[]; readonly files: readonly string[]; readonly screens: readonly string[] };
 
