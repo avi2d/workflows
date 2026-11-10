@@ -4,7 +4,7 @@ import { Effect, Exit } from "effect";
 import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writePack } from "../../../src/secrets-pack/write.ts";
+import { writePack } from "../../../../src/runner/secrets-pack/write.ts";
 
 const PACK = '{\n  "names": ["Example Person"],\n  "domains": ["example.test"]\n}';
 

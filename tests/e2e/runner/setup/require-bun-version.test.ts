@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../actions/setup/main.sh");
+const SCRIPT = join(import.meta.dir, "../../../../actions/setup/main.sh");
 
 let root = "";
 

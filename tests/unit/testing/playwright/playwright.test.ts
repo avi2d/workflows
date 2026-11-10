@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Exit } from "effect";
-import { browsersOf, cacheKeyLine } from "../../../src/playwright/playwright.ts";
+import { browsersOf, cacheKeyLine } from "../../../../src/testing/playwright/playwright.ts";
 
 describe("browsersOf", () => {
   test("browsers split other than on runs of whitespace fail", () => {

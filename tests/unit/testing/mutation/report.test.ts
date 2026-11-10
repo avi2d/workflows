@@ -12,7 +12,7 @@ import {
   scoreSummary,
   shardsOf,
   withoutStaleTests,
-} from "../../../src/mutation/report.ts";
+} from "../../../../src/testing/mutation/report.ts";
 
 const mutants = (...statuses: readonly string[]) => ({ mutants: statuses.map((status) => ({ status })) });
 

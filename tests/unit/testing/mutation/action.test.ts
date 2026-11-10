@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const ACTION = join(import.meta.dir, "../../../actions/mutation/action.yml");
+const ACTION = join(import.meta.dir, "../../../../actions/mutation/action.yml");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

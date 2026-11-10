@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../actions/heavy-slot/main.sh");
+const SCRIPT = join(import.meta.dir, "../../../../actions/heavy-slot/main.sh");
 
 function check(env: { ACTION: string; RUNNER_PREFIX: string; COMMAND: string }) {
   const result = Bun.spawnSync(["bash", SCRIPT], { env });

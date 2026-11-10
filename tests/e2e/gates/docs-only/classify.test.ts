@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../actions/docs-only/main.sh");
+const SCRIPT = join(import.meta.dir, "../../../../actions/docs-only/main.sh");
 
 let root = "";
 

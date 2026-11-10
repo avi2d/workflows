@@ -117,15 +117,21 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | Path | What it holds |
 | --- | --- |
 | `actions/<name>/` | the composite actions, one directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
-| `src/<name>/` | the TypeScript and shell files an action or a reusable workflow runs |
+| `src/<area>/<name>/` | the TypeScript and shell files an action or a reusable workflow runs, grouped by the areas below |
 | `src/lib/` | the code those files share |
 | `src/ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
-| `tests/` | the tests of the code under `src/`, in the same folders |
+| `tests/unit/`, `tests/e2e/` | the tests of the code under `src/`, in the same area and name folders |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
+
+| Area | What its code does |
+| --- | --- |
+| `runner` | prepares the job: setup, kit-bin, heavy-slot, secrets-pack |
+| `gates` | decides whether a change passes or which checks it needs: head-status, docs-only |
+| `testing` | runs tests: playwright, mutation, mutation-scope |
 
 ## Related topics
 

@@ -1,5 +1,5 @@
 import { Config, Console, Data, Effect, FileSystem, Path, Schema } from "effect";
-import { commandOutput } from "../lib/run.ts";
+import { commandOutput } from "../../lib/run.ts";
 import {
   advisoryComment,
   overCapNote,

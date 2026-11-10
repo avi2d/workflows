@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { baseBranchOf } from "../../../src/mutation-scope/mutation-scope.ts";
+import { baseBranchOf } from "../../../../src/testing/mutation-scope/mutation-scope.ts";
 
 test("a pull request into release that scopes against origin/main fails", () => {
   expect(baseBranchOf("release")).toBe("origin/release");
