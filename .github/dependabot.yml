@@ -5,6 +5,5 @@ updates:
     directories:
       - /
       - /actions/*
-      - /actions/*/*
     schedule:
       interval: weekly

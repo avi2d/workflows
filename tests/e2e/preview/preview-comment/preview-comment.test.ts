@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import { apiEnv, runAction, startStubApi, type StubApi } from "../../lib/stub-api.ts";
 
-const MAIN = join(import.meta.dir, "../../../../actions/preview/preview-comment/main.ts");
+const MAIN = join(import.meta.dir, "../../../../actions/preview-comment/main.ts");
 const MARKER = "<!-- site-preview -->";
 const BOT = "github-actions[bot]";
 const BODY = `${MARKER}\nPreview of \`0123456\`: https://feature.site.pages.dev/`;

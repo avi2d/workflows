@@ -97,8 +97,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `actions/<name>/` | the composite actions v2 callers already use, one directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
-| `actions/<area>/<name>/` | the composite actions added since, in the same shape, grouped by the areas below |
+| `actions/<name>/` | the composite actions, one flat directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
 | `src/<area>/<name>/` | the TypeScript and shell files an action or a reusable workflow runs, grouped by the areas below |
 | `src/lib/` | the code those files share |
 | `src/ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
@@ -114,8 +113,8 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `runner` | prepares the job: setup, kit-bin, heavy-slot, secrets-pack |
 | `gates` | decides whether a change passes: head-status, docs-only, require-success |
 | `testing` | runs tests: playwright, mutation, mutation-scope, affected-tests |
-| `pages` | stages and publishes a site: read-main-tip, pages-deploy, production-staged-commit, publish-site, read-staging-address |
-| `preview` | a branch preview: cloudflare-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove |
+| `pages` | stages and publishes a site: pages-main-tip, pages-deploy, pages-staged-commit, pages-publish, pages-staging-address |
+| `preview` | a branch preview: preview-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove |
 
 ## Related topics
 
