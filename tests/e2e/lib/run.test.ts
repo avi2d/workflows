@@ -16,3 +16,16 @@ test("a child left waiting on a stdin that never closes fails", () => {
   expect(exitCode).toBe(0);
   expect(performance.now() - started).toBeLessThan(4000);
 });
+
+const WRITES_PAST_PIPE_BUFFER = "head -c 200000 /dev/zero | tr '\\0' x >&2; echo out";
+
+test("a child's stderr held in an unread pipe, or kept out of the step log, fails", () => {
+  const program = `
+    import { Effect } from "effect";
+    import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map(({ stdout }) => stdout === "out\\n")));
+  `;
+  const { exitCode, stderr } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore", timeout: 10_000 });
+  expect(exitCode).toBe(0);
+  expect(stderr.length).toBe(200_000);
+});

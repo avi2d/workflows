@@ -55,9 +55,7 @@ jobs:
       - run: bun run test
       - name: lint the workflows
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
-        run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12 "$RUNNER_TEMP"
-          "$RUNNER_TEMP/actionlint" -color
+        run: bash src/ci/actionlint.sh
   setup:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -72,15 +70,11 @@ jobs:
       - name: a shallow checkout or a commit other than the asked one fails
         env:
           WANT: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          test "$(git rev-parse --is-shallow-repository)" = false
-          test "$(git rev-parse HEAD)" = "$WANT"
+        run: bun src/ci/setup-smoke.ts checkout
       - name: a Bun other than the one .bun-version names fails
-        run: test "$(bun --version)" = "$(cat .bun-version)"
+        run: bun src/ci/setup-smoke.ts bun-version
       - name: missing or relocked dependencies fail
-        run: |
-          test -x node_modules/.bin/checks-docs-only
-          git diff --exit-code
+        run: bun src/ci/setup-smoke.ts dependencies
   gitleaks-cache-fill:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -106,9 +100,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: a gitleaks the next job has to download again fails
-        run: |
-          find ~/.cache/avi2dg-checks/gitleaks -type f -name gitleaks
-          test -n "$(find ~/.cache/avi2dg-checks/gitleaks -type f -name gitleaks -perm -u+x)"
+        run: bun src/ci/gitleaks-cache-smoke.ts
   docs-only:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -122,17 +114,7 @@ jobs:
           fetch-depth: 0
       - id: commits
         name: commit a docs change, then a code change
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@users.noreply.github.com
-          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo smoke >> README.md
-          git commit -qam "docs: smoke"
-          echo "docs=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo smoke > smoke.txt
-          git add smoke.txt
-          git commit -qm "chore: smoke"
-          echo "code=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: bun src/ci/docs-only-smoke.ts commit
       - id: docs
         uses: ./actions/docs-only
         with:
@@ -152,11 +134,7 @@ jobs:
           DOCS: ${{ steps.docs.outputs.docs-only }}
           CODE: ${{ steps.code.outputs.docs-only }}
           NONE: ${{ steps.none.outputs.docs-only }}
-        run: |
-          echo "docs=$DOCS code=$CODE none=$NONE"
-          test "$DOCS" = true
-          test "$CODE" = false
-          test "$NONE" = false
+        run: bun src/ci/docs-only-smoke.ts verify
   head-status:
     # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
@@ -203,16 +181,7 @@ jobs:
         with:
           browsers: webkit
       - name: a webkit that cannot open a page fails
-        run: |
-          bun -e "
-            const { webkit } = require('playwright-core');
-            const browser = await webkit.launch();
-            const page = await browser.newPage();
-            await page.setContent('<title>smoke</title>');
-            const title = await page.title();
-            await browser.close();
-            if (title !== 'smoke') throw new Error('webkit read the title as ' + title);
-          "
+        run: bun src/ci/playwright-smoke.ts
   heavy-slot:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -221,14 +190,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: put a stand-in slot command on the PATH
-        run: |
-          mkdir -p "$RUNNER_TEMP/bin"
-          cat > "$RUNNER_TEMP/bin/heavy-slot-stub" <<'EOF'
-          #!/bin/sh
-          echo "$1" >> "$RUNNER_TEMP/heavy-slot.log"
-          EOF
-          chmod +x "$RUNNER_TEMP/bin/heavy-slot-stub"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+        run: bash src/ci/heavy-slot-smoke.sh stub
       - uses: ./actions/heavy-slot
         with:
           action: acquire
@@ -254,10 +216,7 @@ jobs:
       - name: a slot call on another runner or an unknown action that passes fails
         env:
           UNKNOWN: ${{ steps.unknown.outcome }}
-        run: |
-          cat "$RUNNER_TEMP/heavy-slot.log"
-          test "$(cat "$RUNNER_TEMP/heavy-slot.log")" = "$(printf 'acquire\nrelease')"
-          test "$UNKNOWN" = failure
+        run: bash src/ci/heavy-slot-smoke.sh verify
   kit-bin:
     runs-on: ubuntu-latest
     timeout-minutes: 10
