@@ -11,10 +11,6 @@ Released 2026-11-10.
 - **release:** add the reusable release pull request and publish workflows, `.github/workflows/release-pr.yml` and `.github/workflows/release.yml`, and the release-version action that matches the tag to the manifest version.
 - **actions:** add twelve site actions for staging, publishing and previews: pages-main-tip, pages-deploy, pages-staged-commit, pages-publish, pages-staging-address, preview-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove, affected-tests and require-success. Each sits in a flat `actions/<name>` folder.
 
-### Build
-
-- **deps:** the mutation runs use upload-artifact 7.0.2 and download-artifact 8.0.2.
-
 Every path a `v2.0.0` caller names still resolves, and the ten released actions keep their inputs and outputs. The `v2` tag moves to this release.
 
 ## 2.0.0
