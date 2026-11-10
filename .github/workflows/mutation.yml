@@ -41,15 +41,16 @@ concurrency:
   group: mutation-${{ inputs.mode }}-${{ github.event.pull_request.number || 'main' }}
   cancel-in-progress: true
 
+# Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
+env:
+  RUNNER_ENVIRONMENT: github-hosted
+
 jobs:
   baseline:
     if: inputs.mode == 'baseline'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
-      - name: Name the runner environment
-        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
@@ -63,22 +64,10 @@ jobs:
         run: bunx stryker run --incremental
       - name: Score the baseline
         if: always()
-        run: |
-          report=reports/mutation/mutation.json
-          {
-            echo "## mutation baseline"
-            echo
-            if [ -f "$report" ]; then
-              read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
-              if [ "$total" -gt 0 ]; then
-                echo "Detected $detected of $total mutants ($(( (100 * detected + total / 2) / total ))%)."
-              else
-                echo "Detected $detected of $total mutants."
-              fi
-            else
-              echo "No report was written."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: score
+          mode: baseline
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-baseline
@@ -94,9 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
-      - name: Name the runner environment
-        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # The head is what the run judges, and the scope diffs it against the base, so the checkout holds the whole history.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
         with:
@@ -113,41 +99,19 @@ jobs:
           base-ref: ${{ github.event.pull_request.base.ref }}
       - name: Report empty scope
         if: env.SCOPE == ''
-        run: |
-          echo "::notice::mutation: no source files changed, so neither the run nor the comparison starts"
+        run: 'echo "::notice::mutation: no source files changed, so neither the run nor the comparison starts"'
       - name: Count scoped mutants
         if: env.SCOPE != ''
-        env:
-          MUTANT_CAP: ${{ inputs['mutant-cap'] }}
-        run: |
-          if [ -f "$RUNNER_TEMP/baseline-full/mutation.json" ]; then
-            scoped=$(jq -r --arg scope "$SCOPE" '
-              ($scope | split(",")) as $globs
-              | [$globs[] | gsub("\\[\\*\\]"; "*") | gsub("\\[\\?\\]"; "?") | gsub("\\[\\(\\]"; "(") | gsub("\\[\\)\\]"; ")") | gsub("\\[\\{\\]"; "{") | gsub("\\[\\}\\]"; "}")] as $plain
-              | [$plain[] | gsub("\\[\\[\\]"; "[") | gsub("\\[\\]\\]"; "]")] as $files
-              | (.files | with_entries(select(.key as $key | $files | index($key)))) as $scoped
-              | [$scoped[] | .mutants | map(select(.static != true and .status != "Ignored" and .status != "NoCoverage")) | length] as $counts
-              | (if ($counts | length) == 0 then 1 else ((($counts | add) / ($counts | length)) | ceil) end) as $average
-              | (($counts | add // 0) + (($files | length) - ($scoped | length)) * $average)
-            ' "$RUNNER_TEMP/baseline-full/mutation.json")
-          else
-            scoped=$(echo "$SCOPE" | tr ',' '\n' | wc -l)
-          fi
-          echo "SCOPED_MUTANTS=$scoped" >> "$GITHUB_ENV"
-          if [ "$scoped" -gt "$MUTANT_CAP" ]; then
-            echo "OVER_CAP=true" >> "$GITHUB_ENV"
-          fi
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: count-scope
+          mutant-cap: ${{ inputs['mutant-cap'] }}
       - name: Note a scope over the cap
         if: env.OVER_CAP == 'true'
-        run: |
-          echo "::notice::mutation: $SCOPED_MUTANTS scoped mutants pass the ${{ inputs['mutant-cap'] }} mutant cap, so the run stops here"
-          {
-            echo "## mutation compare"
-            echo
-            echo "$SCOPED_MUTANTS scoped mutants pass the ${{ inputs['mutant-cap'] }} mutant cap, so the run stops here."
-            echo "Split the pull request and push again for a scoped run."
-          } > "$RUNNER_TEMP/comment.md"
-          echo "COMMENT=true" >> "$GITHUB_ENV"
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: over-cap
+          mutant-cap: ${{ inputs['mutant-cap'] }}
       - name: Restore the baseline state and report
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
         env:
@@ -156,63 +120,29 @@ jobs:
       # A test that reads a changed file counts as changed, so its stored results go before the run.
       - name: Drop stale tests from the restored state
         if: env.SCOPE != '' && env.OVER_CAP != 'true' && env.STALE_TESTS != ''
-        run: |
-          if [ -f reports/stryker-incremental.json ]; then
-            tmp="$(mktemp)"
-            jq --arg tests "$STALE_TESTS" '
-              ($tests | split(",")) as $drop
-              | .testFiles |= with_entries(select(.key as $key | $drop | index($key) | not))
-            ' reports/stryker-incremental.json > "$tmp" && mv "$tmp" reports/stryker-incremental.json
-          fi
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: drop-stale-tests
       - name: Run the scoped head
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
         run: bunx stryker run --incremental --mutate "$SCOPE"
       - name: Compare the head against the baseline
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        run: |
-          if [ -f "$RUNNER_TEMP/baseline/mutation.json" ]; then
-            checks-mutation-compare --advisory "$RUNNER_TEMP/baseline/mutation.json" reports/mutation/mutation.json | tee "$RUNNER_TEMP/compare.txt"
-            report=reports/mutation/mutation.json
-            read -r detected total < <(jq -r --arg scope "$SCOPE" '
-              ($scope | split(",")) as $globs
-              | [$globs[] | gsub("\\[\\*\\]"; "*") | gsub("\\[\\?\\]"; "?") | gsub("\\[\\(\\]"; "(") | gsub("\\[\\)\\]"; ")") | gsub("\\[\\{\\]"; "{") | gsub("\\[\\}\\]"; "}")] as $plain
-              | [$plain[] | gsub("\\[\\[\\]"; "[") | gsub("\\[\\]\\]"; "]")] as $files
-              | [.files | with_entries(select(.key as $key | $files | index($key))) | .[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
-            {
-              echo "## mutation compare"
-              echo
-              echo "Detected $detected of $total scoped mutants."
-              echo
-              echo '```'
-              cat "$RUNNER_TEMP/compare.txt"
-              echo '```'
-            } > "$RUNNER_TEMP/comment.md"
-            if [ "$(wc -c < "$RUNNER_TEMP/comment.md" | tr -d ' ')" -gt 60000 ]; then
-              head -c 59000 "$RUNNER_TEMP/compare.txt" | sed '$d' > "$RUNNER_TEMP/compare-head.txt"
-              {
-                echo "## mutation compare"
-                echo
-                echo "Detected $detected of $total scoped mutants."
-                echo
-                echo '```'
-                cat "$RUNNER_TEMP/compare-head.txt"
-                echo "Report cut: the full text is in the step log."
-                echo '```'
-              } > "$RUNNER_TEMP/comment.md"
-            fi
-            echo "COMMENT=true" >> "$GITHUB_ENV"
-          else
-            echo "::notice::mutation: no baseline report restores, so the comparison stops here"
-          fi
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: compare
       # A fork pull request runs with a read-only token, so filing a comment fails and the note goes to the summary instead.
       - name: File the advisory comment
         if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/comment.md"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/comment.md"
       - name: Write the note to the summary on a fork
         if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name != github.repository
-        run: cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: fork-summary
   refresh-plan:
     if: inputs.mode == 'refresh'
     runs-on: ubuntu-latest
@@ -220,9 +150,6 @@ jobs:
     outputs:
       shards: ${{ steps.shards.outputs.shards }}
     steps:
-      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
-      - name: Name the runner environment
-        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
@@ -234,13 +161,10 @@ jobs:
         run: checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
       - id: shards
         name: Split the tree into shards
-        run: |
-          if [ -f "$RUNNER_TEMP/last-full/mutation.json" ]; then
-            line=$(checks-mutation-scope --shards "${{ inputs.shards }}" "$RUNNER_TEMP/last-full/mutation.json" | grep '^SHARDS=')
-          else
-            line=$(checks-mutation-scope --shards "${{ inputs.shards }}" | grep '^SHARDS=')
-          fi
-          echo "shards=${line#SHARDS=}" >> "$GITHUB_OUTPUT"
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: shards
+          shards: ${{ inputs.shards }}
 
   refresh-shard:
     if: inputs.mode == 'refresh'
@@ -251,16 +175,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
-      - name: Name the runner environment
-        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
       - name: Run one shard
         env:
           # The preset skips static mutants and their timing run only in a refresh.
           CHECKS_MUTATION_MODE: refresh
-        run: bunx stryker run --mutate "${{ matrix.shard }}"
+          SHARD: ${{ matrix.shard }}
+        run: bunx stryker run --mutate "$SHARD"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-shard-${{ strategy.job-index }}
@@ -274,9 +196,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
-      - name: Name the runner environment
-        run: echo "RUNNER_ENVIRONMENT=github-hosted" >> "$GITHUB_ENV"
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
@@ -290,22 +209,10 @@ jobs:
         run: checks-mutation-merge reports/mutation/mutation.json shards/mutation-shard-*/mutation.json
       - name: Score the refresh
         if: always()
-        run: |
-          report=reports/mutation/mutation.json
-          {
-            echo "## mutation refresh"
-            echo
-            if [ -f "$report" ]; then
-              read -r detected total < <(jq -r '[.files[] | .mutants[]] | map(select(.status == "Killed" or .status == "Timeout" or .status == "Survived" or .status == "NoCoverage")) as $s | "\([$s[] | select(.status == "Killed" or .status == "Timeout")] | length) \($s | length)"' "$report")
-              if [ "$total" -gt 0 ]; then
-                echo "Detected $detected of $total mutants ($(( (100 * detected + total / 2) / total ))%)."
-              else
-                echo "Detected $detected of $total mutants."
-              fi
-            else
-              echo "No report was written."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        with:
+          part: score
+          mode: refresh
       - name: Slim the merged report
         run: checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -318,4 +225,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: checks-mutation-baseline --prune
-

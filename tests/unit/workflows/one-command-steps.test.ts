@@ -7,20 +7,7 @@ const SHELL_LOGIC = /[;|<>]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b|\bprintf\
 
 // Steps that held shell logic before the rule; the list only shrinks.
 const LEGACY = new Set<string>([
-  ".github/workflows/mutation.yml baseline Name the runner environment",
-  ".github/workflows/mutation.yml compare Name the runner environment",
-  ".github/workflows/mutation.yml compare Write the note to the summary on a fork",
-  ".github/workflows/mutation.yml refresh-plan Name the runner environment",
-  ".github/workflows/mutation.yml refresh-shard Name the runner environment",
-  ".github/workflows/mutation.yml refresh-merge Name the runner environment",
   ".github/workflows/runner.yml hosted-minutes started",
-  ".github/workflows/mutation.yml baseline Score the baseline",
-  ".github/workflows/mutation.yml compare Count scoped mutants",
-  ".github/workflows/mutation.yml compare Note a scope over the cap",
-  ".github/workflows/mutation.yml compare Drop stale tests from the restored state",
-  ".github/workflows/mutation.yml compare Compare the head against the baseline",
-  ".github/workflows/mutation.yml refresh-plan Split the tree into shards",
-  ".github/workflows/mutation.yml refresh-merge Score the refresh",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
