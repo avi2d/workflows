@@ -117,7 +117,7 @@ describe("release skeleton", () => {
   );
   test("a publish that hard-codes a build and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps[0] = { run: "bun run build" };
+    release.jobs.publish.steps[1] = { run: "bun run build" };
     expect(faults(goodPr, release)).toEqual(["publish hard-codes a build or a dirty check", "publish never runs the caller build command"]);
   });
   test("a publish that never runs the caller clean tree command and passes fails", () => {
