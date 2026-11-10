@@ -72,6 +72,7 @@ It then runs the caller publish command with `GH_TOKEN` set, when the caller set
 With `github-release` set, it then reads the version through [release-version](actions.md#release-version) and writes that version's `CHANGELOG.md` section with `checks-release-notes` from the checks kit.
 It creates the GitHub release for the tag, titled with the tag, with that section as its notes.
 A caller that leaves `github-release` unset runs no step after its publish command.
+A call with no publish command and no GitHub release fails instead of publishing nothing.
 The lint, typecheck and test commands default to empty, so a caller opts in only to what the tag itself must run.
 The build and the clean tree check default to the usual commands, and empty skips them.
 A caller whose release pull request already ran the full suite leaves `test-command` empty.

@@ -110,6 +110,9 @@ jobs:
         with:
           fetch-depth: 0
       # The shared copy cannot know which paths the caller's build writes, so it builds the verified tag again in place of carrying an artifact.
+      - name: require publish-command or github-release
+        if: inputs.publish-command == '' && !inputs.github-release
+        run: echo "publish-command is empty and github-release is false; set publish-command or github-release to publish the release" >&2 && exit 1
       - name: build the tag
         if: inputs.build-command != ''
         run: ${{ inputs.build-command }}

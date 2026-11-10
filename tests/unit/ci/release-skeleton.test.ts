@@ -36,7 +36,12 @@ const goodRelease = {
       "runs-on": PICK,
       needs: "verify",
       permissions: { contents: "write", "id-token": "write" },
-      steps: [{ run: "${{ inputs.build-command }}" }, { run: "${{ inputs.clean-tree-command }}" }, { run: "${{ inputs.publish-command }}" }],
+      steps: [
+        { if: "inputs.publish-command == '' && !inputs.github-release", name: "require publish-command or github-release", run: 'echo "publish-command is empty and github-release is false" >&2 && exit 1' },
+        { run: "${{ inputs.build-command }}" },
+        { run: "${{ inputs.clean-tree-command }}" },
+        { run: "${{ inputs.publish-command }}" },
+      ],
     },
   },
 };
@@ -120,9 +125,14 @@ describe("release skeleton", () => {
     release.jobs.publish = withoutStep(release.jobs.publish, "clean-tree-command");
     expect(faults(goodPr, release)).toEqual(["publish never runs the caller clean tree command"]);
   });
+  test("a publish with no guard against an empty publish and no GitHub release that passes fails", () => {
+    const release = structuredClone(goodRelease);
+    release.jobs.publish.steps = release.jobs.publish.steps.filter((step) => !String(step.if ?? "").includes("inputs.github-release"));
+    expect(faults(goodPr, release)).toEqual(["publish passes with no publish command and no GitHub release"]);
+  });
   test("a publish that never runs the caller publish command and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish = withoutStep(release.jobs.publish, "publish-command");
+    release.jobs.publish = withoutStep(release.jobs.publish, "inputs.publish-command");
     expect(faults(goodPr, release)).toEqual(["publish never runs the caller publish command"]);
   });
   test("a publish that runs a step after the caller publish command for every caller and passes fails", () => {

@@ -39,6 +39,17 @@ function runStep(name: string): number {
   return Bun.spawnSync(["bash", "-e", "-c", publishRun(name)], { cwd: scratch.at(), env }).exitCode;
 }
 
+test("a publish with no publish command and no GitHub release that passes fails", () => {
+  const result = Bun.spawnSync(["bash", "-e", "-c", publishRun("require publish-command or github-release")], {
+    cwd: scratch.at(),
+    env: { ...process.env, PATH: process.env["PATH"] ?? "" },
+    stderr: "pipe",
+  });
+  expect(result.exitCode).toBe(1);
+  const message = String(result.stderr);
+  expect(message.includes("publish-command") && message.includes("github-release")).toBe(true);
+});
+
 test("a GitHub release whose notes hold another version's section or the surrounding blank lines fails", () => {
   expect(runStep("write the release notes")).toBe(0);
   expect(scratch.read("temp/release-notes.md")).toBe("Released 2026-11-10.\n\n- **release:** the change");
