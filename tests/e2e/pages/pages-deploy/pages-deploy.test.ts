@@ -4,7 +4,7 @@ import { useScratch } from "../../lib/scratch.ts";
 import { apiEnv, runAction, startStubApi, type StubApi } from "../../lib/stub-api.ts";
 import { recordedCalls, stubBin } from "../../lib/stub-bin.ts";
 
-const MAIN = join(import.meta.dir, "../../../../actions/pages/pages-deploy/main.ts");
+const MAIN = join(import.meta.dir, "../../../../actions/pages-deploy/main.ts");
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 
 const scratch = useScratch("pages-deploy");

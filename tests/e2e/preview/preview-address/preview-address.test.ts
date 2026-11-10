@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { useScratch } from "../../lib/scratch.ts";
 import { actionMain, apiEnv, runAction, startStubApi, type StubApi } from "../../lib/stub-api.ts";
 
-const MAIN = actionMain("preview/preview-address");
+const MAIN = actionMain("preview-address");
 const PROJECT_PATH = "/cf/accounts/acct/pages/projects/site-preview";
 
 const scratch = useScratch("preview-address");

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { useScratch } from "../../lib/scratch.ts";
 import { actionMain, apiEnv, runAction, startStubApi, type StubApi } from "../../lib/stub-api.ts";
 
-const MAIN = actionMain("preview/preview-remove");
+const MAIN = actionMain("preview-remove");
 const DEPLOYMENTS = "/cf/accounts/acct/pages/projects/site-preview/deployments";
 const MARKER = "<!-- site-preview -->";
 const BOT = "github-actions[bot]";

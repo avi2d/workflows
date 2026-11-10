@@ -1,0 +1,47 @@
+name: pages-staged-commit
+description: Write the commit a Cloudflare Pages project serves in production as the step output sha, after checking it is on the branch and a green run of the staging workflow deployed it.
+inputs:
+  project:
+    description: The Cloudflare Pages project that stages the site.
+    required: true
+  api-token:
+    description: The Cloudflare API token, passed from a secret the caller names. Empty fails the step.
+    required: true
+  account-id:
+    description: The Cloudflare account ID, passed from a secret the caller names. Empty fails the step.
+    required: true
+  deploy-key:
+    description: The deploy key the later publish pushes with, checked here so a run without it fails before its tests. Empty fails the step.
+    required: true
+  branch:
+    description: The branch the served commit must be on.
+    default: main
+  workflow:
+    description: The workflow file whose green run must have deployed the commit.
+    default: pages.yml
+  token:
+    description: The token that reads the repository's commits and workflow runs. It needs actions read.
+    default: ${{ github.token }}
+outputs:
+  sha:
+    description: The full SHA of the commit the project serves.
+    value: ${{ steps.staged.outputs.sha }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: staged
+      name: read the commit the Pages project serves
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        DEPLOY_KEY: ${{ inputs.deploy-key }}
+        GH_TOKEN: ${{ inputs.token }}
+        PROJECT: ${{ inputs.project }}
+        BRANCH: ${{ inputs.branch }}
+        WORKFLOW: ${{ inputs.workflow }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

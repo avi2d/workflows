@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../../actions/gates/require-success/main.sh");
+const SCRIPT = join(import.meta.dir, "../../../../actions/require-success/main.sh");
 
 function gate(results: string) {
   const result = Bun.spawnSync(["bash", SCRIPT], { env: { RESULTS: results } });
