@@ -4,7 +4,7 @@ import { useScratch } from "../../lib/scratch.ts";
 import { runAction } from "../../lib/stub-api.ts";
 import { recordedCalls, stubBin } from "../../lib/stub-bin.ts";
 
-const MAIN = join(import.meta.dir, "../../../../actions/testing/affected-tests/main.ts");
+const MAIN = join(import.meta.dir, "../../../../actions/affected-tests/main.ts");
 const WORKERS = `--parallel=${Bun.spawnSync(["nproc"]).stdout.toString().trim()}`;
 
 const scratch = useScratch("affected-tests");

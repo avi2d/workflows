@@ -1,0 +1,27 @@
+name: pages-staging-address
+description: Write the staging address a site module exports as the step output address.
+inputs:
+  module:
+    description: The site's module that exports the address, relative to the working directory.
+    required: true
+  export:
+    description: The dotted path of the address among the module's exports.
+    required: true
+outputs:
+  address:
+    description: The https address the module exports.
+    value: ${{ steps.address.outputs.address }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: address
+      name: read the staging address
+      shell: bash
+      env:
+        MODULE: ${{ inputs.module }}
+        EXPORT: ${{ inputs.export }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

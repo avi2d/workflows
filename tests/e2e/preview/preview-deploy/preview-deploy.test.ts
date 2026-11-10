@@ -4,7 +4,7 @@ import { useScratch } from "../../lib/scratch.ts";
 import { runAction } from "../../lib/stub-api.ts";
 import { stubBin } from "../../lib/stub-bin.ts";
 
-const MAIN = join(import.meta.dir, "../../../../actions/preview/preview-deploy/main.ts");
+const MAIN = join(import.meta.dir, "../../../../actions/preview-deploy/main.ts");
 const ORIGIN = "https://feature.site-preview.pages.dev";
 const DETAIL = (alias: string) => JSON.stringify({ type: "pages-deploy-detailed", alias });
 
