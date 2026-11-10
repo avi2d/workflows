@@ -1,0 +1,14 @@
+name: require-success
+description: Fail unless each named result, such as a needed job's result, is success.
+inputs:
+  results:
+    description: The results to check, as name=result pairs separated by whitespace, such as e2e= followed by the e2e job's result.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: require every result to be success
+      shell: bash
+      env:
+        RESULTS: ${{ inputs.results }}
+      run: bash "$GITHUB_ACTION_PATH/main.sh"

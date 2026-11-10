@@ -1,0 +1,47 @@
+name: preview-remove
+description: Delete every preview deployment of a branch from a Cloudflare Pages project and say so in the pull request's preview comment.
+inputs:
+  project:
+    description: The Cloudflare Pages project the previews go to.
+    required: true
+  branch:
+    description: The branch whose deployments go.
+    default: ${{ github.event.pull_request.head.ref }}
+  api-token:
+    description: The Cloudflare API token, passed from a secret the caller names. Empty fails the step.
+    required: true
+  account-id:
+    description: The Cloudflare account ID, passed from a secret the caller names. Empty fails the step.
+    required: true
+  marker:
+    description: The hidden line the preview comment starts with, such as an HTML comment naming the site.
+    required: true
+  token:
+    description: The token that reads and writes the pull request's comments. It needs pull-requests write.
+    default: ${{ github.token }}
+  pull-request:
+    description: The pull request number.
+    default: ${{ github.event.pull_request.number }}
+  author:
+    description: The login of the account the token writes as, whose comment alone is edited.
+    default: github-actions[bot]
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: remove
+      name: delete the branch's deployments
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        GH_TOKEN: ${{ inputs.token }}
+        PULL_REQUEST: ${{ inputs.pull-request }}
+        MARKER: ${{ inputs.marker }}
+        AUTHOR: ${{ inputs.author }}
+        PROJECT: ${{ inputs.project }}
+        BRANCH: ${{ inputs.branch }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

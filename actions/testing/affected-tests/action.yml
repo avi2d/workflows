@@ -1,0 +1,26 @@
+name: affected-tests
+description: Run the always-run tests and the affected test files with bun test, randomized on one worker per core, then the affected screens with the path ignores cleared.
+inputs:
+  always:
+    description: The test paths every run holds, separated by whitespace.
+    default: ./tests/unit
+  files:
+    description: The affected test files, separated by whitespace.
+    default: ""
+  screens:
+    description: The affected screen test files under an ignored path, separated by whitespace. Empty skips the screen run.
+    default: ""
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: run the affected tests
+      shell: bash
+      env:
+        ALWAYS: ${{ inputs.always }}
+        FILES: ${{ inputs.files }}
+        SCREENS: ${{ inputs.screens }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

@@ -1,0 +1,59 @@
+name: pages-deploy
+description: Deploy a built folder to a Cloudflare Pages project with wrangler, after checking the token and account ID are set and, when given, that the project serves the address the build points to.
+inputs:
+  project:
+    description: The Cloudflare Pages project.
+    required: true
+  api-token:
+    description: The Cloudflare API token, passed from a secret the caller names. Empty fails the step.
+    required: true
+  account-id:
+    description: The Cloudflare account ID, passed from a secret the caller names. Empty fails the step.
+    required: true
+  branch:
+    description: The Pages branch the deployment goes to.
+    default: main
+  commit-hash:
+    description: The commit the deployment records.
+    default: ${{ github.sha }}
+  commit-message:
+    description: The message the deployment records, ended with the first 7 characters of commit-hash. Empty leaves wrangler's own.
+    default: ""
+  address:
+    description: The address the build points to, which must be https://<project host>/. Empty skips the check.
+    default: ""
+  directory:
+    description: The built folder to deploy.
+    default: dist
+  commit-dirty:
+    description: Whether to tell wrangler the commit may differ from the working tree, true or false.
+    default: "false"
+  wrangler-version:
+    description: The wrangler release bunx runs.
+    default: 4.156.1
+runs:
+  using: composite
+  steps:
+    # Wrangler needs Node 22 or later, and bunx runs it under whatever node the runner has.
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 24
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: deploy the built pages
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        WRANGLER_SEND_METRICS: "false"
+        WRANGLER_VERSION: ${{ inputs.wrangler-version }}
+        DIRECTORY: ${{ inputs.directory }}
+        PROJECT: ${{ inputs.project }}
+        BRANCH: ${{ inputs.branch }}
+        COMMIT_HASH: ${{ inputs.commit-hash }}
+        COMMIT_DIRTY: ${{ inputs.commit-dirty }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        ADDRESS: ${{ inputs.address }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"
