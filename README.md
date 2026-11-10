@@ -106,7 +106,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
-| `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
+| `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
 | Area | What its code does |

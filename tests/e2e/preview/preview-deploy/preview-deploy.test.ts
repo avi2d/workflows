@@ -41,9 +41,9 @@ test("a preview Cloudflare serves at the origin the build points to that fails p
 });
 
 test("a preview served at another alias than the build points to that passes fails", async () => {
-  const ran = await deploy(DETAIL("https://feature.site-preview-4xb.pages.dev"));
+  const ran = await deploy(DETAIL("https://feature.site-preview-abc.pages.dev"));
   expect(ran.exitCode).toBe(1);
-  expect(ran.stdout).toContain(`::error::Cloudflare serves the branch at 'https://feature.site-preview-4xb.pages.dev', not at the ${ORIGIN} the build points to`);
+  expect(ran.stdout).toContain(`::error::Cloudflare serves the branch at 'https://feature.site-preview-abc.pages.dev', not at the ${ORIGIN} the build points to`);
 });
 
 test("an earlier deploy's alias left in the output file answering for this one passes", async () => {
