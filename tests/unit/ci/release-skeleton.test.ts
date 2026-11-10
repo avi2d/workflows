@@ -4,6 +4,7 @@ import { faults } from "../../../src/ci/release-skeleton.ts";
 const goodPr = {
   jobs: {
     tag: {
+      "runs-on": "ubuntu-latest",
       if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')",
       steps: [{ run: "echo tag" }],
     },
@@ -13,9 +14,11 @@ const goodPr = {
 const goodRelease = {
   jobs: {
     preflight: {
+      "runs-on": "ubuntu-latest",
       steps: [{ run: "echo preflight" }],
     },
     publish: {
+      "runs-on": "ubuntu-latest",
       needs: "preflight",
       steps: [
         { run: 'test "$GITHUB_REF_TYPE" = tag' },
@@ -72,5 +75,17 @@ describe("release skeleton", () => {
     const release = structuredClone(goodRelease);
     release.jobs.publish.steps.push({ run: "echo done" });
     expect(faults(goodPr, release)).toContain("publish does not end in the caller publish command");
+  });
+  test.each([["self-hosted"], ["${{ inputs.runs-on }}"], [["self-hosted", "linux"]]])("a release job on %p that passes fails", (runsOn) => {
+    const release = structuredClone(goodRelease);
+    const publish: Record<string, unknown> = release.jobs.publish;
+    publish["runs-on"] = runsOn;
+    expect(faults(goodPr, release)).toEqual(["the publish job runs off the hosted runner"]);
+  });
+  test("a release pull request job without a runner that passes fails", () => {
+    const pr = structuredClone(goodPr);
+    const tag: Record<string, unknown> = pr.jobs.tag;
+    delete tag["runs-on"];
+    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the hosted runner"]);
   });
 });

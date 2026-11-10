@@ -22,8 +22,16 @@ function runs(job: Record<string, unknown>): string[] {
   return steps.map((step) => (isRecord(step) ? String(step["run"] ?? "") : ""));
 }
 
+// The shared copy cannot tell a public caller from a private one, and a public caller's jobs must not reach a self-hosted runner.
+export function offHostedJobs(document: unknown): string[] {
+  const jobs = isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
+  return Object.entries(jobs)
+    .filter(([, body]) => !isRecord(body) || body["runs-on"] !== "ubuntu-latest")
+    .map(([name]) => name);
+}
+
 export function faults(prDocument: unknown, releaseDocument: unknown): string[] {
-  const found: string[] = [];
+  const found = [...offHostedJobs(prDocument), ...offHostedJobs(releaseDocument)].map((name) => `the ${name} job runs off the hosted runner`);
   const tag = job(prDocument, "tag");
   if (tag === undefined) found.push("release-pr has no tag job");
   else if (!String(tag["if"] ?? "").includes("chore: release ")) found.push("tag runs off more than a release commit");
