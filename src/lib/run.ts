@@ -1,7 +1,6 @@
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { Console, Effect, Exit, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
-import { writeSync } from "node:fs";
 
 // Runs a check as a CI step: a false result or a failure exits 1, and a failure prints as an error annotation.
 export function runCheck<E extends { readonly message: string }>(check: Effect.Effect<boolean, E, BunServices.BunServices>): void {
@@ -14,15 +13,20 @@ export function runCheck<E extends { readonly message: string }>(check: Effect.E
   });
 }
 
-function writeAll(fd: number, chunk: Uint8Array): void {
-  let offset = 0;
-  while (offset < chunk.length) {
-    offset += writeSync(fd, chunk.subarray(offset));
-  }
-}
+const writeChunk = (fd: number, chunk: Uint8Array) =>
+  Effect.promise(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const writer = fd === 1 ? process.stdout : process.stderr;
+        writer.write(chunk, (error?: Error | null) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      }),
+  );
 
 const forwardTo = (fd: number) => (stream: Stream.Stream<Uint8Array>) =>
-  Stream.runForEach(stream, (chunk) => Effect.sync(() => writeAll(fd, chunk)));
+  Stream.runForEach(stream, (chunk) => writeChunk(fd, chunk));
 
 export const commandPasses = Effect.fn("commandPasses")(
   function* (program: string, args: readonly string[], env: Readonly<Record<string, string>> = {}) {
