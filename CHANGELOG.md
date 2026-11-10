@@ -2,6 +2,72 @@
 
 Every release of `workflows`, newest first.
 
+## 2.1.0
+
+Released 2026-11-10.
+
+### Features
+
+- **release:** add the reusable release pull request and publish workflows, `.github/workflows/release-pr.yml` and `.github/workflows/release.yml`, and the release-version action that matches the tag to the manifest version.
+- **actions:** add twelve site actions for staging, publishing and previews: pages-main-tip, pages-deploy, pages-staged-commit, pages-publish, pages-staging-address, preview-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove, affected-tests and require-success. Each sits in a flat `actions/<name>` folder.
+
+### Build
+
+- **deps:** the mutation runs use upload-artifact 7.0.2 and download-artifact 8.0.2.
+
+Every path a `v2.0.0` caller names still resolves, and the ten released actions keep their inputs and outputs. The `v2` tag moves to this release.
+
+## 2.0.0
+
+Released 2026-11-10.
+
+### Breaking changes
+
+- **actions:** move the composite actions from `<name>` at the repository root to `actions/<name>`, so callers write `avi2d/workflows/actions/<name>@v2`. The `v1` tags keep the root folders.
+
+### Features
+
+- **mutation:** add the reusable mutation runs in `.github/workflows/mutation.yml`, and the mutation and mutation-scope actions they run.
+- **kit-bin:** share the kit command resolver, and scope compare runs by the pull request base.
+- **actions:** give head-status a `head-sha` input, and add the secrets-pack action.
+
+### Fixes
+
+- **mutation:** count only scoped files in the compare count, cap the advisory comment under the GitHub body limit, and expose the shards output to the caller.
+
+## 1.2.1
+
+Released 2026-11-08.
+
+### Fixes
+
+- **advisories:** run the kit from source when the caller is the kit.
+
+## 1.2.0
+
+Released 2026-11-08.
+
+### Features
+
+- **advisories:** add the reusable weekly advisory scan in `.github/workflows/advisories.yml`.
+- **setup:** cache the gitleaks the kit pins across CI runs.
+
+## 1.1.2
+
+Released 2026-11-07.
+
+### Fixes
+
+- **runner:** skip the hosted probe job when the caller sets `CI_RUNS_ON`, so the pick runs on the caller's own runner and spends no hosted minute.
+
+## 1.1.1
+
+Released 2026-11-06.
+
+### Fixes
+
+- **playwright:** stop install and install-deps after 3 minutes per try and retry up to 3 times, so a stalled download no longer holds a job until the runner limit. The commitlint status read retries too.
+
 ## 1.1.0
 
 Released 2026-11-06.
