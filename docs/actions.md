@@ -161,6 +161,20 @@ A caller whose secret may be unset guards the call with an `if:`.
 | --- | --- | --- |
 | `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
 
+## release-version
+
+Fails unless the tag is `v` followed by the version the manifest holds, and writes that version as the `version` output.
+The release publish run calls it on the tag before anything publishes.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `package-path` | `./package.json` | the manifest holding the released version, relative to the working directory |
+| `tag` | the ref the run started on | the tag the version must match |
+
+| Output | Value |
+| --- | --- |
+| `version` | the version the manifest holds, without the `v` |
+
 ## The site actions
 
 The site actions stage, publish and preview a static site on Cloudflare Pages and GitHub Pages.

@@ -1,7 +1,7 @@
 # workflows
 
 Shared GitHub Actions plumbing for avi2d repositories.
-It holds composite actions that run inside the caller's own job and reusable workflows that pick the runner, scan for advisories and run mutation.
+It holds composite actions that run inside the caller's job, and reusable workflows that pick the runner, scan for advisories, run mutation and release.
 The repository is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
 A private caller passes its settings in as inputs, as secrets it names, or through its repository variables.
 
@@ -59,26 +59,13 @@ Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the j
 A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
 [The runner pick](docs/runner.md) says how it decides and what it costs.
 
+## Release on demand
+
+A caller releases on demand through two reusable workflows, as [The release runs](docs/release.md) shows.
+
 ## Bump the pin with Dependabot
 
-To have Dependabot move the pin to each new tag:
-
-1. Add `.github/dependabot.yml` to the caller:
-
-   ```yaml
-   version: 2
-   updates:
-     - package-ecosystem: github-actions
-       directory: /
-       schedule:
-         interval: weekly
-   ```
-
-1. Merge each pull request Dependabot opens once its CI passes.
-
-Dependabot reads each `owner/repo@ref` in the workflows and, for a SHA pin, moves the SHA and the trailing tag comment to the newest tag.
-It leaves `./` references alone.
-The same file bumps every other action the caller pins, such as `actions/checkout`.
+[Bump the pin with Dependabot](docs/dependabot.md) shows the caller's config.
 
 ## What a private caller supplies
 
@@ -104,6 +91,8 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
+| `.github/workflows/release-pr.yml` | the reusable release pull request, plan on dispatch and tag on merge |
+| `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
@@ -113,4 +102,6 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 - [The runner pick](docs/runner.md)
 - [The advisory scan](docs/advisories.md)
 - [The mutation runs](docs/mutation.md)
+- [The release runs](docs/release.md)
+- [Bump the pin with Dependabot](docs/dependabot.md)
 - [Changelog](CHANGELOG.md)
