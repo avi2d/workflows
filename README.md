@@ -1,9 +1,9 @@
 # workflows
 
-Shared GitHub Actions plumbing for the avi2d repositories.
+Shared GitHub Actions plumbing for avi2d repositories.
 It holds composite actions that run inside the caller's own job and reusable workflows that pick the runner, scan for advisories and run mutation.
 The repository is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
-A private caller passes its own settings in as inputs, as secrets it names, or through its own repository variables.
+A private caller passes its settings in as inputs, as secrets it names, or through its repository variables.
 
 ## Before you begin
 

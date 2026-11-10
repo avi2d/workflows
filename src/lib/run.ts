@@ -1,5 +1,6 @@
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { Console, Effect, Exit, Stream } from "effect";
+import type { PlatformError } from "effect/PlatformError";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 // Runs a check as a CI step: a false result or a failure exits 1, and a failure prints as an error annotation.
@@ -24,7 +25,7 @@ const writeChunk = (writer: NodeJS.WritableStream, chunk: Uint8Array) =>
       }),
   );
 
-const forwardTo = (writer: NodeJS.WritableStream) => (stream: Stream.Stream<Uint8Array>) =>
+const forwardTo = (writer: NodeJS.WritableStream) => (stream: Stream.Stream<Uint8Array, PlatformError>) =>
   Stream.runForEach(stream, (chunk) => writeChunk(writer, chunk));
 
 export const commandPasses = Effect.fn("commandPasses")(
