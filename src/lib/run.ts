@@ -46,7 +46,7 @@ export const commandOutput = Effect.fn("commandOutput")(
   function* (program: string, args: readonly string[]) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdin: "inherit" }));
-    const [stdout, exitCode] = yield* Effect.all(
+    const [stdout, , exitCode] = yield* Effect.all(
       [handle.stdout.pipe(Stream.decodeText(), Stream.mkString), forwardTo(process.stderr)(handle.stderr), handle.exitCode],
       { concurrency: "unbounded" },
     );

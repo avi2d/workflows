@@ -23,7 +23,7 @@ test("a child's stderr held in an unread pipe, or kept out of the step log, fail
   const program = `
     import { Effect } from "effect";
     import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
-    runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map(({ stdout }) => stdout === "out\\n")));
+    runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map((result) => result.stdout === "out\\n" && result.passed)));
   `;
   const child = Bun.spawn(
     ["bash", "-c", 'bun -e "$PROG" 2>&1 >/dev/null | { sleep 2; wc -c; }; exit ${PIPESTATUS[0]}'],
@@ -33,3 +33,13 @@ test("a child's stderr held in an unread pipe, or kept out of the step log, fail
   expect(exitCode).toBe(0);
   expect(Number(output.trim())).toBe(200_000);
 }, 15_000);
+
+test("a failing child read as passed fails", () => {
+  const program = `
+    import { Effect } from "effect";
+    import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandOutput("bash", ["-c", "exit 3"]).pipe(Effect.map(({ passed }) => passed === false)));
+  `;
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
+  expect(exitCode).toBe(0);
+});
