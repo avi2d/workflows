@@ -68,7 +68,7 @@ jobs:
         with:
           part: score
           mode: baseline
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-baseline
           path: reports/
@@ -183,10 +183,15 @@ jobs:
           CHECKS_MUTATION_MODE: refresh
           SHARD: ${{ matrix.shard }}
         run: bunx stryker run --mutate "$SHARD"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      # A lone shard's artifact downloads with no folder of its own, so only the file's name can tell the reports apart.
+      - name: Name the report after its shard
+        env:
+          INDEX: ${{ strategy.job-index }}
+        run: mv reports/mutation/mutation.json "reports/mutation/shard-$INDEX.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-shard-${{ strategy.job-index }}
-          path: reports/mutation/mutation.json
+          path: reports/mutation/shard-${{ strategy.job-index }}.json
           retention-days: 1
           if-no-files-found: error
 
@@ -201,12 +206,13 @@ jobs:
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
         with:
           commands: checks-mutation-baseline checks-mutation-merge
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: mutation-shard-*
           path: shards
+          merge-multiple: true
       - name: Merge the shard reports
-        run: checks-mutation-merge reports/mutation/mutation.json shards/mutation-shard-*/mutation.json
+        run: checks-mutation-merge reports/mutation/mutation.json shards/shard-*.json
       - name: Score the refresh
         if: always()
         uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
@@ -215,7 +221,7 @@ jobs:
           mode: refresh
       - name: Slim the merged report
         run: checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-baseline-full
           path: ${{ runner.temp }}/full/
