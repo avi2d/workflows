@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { tagFor } from "../../../../src/gates/release-version/release-version.ts";
+import { tagFor } from "../../../../actions/release-version/release-version.ts";
 
 test("a version tagged without the v, or with the version changed, fails", () => {
   expect(tagFor("1.2.3")).toBe("v1.2.3");
