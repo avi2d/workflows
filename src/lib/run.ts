@@ -23,9 +23,9 @@ export const commandPasses = Effect.fn("commandPasses")(
 );
 
 export const commandOutput = Effect.fn("commandOutput")(
-  function* (program: string, args: readonly string[]) {
+  function* (program: string, args: readonly string[], env: Readonly<Record<string, string>> = {}) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { extendEnv: true, stdin: "inherit", stderr: "inherit" }));
+    const handle = yield* spawner.spawn(ChildProcess.make(program, args, { env, extendEnv: true, stdin: "inherit", stderr: "inherit" }));
     const [stdout, exitCode] = yield* Effect.all([handle.stdout.pipe(Stream.decodeText(), Stream.mkString), handle.exitCode], {
       concurrency: "unbounded",
     });

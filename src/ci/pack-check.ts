@@ -25,8 +25,11 @@ export function packProblems({ exported, runnerTemp, pack, contents, scan }: Wri
   ];
 }
 
+// The kit skips the pack on a run Dependabot starts, taking it for a secret GitHub withholds, but this job builds its pack.
+const WITHOUT_THE_EVENT = { GITHUB_EVENT_PATH: "" };
+
 const secretsScan = Effect.gen(function* () {
-  const { stdout, passed } = yield* commandOutput("bunx", ["checks-secrets", "HEAD"]);
+  const { stdout, passed } = yield* commandOutput("bunx", ["checks-secrets", "HEAD"], WITHOUT_THE_EVENT);
   yield* Console.log(stdout.trimEnd());
   if (!passed) return yield* new PackUnchecked({ message: "checks-secrets failed" });
   return stdout;
