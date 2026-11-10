@@ -39,9 +39,13 @@ on:
         type: string
         default: ""
       publish-command:
-        description: The command that publishes the tag.
+        description: The command that publishes the tag, empty to skip.
         type: string
-        required: true
+        default: ""
+      github-release:
+        description: Whether to create the GitHub release for the tag after the publish command, with the CHANGELOG.md section of its version as the notes.
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -89,7 +93,7 @@ jobs:
         if: inputs.test-command != ''
         run: ${{ inputs.test-command }}
       - name: tag matches package version
-        uses: avi2d/workflows/actions/release-version@a1736593b253c3b6566c07241d38b2552b38ac22
+        uses: avi2d/workflows/actions/release-version@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
         with:
           package-path: ${{ inputs.package-path }}
   # Only this job holds the publish token, so no lint, test or caller check runs beside it.
@@ -118,6 +122,27 @@ jobs:
           node-version: ${{ inputs.node-version }}
           registry-url: https://registry.npmjs.org
       - name: publish the release
+        if: inputs.publish-command != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: ${{ inputs.publish-command }}
+      - id: version
+        name: read the released version for the notes
+        if: inputs.github-release
+        uses: avi2d/workflows/actions/release-version@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
+        with:
+          package-path: ${{ inputs.package-path }}
+      - if: inputs.github-release
+        uses: avi2d/workflows/actions/kit-bin@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
+        with:
+          commands: checks-release-notes
+      - name: write the release notes
+        if: inputs.github-release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: checks-release-notes "$VERSION" "$RUNNER_TEMP/release-notes.md"
+      - name: create the GitHub release
+        if: inputs.github-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"

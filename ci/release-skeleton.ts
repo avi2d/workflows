@@ -30,6 +30,13 @@ function uses(job: Record<string, unknown>): string[] {
   return steps.flatMap((step) => (isRecord(step) && typeof step["uses"] === "string" ? [step["uses"]] : []));
 }
 
+// A step after the publish command that runs for every caller changes the release of a caller that never opted in.
+function ungatedAfterPublish(publish: Record<string, unknown>): boolean {
+  const steps = Array.isArray(publish["steps"]) ? publish["steps"] : [];
+  const at = runs(publish).findIndex((run) => run.includes("publish-command"));
+  return steps.slice(at + 1).some((step) => !isRecord(step) || !String(step["if"] ?? "").includes("inputs.github-release"));
+}
+
 function holdsPublishToken(job: Record<string, unknown>): boolean {
   const permissions = job["permissions"];
   return permissions === "write-all" || (isRecord(permissions) && permissions["id-token"] === "write");
@@ -58,7 +65,8 @@ function publishFaults(publish: Record<string, unknown>): string[] {
   for (const check of ["lint-command", "typecheck-command", "test-command", "tree-guard-command", "preflight-command"]) {
     if (steps.some((run) => run.includes(check))) found.push(`publish runs the caller ${check} beside the publish token`);
   }
-  if (!steps[steps.length - 1]?.includes("publish-command")) found.push("publish does not end in the caller publish command");
+  if (!steps.some((run) => run.includes("publish-command"))) found.push("publish never runs the caller publish command");
+  else if (ungatedAfterPublish(publish)) found.push("publish runs a step after the caller publish command that the GitHub release does not gate");
   return found;
 }
 
