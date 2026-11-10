@@ -7,16 +7,6 @@ const SHELL_LOGIC = /[;|<>]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b|\bprintf\
 
 // Steps that held shell logic before the rule; the list only shrinks.
 const LEGACY = new Set<string>([
-  ".github/workflows/ci.yml static lint the workflows",
-  ".github/workflows/ci.yml setup a shallow checkout or a commit other than the asked one fails",
-  ".github/workflows/ci.yml setup a Bun other than the one .bun-version names fails",
-  ".github/workflows/ci.yml setup missing or relocked dependencies fail",
-  ".github/workflows/ci.yml gitleaks-cache a gitleaks the next job has to download again fails",
-  ".github/workflows/ci.yml docs-only commit a docs change, then a code change",
-  ".github/workflows/ci.yml docs-only a code change read as docs-only or a README change read as code fails",
-  ".github/workflows/ci.yml playwright a webkit that cannot open a page fails",
-  ".github/workflows/ci.yml heavy-slot put a stand-in slot command on the PATH",
-  ".github/workflows/ci.yml heavy-slot a slot call on another runner or an unknown action that passes fails",
   ".github/workflows/runner.yml hosted-minutes started",
 ]);
 

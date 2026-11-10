@@ -20,6 +20,12 @@ describe("stateOf", () => {
   });
 });
 
+describe("a cancelled job", () => {
+  test("a cancelled job posted as anything but a failure status fails", () => {
+    expect(statusArgs({ ...STATUS, state: stateOf("cancelled") })).toContain("state=failure");
+  });
+});
+
 describe("statusArgs", () => {
   test("a status posted anywhere but the commit statuses endpoint, or with an empty description field, fails", () => {
     expect(statusArgs(STATUS)).toEqual([
