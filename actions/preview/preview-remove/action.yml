@@ -32,8 +32,7 @@ runs:
     - name: install the script's own dependencies
       shell: bash
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
-    - id: remove
-      name: delete the branch's deployments
+    - name: delete the branch's deployments
       shell: bash
       env:
         CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
