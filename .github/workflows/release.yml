@@ -47,7 +47,7 @@ permissions:
 jobs:
   preflight:
     if: inputs.preflight-command != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
@@ -59,7 +59,7 @@ jobs:
   verify:
     needs: preflight
     if: ${{ !cancelled() && (needs.preflight.result == 'success' || needs.preflight.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - name: ref is a tag
@@ -95,7 +95,7 @@ jobs:
   # Only this job holds the publish token, so no lint, test or caller check runs beside it.
   publish:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
       contents: write

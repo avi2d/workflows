@@ -87,12 +87,21 @@ The publish run takes these inputs.
 - A tree guard command once the caller adopts one, which only checks carries today.
 - A calling job that grants `contents: write`, `pull-requests: write` and `actions: write` to the release pull request call.
 - A calling job that grants `contents: write` and `id-token: write` to the publish call.
-- Nothing for runners: the shared jobs run on `ubuntu-latest`, so a private caller adopts the same file unchanged and spends a few hosted minutes per release.
+- Its `CI_RUNS_ON` repository variable when its releases run on its own runner, since every shared job runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
+  A caller that sets no `CI_RUNS_ON` runs every release job on `ubuntu-latest`.
+
+## Runners and fork pull requests
+
+A fork pull request never starts these jobs in a caller, because the caller's trigger files run them only on a manual run, a push to `main` and a tag push.
+Each of those needs write access to the caller, which a fork author does not hold.
+This repository's own CI calls `release-pr.yml` on every pull request, fork pull requests included, and this repository sets no `CI_RUNS_ON`, so those runs stay on `ubuntu-latest`.
+The `release-guard` CI job fails when the planning job of that call runs anywhere but `ubuntu-latest`.
 
 ## Related topics
 
 - [The shared actions](actions.md)
 - [The advisory scan](advisories.md)
 - [The mutation runs](mutation.md)
+- [The runner pick](runner.md)
 - [Bump the pin with Dependabot](dependabot.md)
 - [workflows](../README.md)

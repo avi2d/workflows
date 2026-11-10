@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { faults } from "../../../ci/release-skeleton.ts";
 
+const PICK = "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}";
+
 const goodPr = {
   jobs: {
     tag: {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')",
       steps: [{ run: "echo tag" }],
     },
@@ -14,11 +16,11 @@ const goodPr = {
 const goodRelease = {
   jobs: {
     preflight: {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       steps: [{ run: "echo preflight" }],
     },
     verify: {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       needs: "preflight",
       steps: [
         { run: 'test "$GITHUB_REF_TYPE" = tag' },
@@ -31,7 +33,7 @@ const goodRelease = {
       ],
     },
     publish: {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       needs: "verify",
       permissions: { contents: "write", "id-token": "write" },
       steps: [{ run: "${{ inputs.build-command }}" }, { run: "${{ inputs.clean-tree-command }}" }, { run: "${{ inputs.publish-command }}" }],
@@ -123,16 +125,19 @@ describe("release skeleton", () => {
     release.jobs.publish.steps.push({ run: "echo done" });
     expect(faults(goodPr, release)).toEqual(["publish does not end in the caller publish command"]);
   });
-  test.each([["self-hosted"], ["${{ inputs.runs-on }}"], [["self-hosted", "linux"]]])("a release job on %p that passes fails", (runsOn) => {
+  test.each([["ubuntu-latest"], ["self-hosted"], ["${{ inputs.runs-on }}"], ["${{ vars.CI_RUNS_ON || 'self-hosted' }}"], [["self-hosted", "linux"]]])(
+    "a release job on %p in place of the caller's runner pick that passes fails",
+    (runsOn) => {
     const release = structuredClone(goodRelease);
     const publish: Record<string, unknown> = release.jobs.publish;
     publish["runs-on"] = runsOn;
-    expect(faults(goodPr, release)).toEqual(["the publish job runs off the hosted runner"]);
-  });
+    expect(faults(goodPr, release)).toEqual(["the publish job runs off the caller's runner pick"]);
+    },
+  );
   test("a release pull request job without a runner that passes fails", () => {
     const pr = structuredClone(goodPr);
     const tag: Record<string, unknown> = pr.jobs.tag;
     delete tag["runs-on"];
-    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the hosted runner"]);
+    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the caller's runner pick"]);
   });
 });

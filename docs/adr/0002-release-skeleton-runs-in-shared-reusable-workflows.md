@@ -8,6 +8,7 @@ Date: 2026-11-09
 ## Status
 
 Accepted.
+0003 supersedes its runner clause.
 
 ## Context
 

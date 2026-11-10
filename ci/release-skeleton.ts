@@ -62,16 +62,18 @@ function publishFaults(publish: Record<string, unknown>): string[] {
   return found;
 }
 
-// The shared copy cannot tell a public caller from a private one, and a public caller's jobs must not reach a self-hosted runner.
-export function offHostedJobs(document: unknown): string[] {
+// Any other runner expression can move a caller that sets no CI_RUNS_ON off ubuntu-latest.
+const RUNNER_PICK = "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}";
+
+export function offPickJobs(document: unknown): string[] {
   const jobs = isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
   return Object.entries(jobs)
-    .filter(([, body]) => !isRecord(body) || body["runs-on"] !== "ubuntu-latest")
+    .filter(([, body]) => !isRecord(body) || body["runs-on"] !== RUNNER_PICK)
     .map(([name]) => name);
 }
 
 export function faults(prDocument: unknown, releaseDocument: unknown): string[] {
-  const found = [...offHostedJobs(prDocument), ...offHostedJobs(releaseDocument)].map((name) => `the ${name} job runs off the hosted runner`);
+  const found = [...offPickJobs(prDocument), ...offPickJobs(releaseDocument)].map((name) => `the ${name} job runs off the caller's runner pick`);
   const tag = job(prDocument, "tag");
   if (tag === undefined) found.push("release-pr has no tag job");
   else if (!String(tag["if"] ?? "").includes("chore: release ")) found.push("tag runs off more than a release commit");
@@ -99,7 +101,7 @@ const check = Effect.gen(function* () {
   if (prPath === undefined || releasePath === undefined || extra.length > 0) return yield* new ReleaseSkeletonError({ message: USAGE });
   const found = faults(yield* parsed(prPath), yield* parsed(releasePath));
   for (const fault of found) yield* Console.log(`::error::skeleton fault: ${fault}`);
-  if (found.length === 0) yield* Console.log("release skeleton holds: tag gate, verify then publish, caller slots, hosted runners");
+  if (found.length === 0) yield* Console.log("release skeleton holds: tag gate, verify then publish, caller slots, caller runner pick");
   return found.length === 0;
 });
 
