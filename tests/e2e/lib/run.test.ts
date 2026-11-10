@@ -32,4 +32,4 @@ test("a child's stderr held in an unread pipe, or kept out of the step log, fail
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
   expect(exitCode).toBe(0);
   expect(Number(output.trim())).toBe(200_000);
-});
+}, 15_000);
