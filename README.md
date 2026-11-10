@@ -84,11 +84,10 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `actions/<name>/` | the composite actions, one flat directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` and `lib/` |
-| `src/<area>/<name>/` | the TypeScript and shell files an action or a reusable workflow runs, grouped by the areas below |
-| `lib/` | the code those files share |
+| `actions/<name>/` | the composite actions, one flat directory each, holding `action.yml`, the `main.ts` or `main.sh` its steps run, and the TypeScript and shell files that entry calls |
+| `lib/` | the code more than one action shares |
 | `ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
-| `tests/unit/`, `tests/e2e/` | the tests of the code under `src/` and `lib/`, in the same area and name folders |
+| `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/` and `workflows/` for the code they test |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
@@ -96,14 +95,6 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
-
-| Area | What its code does |
-| --- | --- |
-| `runner` | prepares the job: setup, kit-bin, heavy-slot, secrets-pack |
-| `gates` | decides whether a change passes: head-status, docs-only, require-success, release-version |
-| `testing` | runs tests: playwright, mutation, mutation-scope, affected-tests |
-| `pages` | stages and publishes a site: pages-main-tip, pages-deploy, pages-staged-commit, pages-publish, pages-staging-address |
-| `preview` | a branch preview: preview-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove |
 
 ## Related topics
 

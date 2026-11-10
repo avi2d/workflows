@@ -1,1 +1,1 @@
-{"format": ["typescript"], "ignore": ["**/*.d.ts"], "path": ["src", "lib", "ci", "tests"]}
+{"format": ["typescript"], "ignore": ["**/*.d.ts"], "path": ["actions", "lib", "ci", "tests"]}
