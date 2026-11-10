@@ -87,8 +87,17 @@ function publishFaults(publish: Record<string, unknown>): string[] {
   return found;
 }
 
+// A fork pull request reaches the release pull request through this repository's CI, so those jobs stay hosted.
+const HOSTED_RUNNER = "ubuntu-latest";
 // Any other runner expression can move a caller that sets no CI_RUNS_ON off ubuntu-latest.
 const RUNNER_PICK = "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}";
+
+export function offHostedJobs(document: unknown): string[] {
+  const jobs = isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
+  return Object.entries(jobs)
+    .filter(([, body]) => !isRecord(body) || body["runs-on"] !== HOSTED_RUNNER)
+    .map(([name]) => name);
+}
 
 export function offPickJobs(document: unknown): string[] {
   const jobs = isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
@@ -98,7 +107,10 @@ export function offPickJobs(document: unknown): string[] {
 }
 
 export function faults(prDocument: unknown, releaseDocument: unknown): string[] {
-  const found = [...offPickJobs(prDocument), ...offPickJobs(releaseDocument)].map((name) => `the ${name} job runs off the caller's runner pick`);
+  const found = [
+    ...offHostedJobs(prDocument).map((name) => `the ${name} job runs off the hosted runner`),
+    ...offPickJobs(releaseDocument).map((name) => `the ${name} job runs off the caller's runner pick`),
+  ];
   const tag = job(prDocument, "tag");
   if (tag === undefined) found.push("release-pr has no tag job");
   else if (!String(tag["if"] ?? "").includes("chore: release ")) found.push("tag runs off more than a release commit");
@@ -126,7 +138,7 @@ const check = Effect.gen(function* () {
   if (prPath === undefined || releasePath === undefined || extra.length > 0) return yield* new ReleaseSkeletonError({ message: USAGE });
   const found = faults(yield* parsed(prPath), yield* parsed(releasePath));
   for (const fault of found) yield* Console.log(`::error::skeleton fault: ${fault}`);
-  if (found.length === 0) yield* Console.log("release skeleton holds: tag gate, verify then publish, caller slots, caller runner pick");
+  if (found.length === 0) yield* Console.log("release skeleton holds: tag gate, verify then publish, caller slots, hosted pull request, caller runner pick");
   return found.length === 0;
 });
 

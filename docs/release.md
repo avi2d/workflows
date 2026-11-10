@@ -111,8 +111,9 @@ The publish run takes these inputs.
 - A tree guard command once the caller adopts one, which only checks carries today.
 - A calling job that grants `contents: write`, `pull-requests: write` and `actions: write` to the release pull request call.
 - A calling job that grants `contents: write` and `id-token: write` to the publish call.
-- Its `CI_RUNS_ON` repository variable when its releases run on its own runner.
-  Every shared job runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
+- Its `CI_RUNS_ON` repository variable when its release publish runs on its own runner.
+  Every job in `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
+  Every job in `release-pr.yml` runs on `ubuntu-latest`.
   A caller that sets no `CI_RUNS_ON` runs every release job on `ubuntu-latest`.
 
 ## Runners and fork pull requests

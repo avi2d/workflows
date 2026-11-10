@@ -19,7 +19,8 @@ A release job is not fork reachable in a caller: the caller triggers it only on 
 
 ## Decision
 
-Every shared release job runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, the expression the advisory scan already uses and the checks kit accepts as a hosted runner `CI_RUNS_ON` can override.
+Every job in `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, the expression the advisory scan already uses and the checks kit accepts as a hosted runner `CI_RUNS_ON` can override.
+Every job in `release-pr.yml` stays on `ubuntu-latest`, because this repository's CI calls it from fork reachable pull requests and the checks kit refuses the variable on such a job.
 The jobs read the variable inline rather than call `runner.yml`, so a release adds no pick job and no probe minute.
 The shared workflows take no `runs-on` input, since no reusable workflow here takes one and an input lets a caller name a runner the variable does not.
 The skeleton check refuses any other runner expression, and this repository's CI fails when its call of `release-pr.yml` plans anywhere but `ubuntu-latest`.
@@ -27,6 +28,6 @@ The skeleton check refuses any other runner expression, and this repository's CI
 ## Consequences
 
 A caller that sets no `CI_RUNS_ON` releases on `ubuntu-latest` as before.
-A caller that sets `CI_RUNS_ON` releases on its own runner, as its own release files do today.
+A caller that sets `CI_RUNS_ON` publishes on its own runner, as its own release files do today, while its release pull request stays on `ubuntu-latest`.
 A caller without hosted minutes and without `CI_RUNS_ON` sees its release refused before any step, as its own release files would be.
 This repository must keep `CI_RUNS_ON` unset, because its CI calls `release-pr.yml` on fork pull requests.
