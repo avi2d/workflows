@@ -1,0 +1,67 @@
+name: release-pr
+on:
+  workflow_call:
+    inputs:
+      plan-command:
+        description: The command that opens or refreshes the release pull request.
+        type: string
+        required: true
+      preflight-command:
+        description: The fail-fast check that runs before planning, empty to skip.
+        type: string
+        default: ""
+      tree-guard-command:
+        description: The check that the landed tree matches the tested pull request tree, empty to skip.
+        type: string
+        default: ""
+      tag-command:
+        description: The command that tags the landed release.
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  pull-request:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: release-pull-request
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
+      # A rerun plans the branch tip, not the commit the dispatch named.
+      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - name: fail fast when the release cannot plan
+        if: inputs.preflight-command != ''
+        run: ${{ inputs.preflight-command }}
+      - name: open or refresh the release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ${{ inputs.plan-command }}
+  tag:
+    if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+        with:
+          fetch-depth: 0
+      - name: landed tree matches the tested pull request tree
+        if: inputs.tree-guard-command != ''
+        run: ${{ inputs.tree-guard-command }}
+      - name: tag the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ${{ inputs.tag-command }}

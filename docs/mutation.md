@@ -37,4 +37,5 @@ It runs one shard per job and merges the shard reports into a new full report.
 - [The shared actions](actions.md)
 - [The runner pick](runner.md)
 - [The advisory scan](advisories.md)
+- [The release runs](release.md)
 - [workflows](../README.md)
