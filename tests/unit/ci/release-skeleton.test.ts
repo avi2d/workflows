@@ -37,7 +37,7 @@ const goodRelease = {
       needs: "verify",
       permissions: { contents: "write", "id-token": "write" },
       steps: [
-        { if: "inputs.publish-command == '' && !inputs.github-release", name: "require publish-command or github-release", run: 'echo "publish-command is empty and github-release is false" >&2 && exit 1' },
+        { if: "inputs.publish-command == '' && !inputs.github-release", name: "require publish-command or github-release", run: "exit 1" },
         { run: "${{ inputs.build-command }}" },
         { run: "${{ inputs.clean-tree-command }}" },
         { run: "${{ inputs.publish-command }}" },
@@ -128,6 +128,12 @@ describe("release skeleton", () => {
   test("a publish with no guard against an empty publish and no GitHub release that passes fails", () => {
     const release = structuredClone(goodRelease);
     release.jobs.publish.steps = release.jobs.publish.steps.filter((step) => !String(step.if ?? "").includes("inputs.github-release"));
+    expect(faults(goodPr, release)).toEqual(["publish passes with no publish command and no GitHub release"]);
+  });
+  test("a publish whose no-op guard runs for a caller that passes only one output and passes fails", () => {
+    const release = structuredClone(goodRelease);
+    const guard = release.jobs.publish.steps[0] as Record<string, unknown>;
+    guard["if"] = "inputs.publish-command == '' || !inputs.github-release";
     expect(faults(goodPr, release)).toEqual(["publish passes with no publish command and no GitHub release"]);
   });
   test("a publish that never runs the caller publish command and passes fails", () => {

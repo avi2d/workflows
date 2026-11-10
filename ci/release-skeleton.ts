@@ -37,15 +37,16 @@ function ungatedAfterPublish(publish: Record<string, unknown>): boolean {
   return steps.slice(at + 1).some((step) => !isRecord(step) || !String(step["if"] ?? "").includes("inputs.github-release"));
 }
 
+const NO_OP_GUARD = "inputs.publish-command == '' && !inputs.github-release";
+
 function hasNoOpGuard(publish: Record<string, unknown>): boolean {
   const steps = Array.isArray(publish["steps"]) ? publish["steps"] : [];
   return steps.some((step) => {
     if (!isRecord(step)) return false;
-    const condition = String(step["if"] ?? "");
-    const wording = String(step["name"] ?? "") + " " + String(step["run"] ?? "");
+    const wording = String(step["name"] ?? "");
     return (
-      condition.includes("inputs.publish-command") &&
-      condition.includes("inputs.github-release") &&
+      step["if"] === NO_OP_GUARD &&
+      step["run"] === "exit 1" &&
       wording.includes("publish-command") &&
       wording.includes("github-release")
     );

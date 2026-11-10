@@ -14,14 +14,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function publishRun(name: string): string {
+function publishStep(name: string): Record<string, unknown> {
   const document: unknown = Bun.YAML.parse(readFileSync(RELEASE, "utf8"));
   const jobs = isRecord(document) ? document["jobs"] : undefined;
   const publish = isRecord(jobs) ? jobs["publish"] : undefined;
   const steps: unknown[] = isRecord(publish) && Array.isArray(publish["steps"]) ? publish["steps"] : [];
   const step = steps.filter(isRecord).find((candidate) => candidate["name"] === name);
-  if (typeof step?.["run"] !== "string") throw new Error(`release.yml publish has no run step named ${name}`);
-  return step["run"];
+  if (step === undefined) throw new Error(`release.yml publish has no step named ${name}`);
+  return step;
+}
+
+function publishRun(name: string): string {
+  const run = publishStep(name)["run"];
+  if (typeof run !== "string") throw new Error(`release.yml publish has no run step named ${name}`);
+  return run;
 }
 
 function runStep(name: string): number {
@@ -40,14 +46,9 @@ function runStep(name: string): number {
 }
 
 test("a publish with no publish command and no GitHub release that passes fails", () => {
-  const result = Bun.spawnSync(["bash", "-e", "-c", publishRun("require publish-command or github-release")], {
-    cwd: scratch.at(),
-    env: { ...process.env, PATH: process.env["PATH"] ?? "" },
-    stderr: "pipe",
-  });
-  expect(result.exitCode).toBe(1);
-  const message = String(result.stderr);
-  expect(message.includes("publish-command") && message.includes("github-release")).toBe(true);
+  const step = publishStep("require publish-command or github-release");
+  expect(step["if"]).toBe("inputs.publish-command == '' && !inputs.github-release");
+  expect(Bun.spawnSync(["bash", "-e", "-c", String(step["run"])], { cwd: scratch.at() }).exitCode).toBe(1);
 });
 
 test("a GitHub release whose notes hold another version's section or the surrounding blank lines fails", () => {
