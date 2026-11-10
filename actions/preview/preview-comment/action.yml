@@ -1,0 +1,38 @@
+name: preview-comment
+description: Post the preview link on the pull request, editing the comment that starts with the marker when one exists.
+inputs:
+  origin:
+    description: The preview origin, as preview-address writes it.
+    required: true
+  head-sha:
+    description: The commit the preview shows.
+    default: ${{ github.event.pull_request.head.sha }}
+  marker:
+    description: The hidden line the preview comment starts with, such as an HTML comment naming the site.
+    required: true
+  token:
+    description: The token that reads and writes the pull request's comments. It needs pull-requests write.
+    default: ${{ github.token }}
+  pull-request:
+    description: The pull request number.
+    default: ${{ github.event.pull_request.number }}
+  author:
+    description: The login of the account the token writes as, whose comment alone is edited.
+    default: github-actions[bot]
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: post the preview link on the pull request
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PULL_REQUEST: ${{ inputs.pull-request }}
+        MARKER: ${{ inputs.marker }}
+        AUTHOR: ${{ inputs.author }}
+        ORIGIN: ${{ inputs.origin }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

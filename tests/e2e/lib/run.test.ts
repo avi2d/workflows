@@ -19,13 +19,27 @@ test("a child left waiting on a stdin that never closes fails", () => {
 
 const WRITES_PAST_PIPE_BUFFER = "head -c 200000 /dev/zero | tr '\\0' x >&2; echo out";
 
-test("a child's stderr held in an unread pipe, or kept out of the step log, fails", () => {
+test("a child's stderr held in an unread pipe, or kept out of the step log, fails", async () => {
   const program = `
     import { Effect } from "effect";
     import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
-    runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map(({ stdout }) => stdout === "out\\n")));
+    runCheck(commandOutput("bash", ["-c", ${JSON.stringify(WRITES_PAST_PIPE_BUFFER)}]).pipe(Effect.map((result) => result.stdout === "out\\n" && result.passed)));
   `;
-  const { exitCode, stderr } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore", timeout: 10_000 });
+  const child = Bun.spawn(
+    ["bash", "-c", 'bun -e "$PROG" 2>&1 >/dev/null | { sleep 2; wc -c; }; exit ${PIPESTATUS[0]}'],
+    { stdin: "ignore", stdout: "pipe", stderr: "pipe", env: { ...process.env, PROG: program } },
+  );
+  const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
   expect(exitCode).toBe(0);
-  expect(stderr.length).toBe(200_000);
+  expect(Number(output.trim())).toBe(200_000);
+}, 15_000);
+
+test("a failing child read as passed fails", () => {
+  const program = `
+    import { Effect } from "effect";
+    import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandOutput("bash", ["-c", "exit 3"]).pipe(Effect.map(({ passed }) => passed === false)));
+  `;
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
+  expect(exitCode).toBe(0);
 });

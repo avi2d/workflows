@@ -1,0 +1,56 @@
+name: publish-site
+description: Push a built folder to the repository that publishes the site, keeping its CNAME, adding .nojekyll and committing as the Actions bot only when the build changed.
+inputs:
+  repository:
+    description: The repository that publishes the site, as owner/name.
+    required: true
+  deploy-key:
+    description: The SSH deploy key with write access to that repository, passed from a secret the caller names. Empty fails the step.
+    required: true
+  cname:
+    description: The custom domain the repository's CNAME file must name.
+    required: true
+  source-sha:
+    description: The commit the build comes from, whose first 7 characters end the commit message.
+    required: true
+  commit-message:
+    description: The commit message, before the source commit.
+    required: true
+  directory:
+    description: The built folder to publish.
+    default: dist
+  branch:
+    description: The branch of that repository the site publishes from.
+    default: main
+  path:
+    description: Where to check that repository out, inside the workspace.
+    default: published-site
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: check the deploy key is set
+      shell: bash
+      env:
+        DEPLOY_KEY: ${{ inputs.deploy-key }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts" guard
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.branch }}
+        ssh-key: ${{ inputs.deploy-key }}
+        path: ${{ inputs.path }}
+    - name: push the build
+      shell: bash
+      env:
+        SITE_PATH: ${{ inputs.path }}
+        DIRECTORY: ${{ inputs.directory }}
+        REPOSITORY: ${{ inputs.repository }}
+        CNAME: ${{ inputs.cname }}
+        BRANCH: ${{ inputs.branch }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts" publish

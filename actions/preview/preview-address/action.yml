@@ -1,0 +1,35 @@
+name: preview-address
+description: Write the preview origin of a branch, https://<alias>.<project host>, as the step output origin, creating the Pages project when it is missing.
+inputs:
+  project:
+    description: The Cloudflare Pages project the previews go to.
+    required: true
+  branch:
+    description: The branch whose alias the origin names.
+    default: ${{ github.event.pull_request.head.ref }}
+  api-token:
+    description: The Cloudflare API token, passed from a secret the caller names. Empty fails the step.
+    required: true
+  account-id:
+    description: The Cloudflare account ID, passed from a secret the caller names. Empty fails the step.
+    required: true
+outputs:
+  origin:
+    description: The preview origin, without a trailing slash.
+    value: ${{ steps.address.outputs.origin }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: address
+      name: read the preview address of the branch
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        PROJECT: ${{ inputs.project }}
+        BRANCH: ${{ inputs.branch }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

@@ -1,16 +1,16 @@
 # workflows
 
-Shared GitHub Actions plumbing for the avi2d repositories.
+Shared GitHub Actions plumbing for avi2d repositories.
 It holds composite actions that run inside the caller's own job and reusable workflows that pick the runner, scan for advisories and run mutation.
-The repository is public, so every avi2d and azalialaw repository can call it, and it holds no secret, no runner name and no customer data.
-A private caller passes its own settings in as inputs, as secrets it names, or through its own repository variables.
+The repository is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
+A private caller passes its settings in as inputs, as secrets it names, or through its repository variables.
 
 ## Before you begin
 
 - A Bun repository whose root holds `package.json`, `bun.lock` and `.bun-version`, which the setup action reads.
 - The `@avi2dg/checks` kit installed for the docs-only action, which runs its `checks-docs-only` bin.
 - A job with `statuses: write` for the commitlint-status and head-status actions.
-- Bun on the runner for every action but setup and heavy-slot, which the setup action installs.
+- Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup action installs.
 
 ## Install
 
@@ -59,26 +59,6 @@ Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the j
 A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
 [The runner pick](docs/runner.md) says how it decides and what it costs.
 
-## Scan for advisories weekly
-
-A caller runs `checks-advisories --all --issue` every week, which files a GitHub issue while `bun.lock` on `main` holds an advisory:
-
-```yaml
-on:
-  schedule:
-    - cron: "15 5 * * 1"
-  workflow_dispatch:
-jobs:
-  advisories:
-    permissions:
-      contents: read
-      issues: write
-    uses: avi2d/workflows/.github/workflows/advisories.yml@v2
-```
-
-A private caller drops the `schedule` trigger and starts the scan with `gh workflow run`.
-[The advisory scan](docs/advisories.md) says what it needs from the caller.
-
 ## Bump the pin with Dependabot
 
 To have Dependabot move the pin to each new tag:
@@ -109,6 +89,7 @@ The same file bumps every other action the caller pins, such as `actions/checkou
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
 | The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
+| The site projects, hosts, repositories and secrets | the site actions' inputs in [The shared actions](docs/actions.md), written as `${{ secrets.NAME }}` in the caller |
 
 A composite action cannot read the caller's `secrets` context, so a secret reaches it only as an input the caller writes.
 
@@ -116,16 +97,25 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 
 | Path | What it holds |
 | --- | --- |
-| `actions/<name>/` | the composite actions, one directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
-| `src/<name>/` | the TypeScript and shell files an action or a reusable workflow runs |
+| `actions/<name>/` | the composite actions v2 callers already use, one directory each, whose steps run the `main.ts` or `main.sh` beside them, which calls the code under `src/` |
+| `actions/<area>/<name>/` | the composite actions added since, in the same shape, grouped by the areas below |
+| `src/<area>/<name>/` | the TypeScript and shell files an action or a reusable workflow runs, grouped by the areas below |
 | `src/lib/` | the code those files share |
 | `src/ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml` |
-| `tests/` | the tests of the code under `src/`, in the same folders |
+| `tests/unit/`, `tests/e2e/` | the tests of the code under `src/`, in the same area and name folders |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
-| `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action |
+| `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
+
+| Area | What its code does |
+| --- | --- |
+| `runner` | prepares the job: setup, kit-bin, heavy-slot, secrets-pack |
+| `gates` | decides whether a change passes: head-status, docs-only, require-success |
+| `testing` | runs tests: playwright, mutation, mutation-scope, affected-tests |
+| `pages` | stages and publishes a site: read-main-tip, pages-deploy, production-staged-commit, publish-site, read-staging-address |
+| `preview` | a branch preview: cloudflare-secrets-check, preview-address, preview-deploy, preview-comment, preview-remove |
 
 ## Related topics
 
