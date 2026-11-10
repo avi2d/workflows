@@ -5,11 +5,6 @@ import { join } from "node:path";
 const REPOSITORY = join(import.meta.dir, "../../..");
 const SHELL_LOGIC = /[;|<>]|&&|\$\(|\bif\b|\bfor\b|\bwhile\b|\buntil\b|\bprintf\b/;
 
-// Steps that held shell logic before the rule; the list only shrinks.
-const LEGACY = new Set<string>([
-  ".github/workflows/runner.yml hosted-minutes started",
-]);
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -40,8 +35,7 @@ function stepsWithShellLogic(): string[] {
         const run = step["run"].trim();
         if (!run.includes("\n") && !SHELL_LOGIC.test(run)) return;
         const name = typeof step["name"] === "string" ? step["name"] : typeof step["id"] === "string" ? step["id"] : String(index);
-        const key = `${file} ${group} ${name}`;
-        if (!LEGACY.has(key)) found.push(key);
+        found.push(`${file} ${group} ${name}`);
       });
     }
   }
