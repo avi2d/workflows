@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scopeFailure, writeStandIns } from "../../../src/ci/mutation-scope-smoke.ts";
+import { scopeFailure, writeStandIns } from "../../../ci/mutation-scope-smoke.ts";
 
 let root = "";
 

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-const RUN = join(import.meta.dir, "../../../src/lib/run.ts");
+const RUN = join(import.meta.dir, "../../../lib/run.ts");
 
 // read exits 1 at end of input and above 128 when its timeout fires.
 const READS_TO_END = "read -t 5 line; test $? -eq 1";

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { markedBy } from "../../../src/lib/marker-comment.ts";
+import { markedBy } from "../../../lib/marker-comment.ts";
 
 const MARKER = "<!-- site-preview -->";
 

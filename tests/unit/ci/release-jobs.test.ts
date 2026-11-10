@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { releaseJobProblems } from "../../../src/ci/release-jobs.ts";
+import { releaseJobProblems } from "../../../ci/release-jobs.ts";
 
 const PLANNED = { name: "release-pr / pull-request", conclusion: "success" };
 const UNTAGGED = { name: "release-pr / tag", conclusion: "skipped" };

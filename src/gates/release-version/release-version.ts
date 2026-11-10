@@ -1,6 +1,6 @@
 import { Console, Effect, FileSystem, Schema } from "effect";
-import { requiredInput } from "../../lib/inputs.ts";
-import { writeOutputs } from "../../lib/step-output.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { writeOutputs } from "../../../lib/step-output.ts";
 
 const ACTION = "release-version";
 

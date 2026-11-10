@@ -1,8 +1,8 @@
 import { Console, Effect, Schema } from "effect";
 import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { requiredInput } from "../../lib/inputs.ts";
-import { commandOutput, commandPasses } from "../../lib/run.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { commandOutput, commandPasses } from "../../../lib/run.ts";
 
 const ACTION = "pages-publish";
 

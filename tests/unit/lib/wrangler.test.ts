@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { deployArgs, deployedAlias, type PagesDeploy } from "../../../src/lib/wrangler.ts";
+import { deployArgs, deployedAlias, type PagesDeploy } from "../../../lib/wrangler.ts";
 
 const MAIN: PagesDeploy = {
   wranglerVersion: "4.156.1",

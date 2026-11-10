@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bunVersionProblems, checkoutProblems, dependencyProblems } from "../../../src/ci/setup-smoke.ts";
+import { bunVersionProblems, checkoutProblems, dependencyProblems } from "../../../ci/setup-smoke.ts";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 

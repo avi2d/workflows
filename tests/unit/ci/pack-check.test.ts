@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { packProblems } from "../../../src/ci/pack-check.ts";
+import { packProblems } from "../../../ci/pack-check.ts";
 
 const RUNNER_TEMP = "/home/runner/work/_temp";
 const PACK = '{"names":["a term"]}';

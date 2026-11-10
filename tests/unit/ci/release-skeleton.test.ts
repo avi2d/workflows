@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { faults } from "../../../src/ci/release-skeleton.ts";
+import { faults } from "../../../ci/release-skeleton.ts";
 
 const goodPr = {
   jobs: {

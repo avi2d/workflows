@@ -1,8 +1,8 @@
 import { Console, Effect, Schema } from "effect";
-import { accountFromEnv, servedCommit } from "../../lib/cloudflare.ts";
-import { github, repositoryFromEnv } from "../../lib/github.ts";
-import { requiredInput } from "../../lib/inputs.ts";
-import { writeOutputs } from "../../lib/step-output.ts";
+import { accountFromEnv, servedCommit } from "../../../lib/cloudflare.ts";
+import { github, repositoryFromEnv } from "../../../lib/github.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { writeOutputs } from "../../../lib/step-output.ts";
 
 const ACTION = "pages-staged-commit";
 

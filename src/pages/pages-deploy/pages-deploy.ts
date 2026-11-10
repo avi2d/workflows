@@ -1,8 +1,8 @@
 import { Effect, Schema } from "effect";
-import { accountFromEnv, readProjectHost } from "../../lib/cloudflare.ts";
-import { optionalInput } from "../../lib/inputs.ts";
-import { commandPasses } from "../../lib/run.ts";
-import { deployArgs, deployFromEnv } from "../../lib/wrangler.ts";
+import { accountFromEnv, readProjectHost } from "../../../lib/cloudflare.ts";
+import { optionalInput } from "../../../lib/inputs.ts";
+import { commandPasses } from "../../../lib/run.ts";
+import { deployArgs, deployFromEnv } from "../../../lib/wrangler.ts";
 
 const ACTION = "pages-deploy";
 

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../src/ci/heavy-slot-smoke.sh");
+const SCRIPT = join(import.meta.dir, "../../../ci/heavy-slot-smoke.sh");
 
 let runnerTemp = "";
 

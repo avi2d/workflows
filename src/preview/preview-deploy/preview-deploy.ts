@@ -1,8 +1,8 @@
 import { Config, Console, Effect, FileSystem, Path, Schema } from "effect";
-import { accountFromEnv } from "../../lib/cloudflare.ts";
-import { requiredInput } from "../../lib/inputs.ts";
-import { commandPasses } from "../../lib/run.ts";
-import { deployArgs, deployedAlias, deployFromEnv } from "../../lib/wrangler.ts";
+import { accountFromEnv } from "../../../lib/cloudflare.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { commandPasses } from "../../../lib/run.ts";
+import { deployArgs, deployedAlias, deployFromEnv } from "../../../lib/wrangler.ts";
 
 const ACTION = "preview-deploy";
 
