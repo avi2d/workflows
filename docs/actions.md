@@ -164,6 +164,7 @@ A caller whose secret may be unset guards the call with an `if:`.
 ## release-version
 
 Fails unless the tag is `v` followed by the version the manifest holds, and writes that version as the `version` output.
+The release publish run calls it on the tag before anything publishes.
 
 | Input | Default | What it sets |
 | --- | --- | --- |

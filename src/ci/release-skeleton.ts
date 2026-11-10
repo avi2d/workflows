@@ -22,6 +22,14 @@ function runs(job: Record<string, unknown>): string[] {
   return steps.map((step) => (isRecord(step) ? String(step["run"] ?? "") : ""));
 }
 
+const RELEASE_VERSION = /^avi2d\/workflows\/actions\/release-version@[0-9a-f]{40}$/;
+
+function uses(job: Record<string, unknown>): string[] {
+  const steps = job["steps"];
+  if (!Array.isArray(steps)) return [];
+  return steps.flatMap((step) => (isRecord(step) && typeof step["uses"] === "string" ? [step["uses"]] : []));
+}
+
 function holdsPublishToken(job: Record<string, unknown>): boolean {
   const permissions = job["permissions"];
   return permissions === "write-all" || (isRecord(permissions) && permissions["id-token"] === "write");
@@ -36,6 +44,7 @@ function verifyFaults(verify: Record<string, unknown>): string[] {
   if (!steps.some((run) => run.includes("merge-base --is-ancestor"))) found.push("verify never checks the tag sits on main");
   if (!steps.some((run) => run.includes("tree-guard-command"))) found.push("verify never runs the tree guard");
   if (steps.some((run) => run.includes("publish-command"))) found.push("verify publishes beside its checks");
+  if (!uses(verify).some((action) => RELEASE_VERSION.test(action))) found.push("verify never matches the tag to the manifest version");
   return found;
 }
 

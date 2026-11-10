@@ -46,7 +46,7 @@ One `release-pull-request` concurrency group serializes competing plans.
 `release.yml` runs a `preflight` job when the caller sets a preflight command, then a `verify` job, then a `publish` job.
 The `verify` job takes only a tag on main, then runs the caller build command and the clean tree check.
 It runs the caller tree guard before the build and the caller lint, typecheck and test commands after the clean tree check.
-It matches the tag against the version in the caller manifest.
+It matches the tag against the version in the caller manifest through the [release-version](actions.md#release-version) action.
 The `publish` job runs only after `verify` passes, and it alone holds `id-token: write`.
 It builds the tag again, runs the clean tree check, and sets up Node with the npm registry when the caller names a Node release.
 It then runs the caller publish command with `GH_TOKEN` set, and no lint, test or other caller check runs in it.

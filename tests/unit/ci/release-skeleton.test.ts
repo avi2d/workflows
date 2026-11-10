@@ -27,6 +27,7 @@ const goodRelease = {
         { run: "${{ inputs.build-command }}" },
         { run: "${{ inputs.clean-tree-command }}" },
         { run: "${{ inputs.test-command }}" },
+        { run: "", uses: "avi2d/workflows/actions/release-version@a1736593b253c3b6566c07241d38b2552b38ac22" },
       ],
     },
     publish: {
@@ -77,6 +78,14 @@ describe("release skeleton", () => {
     verify["permissions"] = permissions;
     expect(faults(goodPr, release)).toEqual(["verify holds the publish token"]);
   });
+  test.each([["avi2d/workflows/actions/release-version@v2"], ["avi2d/workflows/actions/setup@a1736593b253c3b6566c07241d38b2552b38ac22"]])(
+    "a verify whose tag check is %p and that passes fails",
+    (action) => {
+      const release = structuredClone(goodRelease);
+      release.jobs.verify.steps = release.jobs.verify.steps.map((step) => ("uses" in step ? { run: "", uses: action } : step));
+      expect(faults(goodPr, release)).toEqual(["verify never matches the tag to the manifest version"]);
+    },
+  );
   test("a verify that publishes beside its checks and passes fails", () => {
     const release = structuredClone(goodRelease);
     release.jobs.verify.steps.push({ run: "${{ inputs.publish-command }}" });
