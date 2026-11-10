@@ -1,8 +1,8 @@
 import { Console, Effect, Schema } from "effect";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { requiredInput } from "../../lib/inputs.ts";
-import { writeOutputs } from "../../lib/step-output.ts";
+import { requiredInput } from "../../../lib/inputs.ts";
+import { writeOutputs } from "../../../lib/step-output.ts";
 
 const ACTION = "pages-staging-address";
 

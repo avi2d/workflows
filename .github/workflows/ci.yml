@@ -49,13 +49,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           OUTCOME: ${{ steps.title.outcome }}
-        run: bun src/ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
+        run: bun ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
       - name: lint the workflows
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
-        run: bash src/ci/actionlint.sh
+        run: bash ci/actionlint.sh
   setup:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -70,11 +70,11 @@ jobs:
       - name: a shallow checkout or a commit other than the asked one fails
         env:
           WANT: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: bun src/ci/setup-smoke.ts checkout
+        run: bun ci/setup-smoke.ts checkout
       - name: a Bun other than the one .bun-version names fails
-        run: bun src/ci/setup-smoke.ts bun-version
+        run: bun ci/setup-smoke.ts bun-version
       - name: missing or relocked dependencies fail
-        run: bun src/ci/setup-smoke.ts dependencies
+        run: bun ci/setup-smoke.ts dependencies
   gitleaks-cache-fill:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -100,7 +100,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: a gitleaks the next job has to download again fails
-        run: bun src/ci/gitleaks-cache-smoke.ts
+        run: bun ci/gitleaks-cache-smoke.ts
   docs-only:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -114,7 +114,7 @@ jobs:
           fetch-depth: 0
       - id: commits
         name: commit a docs change, then a code change
-        run: bun src/ci/docs-only-smoke.ts commit
+        run: bun ci/docs-only-smoke.ts commit
       - id: docs
         uses: ./actions/docs-only
         with:
@@ -134,7 +134,7 @@ jobs:
           DOCS: ${{ steps.docs.outputs.docs-only }}
           CODE: ${{ steps.code.outputs.docs-only }}
           NONE: ${{ steps.none.outputs.docs-only }}
-        run: bun src/ci/docs-only-smoke.ts verify
+        run: bun ci/docs-only-smoke.ts verify
   head-status:
     # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
@@ -155,7 +155,7 @@ jobs:
       - name: a successful job reported as failure fails
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bun src/ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
       - uses: ./actions/head-status
         with:
           job-status: success
@@ -166,7 +166,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bun src/ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
+        run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -181,7 +181,7 @@ jobs:
         with:
           browsers: webkit
       - name: a webkit that cannot open a page fails
-        run: bun src/ci/playwright-smoke.ts
+        run: bun ci/playwright-smoke.ts
   heavy-slot:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -190,7 +190,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: put a stand-in slot command on the PATH
-        run: bash src/ci/heavy-slot-smoke.sh stub
+        run: bash ci/heavy-slot-smoke.sh stub
       - uses: ./actions/heavy-slot
         with:
           action: acquire
@@ -216,7 +216,7 @@ jobs:
       - name: a slot call on another runner or an unknown action that passes fails
         env:
           UNKNOWN: ${{ steps.unknown.outcome }}
-        run: bash src/ci/heavy-slot-smoke.sh verify
+        run: bash ci/heavy-slot-smoke.sh verify
   kit-bin:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -228,7 +228,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: map a command to its source the way the kit's own package.json does
-        run: bun src/ci/kit-bin-smoke.ts fixture
+        run: bun ci/kit-bin-smoke.ts fixture
       - uses: ./actions/kit-bin
         with:
           commands: checks-docs-only smoke-kit-source
@@ -240,7 +240,7 @@ jobs:
       - name: a command off the shims, a source command that does not run, or a missing command that passes fails
         env:
           MISSING: ${{ steps.missing.outcome }}
-        run: bun src/ci/kit-bin-smoke.ts verify
+        run: bun ci/kit-bin-smoke.ts verify
   mutation-scope:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -253,12 +253,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: put stand-in mutation commands on the PATH
-        run: bun src/ci/mutation-scope-smoke.ts stand-ins
+        run: bun ci/mutation-scope-smoke.ts stand-ins
       - uses: ./actions/mutation-scope
         with:
           base-ref: ${{ github.event.pull_request.base.ref }}
       - name: a scope taken from anything but the merge base with main fails
-        run: bun src/ci/mutation-scope-smoke.ts verify
+        run: bun ci/mutation-scope-smoke.ts verify
   secrets-pack:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -271,14 +271,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - id: pack
         name: build a pack whose term no tracked file holds
-        run: bun src/ci/smoke-pack.ts
+        run: bun ci/smoke-pack.ts
       - uses: ./actions/secrets-pack
         with:
           pack: ${{ steps.pack.outputs.json }}
       - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, changed on the way or unread by the kit's scan fails
         env:
           PACK: ${{ steps.pack.outputs.json }}
-        run: bun src/ci/pack-check.ts
+        run: bun ci/pack-check.ts
       - id: empty
         uses: ./actions/secrets-pack
         continue-on-error: true
@@ -305,7 +305,7 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
           EVENT: ${{ github.event_name }}
-        run: bun src/ci/require-parts.ts
+        run: bun ci/require-parts.ts
       # A dispatched run's check stays off the pull request, so this reports a commit status.
       - name: report the result on the head commit
         if: always() && github.event_name == 'workflow_dispatch'

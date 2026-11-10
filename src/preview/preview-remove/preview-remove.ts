@@ -1,6 +1,6 @@
 import { Console, Effect } from "effect";
-import { branchTargetFromEnv, removeBranch } from "../../lib/cloudflare.ts";
-import { editMarked, threadFromEnv } from "../../lib/marker-comment.ts";
+import { branchTargetFromEnv, removeBranch } from "../../../lib/cloudflare.ts";
+import { editMarked, threadFromEnv } from "../../../lib/marker-comment.ts";
 
 const ACTION = "preview-remove";
 

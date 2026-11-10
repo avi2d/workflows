@@ -1,6 +1,6 @@
 import { Console, Effect, Schema } from "effect";
-import { branchTargetFromEnv, projectHost } from "../../lib/cloudflare.ts";
-import { writeOutputs } from "../../lib/step-output.ts";
+import { branchTargetFromEnv, projectHost } from "../../../lib/cloudflare.ts";
+import { writeOutputs } from "../../../lib/step-output.ts";
 
 const ACTION = "preview-address";
 const ALIAS_LENGTH = 28;

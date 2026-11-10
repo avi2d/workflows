@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { Config, Console, Data, Duration, Effect, FileSystem } from "effect";
 import { join } from "node:path";
-import { retryWithGrowingWait } from "../../lib/retry.ts";
-import { commandPasses } from "../../lib/run.ts";
+import { retryWithGrowingWait } from "../../../lib/retry.ts";
+import { commandPasses } from "../../../lib/run.ts";
 
 const ATTEMPTS = 3;
 const WAIT = Duration.seconds(10);
