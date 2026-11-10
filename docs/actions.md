@@ -137,6 +137,10 @@ The `compare` and `shards` parts call `checks-mutation-compare` and `checks-muta
 | `mutant-cap` | `1500` | the scoped mutants `count-scope` and `over-cap` allow |
 | `shards` | `4` | how many shards `shards` splits the tree into |
 
+| Output | Value |
+| --- | --- |
+| `shards` | the JSON array of mutate globs the `shards` part writes, empty for the other parts |
+
 ## secrets-pack
 
 Writes the private secrets pack to `$RUNNER_TEMP/secrets-pack.json` and exports that path as `CHECKS_SECRETS_PACK`, so the kit's `checks-secrets` and `checks-pr-text` in later steps read the pack.
