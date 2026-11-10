@@ -56,14 +56,11 @@ jobs:
           fetch-depth: 0
       - name: fail fast when the release cannot run
         run: ${{ inputs.preflight-command }}
-  publish:
+  verify:
     needs: preflight
     if: ${{ !cancelled() && (needs.preflight.result == 'success' || needs.preflight.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: write
-      id-token: write
     steps:
       - name: ref is a tag
         run: test "$GITHUB_REF_TYPE" = tag
@@ -95,6 +92,26 @@ jobs:
         env:
           PACKAGE_PATH: ${{ inputs.package-path }}
         run: test "v$(bun -p "require(process.env.PACKAGE_PATH).version")" = "$GITHUB_REF_NAME"
+  # Only this job holds the publish token, so no lint, test or caller check runs beside it.
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
+      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+        with:
+          fetch-depth: 0
+      # The shared copy cannot know which paths the caller's build writes, so it builds the verified tag again in place of carrying an artifact.
+      - name: build the tag
+        if: inputs.build-command != ''
+        run: ${{ inputs.build-command }}
+      - name: the tag tree is clean
+        if: inputs.clean-tree-command != ''
+        run: ${{ inputs.clean-tree-command }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: inputs.node-version != ''
         with:

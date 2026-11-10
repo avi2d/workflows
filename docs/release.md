@@ -43,11 +43,13 @@ The `tag` job checks out the landed commit with the whole history.
 It runs the caller tree guard when one is set, then the caller tag command with `GH_TOKEN` set.
 One `release-pull-request` concurrency group serializes competing plans.
 
-`release.yml` runs a `preflight` job when the caller sets a preflight command, then a `publish` job.
-The `publish` job takes only a tag on main, then runs the caller build command and the clean tree check.
+`release.yml` runs a `preflight` job when the caller sets a preflight command, then a `verify` job, then a `publish` job.
+The `verify` job takes only a tag on main, then runs the caller build command and the clean tree check.
 It runs the caller tree guard before the build and the caller lint, typecheck and test commands after the clean tree check.
 It matches the tag against the version in the caller manifest.
-It sets up Node with the npm registry when the caller names a Node release, then runs the caller publish command with `GH_TOKEN` set.
+The `publish` job runs only after `verify` passes, and it alone holds `id-token: write`.
+It builds the tag again, runs the clean tree check, and sets up Node with the npm registry when the caller names a Node release.
+It then runs the caller publish command with `GH_TOKEN` set, and no lint, test or other caller check runs in it.
 The lint, typecheck and test commands default to empty, so a caller opts in only to what the tag itself must run.
 The build and the clean tree check default to the usual commands, and empty skips them.
 A caller whose release pull request already ran the full suite leaves `test-command` empty.

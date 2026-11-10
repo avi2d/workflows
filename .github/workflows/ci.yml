@@ -316,7 +316,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: bun src/ci/release-jobs.ts
-      - name: a release whose tag or publish guard drifts, or whose job leaves the hosted runner, fails
+      - name: a release whose tag, verify or publish guard drifts, or whose job leaves the hosted runner, fails
         run: bun src/ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.

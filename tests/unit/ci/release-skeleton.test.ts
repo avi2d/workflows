@@ -17,7 +17,7 @@ const goodRelease = {
       "runs-on": "ubuntu-latest",
       steps: [{ run: "echo preflight" }],
     },
-    publish: {
+    verify: {
       "runs-on": "ubuntu-latest",
       needs: "preflight",
       steps: [
@@ -26,55 +26,93 @@ const goodRelease = {
         { run: "${{ inputs.tree-guard-command }}" },
         { run: "${{ inputs.build-command }}" },
         { run: "${{ inputs.clean-tree-command }}" },
-        { run: "${{ inputs.publish-command }}" },
+        { run: "${{ inputs.test-command }}" },
       ],
+    },
+    publish: {
+      "runs-on": "ubuntu-latest",
+      needs: "verify",
+      permissions: { contents: "write", "id-token": "write" },
+      steps: [{ run: "${{ inputs.build-command }}" }, { run: "${{ inputs.clean-tree-command }}" }, { run: "${{ inputs.publish-command }}" }],
     },
   },
 };
 
+function withoutStep<T extends { steps: { run: string }[] }>(job: T, part: string): T {
+  return { ...job, steps: job.steps.filter((step) => !step.run.includes(part)) };
+}
+
 describe("release skeleton", () => {
-  test("a skeleton with every gate in place passes", () => {
+  test("a skeleton with every gate in place that reports a fault fails", () => {
     expect(faults(goodPr, goodRelease)).toEqual([]);
   });
-  test("a tag without the release commit guard fails", () => {
+  test("a tag without the release commit guard that passes fails", () => {
     const pr = structuredClone(goodPr);
     pr.jobs.tag.if = "github.event_name == 'push'";
-    expect(faults(pr, goodRelease)).toContain("tag runs off more than a release commit");
+    expect(faults(pr, goodRelease)).toEqual(["tag runs off more than a release commit"]);
   });
-  test("a publish without preflight fails", () => {
+  test("a verify without preflight that passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.needs = "setup";
-    expect(faults(goodPr, release)).toContain("publish runs without preflight");
+    release.jobs.verify.needs = "setup";
+    expect(faults(goodPr, release)).toEqual(["verify runs without preflight"]);
   });
-  test("a publish that refuses a non-tag anywhere but first fails", () => {
+  test("a verify that refuses a non-tag anywhere but first and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps.reverse();
-    expect(faults(goodPr, release)).toContain("publish refuses a non-tag anywhere but first");
+    release.jobs.verify.steps.reverse();
+    expect(faults(goodPr, release)).toEqual(["verify refuses a non-tag anywhere but first"]);
   });
-  test("a publish that never checks the tag sits on main fails", () => {
+  test("a verify that never checks the tag sits on main and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps = release.jobs.publish.steps.filter((step) => !step.run.includes("merge-base"));
-    expect(faults(goodPr, release)).toContain("publish never checks the tag sits on main");
+    release.jobs.verify = withoutStep(release.jobs.verify, "merge-base");
+    expect(faults(goodPr, release)).toEqual(["verify never checks the tag sits on main"]);
   });
-  test("a publish that never runs the tree guard fails", () => {
+  test("a verify that never runs the tree guard and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps = release.jobs.publish.steps.filter((step) => !step.run.includes("tree-guard"));
-    expect(faults(goodPr, release)).toContain("publish never runs the tree guard");
+    release.jobs.verify = withoutStep(release.jobs.verify, "tree-guard");
+    expect(faults(goodPr, release)).toEqual(["verify never runs the tree guard"]);
   });
-  test("a publish that hard-codes a build or a dirty check fails", () => {
+  test.each([[{ "id-token": "write" }], ["write-all"]])("a verify granted %p that passes fails", (permissions) => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps[3] = { run: "bun run build" };
-    expect(faults(goodPr, release)).toContain("publish hard-codes a build or a dirty check");
+    const verify: Record<string, unknown> = release.jobs.verify;
+    verify["permissions"] = permissions;
+    expect(faults(goodPr, release)).toEqual(["verify holds the publish token"]);
   });
-  test("a publish that never runs the caller build command fails", () => {
+  test("a verify that publishes beside its checks and passes fails", () => {
     const release = structuredClone(goodRelease);
-    release.jobs.publish.steps = release.jobs.publish.steps.filter((step) => !step.run.includes("build-command"));
-    expect(faults(goodPr, release)).toContain("publish never runs the caller build command");
+    release.jobs.verify.steps.push({ run: "${{ inputs.publish-command }}" });
+    expect(faults(goodPr, release)).toEqual(["verify publishes beside its checks"]);
   });
-  test("a publish that does not end in the caller publish command fails", () => {
+  test("a release with no verify job that passes fails", () => {
+    const { verify: _verify, ...jobs } = structuredClone(goodRelease).jobs;
+    expect(faults(goodPr, { jobs })).toContain("release has no verify job");
+  });
+  test("a publish that runs without verify and passes fails", () => {
+    const release = structuredClone(goodRelease);
+    release.jobs.publish.needs = "preflight";
+    expect(faults(goodPr, release)).toEqual(["publish runs without verify"]);
+  });
+  test.each([["test-command"], ["lint-command"], ["typecheck-command"], ["tree-guard-command"], ["preflight-command"]])(
+    "a publish that runs the caller %s beside the publish token and passes fails",
+    (check) => {
+      const release = structuredClone(goodRelease);
+      release.jobs.publish.steps.unshift({ run: `\${{ inputs.${check} }}` });
+      expect(faults(goodPr, release)).toEqual([`publish runs the caller ${check} beside the publish token`]);
+    },
+  );
+  test("a publish that hard-codes a build and passes fails", () => {
+    const release = structuredClone(goodRelease);
+    release.jobs.publish.steps[0] = { run: "bun run build" };
+    expect(faults(goodPr, release)).toEqual(["publish hard-codes a build or a dirty check", "publish never runs the caller build command"]);
+  });
+  test("a publish that never runs the caller clean tree command and passes fails", () => {
+    const release = structuredClone(goodRelease);
+    release.jobs.publish = withoutStep(release.jobs.publish, "clean-tree-command");
+    expect(faults(goodPr, release)).toEqual(["publish never runs the caller clean tree command"]);
+  });
+  test("a publish that does not end in the caller publish command and passes fails", () => {
     const release = structuredClone(goodRelease);
     release.jobs.publish.steps.push({ run: "echo done" });
-    expect(faults(goodPr, release)).toContain("publish does not end in the caller publish command");
+    expect(faults(goodPr, release)).toEqual(["publish does not end in the caller publish command"]);
   });
   test.each([["self-hosted"], ["${{ inputs.runs-on }}"], [["self-hosted", "linux"]]])("a release job on %p that passes fails", (runsOn) => {
     const release = structuredClone(goodRelease);

@@ -27,6 +27,8 @@ The shared copy keeps the dispatch and push gates, the concurrency group, the gu
 The build and the clean tree check are caller inputs with the usual commands as defaults, so a caller with its own build flow passes it as an input.
 The tree guard stays optional until the kit ships it, and only checks sets it today.
 The full suite stays on the release pull request, and each tag opts in only to the verify commands it still needs.
+The publish command runs in a job of its own after the verify job, so the publish token never reaches a caller check.
+That job builds the tag again, because the shared copy cannot know which paths a caller's build writes to carry them as an artifact.
 
 ## Consequences
 
