@@ -116,6 +116,7 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
 | `base` | the pull request base | the commit the change starts from, where empty reports `false` |
 | `head` | `HEAD` | the commit the change ends at |
 | `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched against a whole path, where `*` also crosses `/` |
+
 Collating names longer than one character such as `[.hyphen.]` match nothing.
 
 | Output | Value |

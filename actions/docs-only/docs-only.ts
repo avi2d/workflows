@@ -69,11 +69,10 @@ function memberTest(element: BracketElement): CharTest {
   return char === undefined ? never : (value) => value === char;
 }
 
-function rangeTest(low: string | undefined, high: BracketElement): CharTest {
-  if (high.kind === "class") return never;
-  if (low === undefined || high.char === undefined) return never;
+function rangeTest(low: string | undefined, high: string | undefined): CharTest {
+  if (low === undefined || high === undefined) return never;
   const from = low.codePointAt(0) ?? 0;
-  const to = high.char.codePointAt(0) ?? 0;
+  const to = high.codePointAt(0) ?? 0;
   return (char) => {
     const point = char.codePointAt(0) ?? 0;
     return from <= point && point <= to;
@@ -91,19 +90,20 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
     }
     const { element, next } = bracketElementAt(symbols, at);
     at = next;
+    const low = "char" in element ? element.char : undefined;
     const startsRange = (element.kind === "char" || element.kind === "collating") && symbols[at] === "-" && at + 1 < symbols.length && symbols[at + 1] !== "]";
     if (!startsRange) {
       members.push(memberTest(element));
       continue;
     }
     if (symbols[at + 1] === "[" && (symbols[at + 2] === ":" || symbols[at + 2] === "=")) {
-      members.push(rangeTest(element.char, { kind: "char", char: "[" }));
+      members.push(rangeTest(low, "["));
       at += 2;
       continue;
     }
     const high = bracketElementAt(symbols, at + 1);
     at = high.next;
-    members.push(rangeTest(element.char, high.element));
+    members.push(rangeTest(low, "char" in high.element ? high.element.char : undefined));
   }
   return undefined;
 }
