@@ -23,7 +23,7 @@ To call an action from a workflow, pin it to a version tag:
     fetch-depth: 0
 ```
 
-The `v2` tag moves: the maintainer points it at each new `v2.x.y` release, so a caller on `v2` takes each release as it lands.
+The `v2` tag moves: the release run points it at each new `v2.x.y` release, so a caller on `v2` takes each release as it lands.
 A caller that wants one fixed version uses its exact tag, such as `v2.0.0`, which never moves.
 The `v1` tags hold the actions at the repository root, so `avi2d/workflows/<name>@v1` still resolves.
 
@@ -88,13 +88,15 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `actions/<name>/` | the composite actions, one flat directory each, holding `action.yml`, the `main.ts` or `main.sh` its steps run, and the TypeScript and shell files that entry calls |
 | `lib/` | the code more than one action shares |
 | `ci/` | the smoke scripts the CI jobs run, in place of code inside `ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
-| `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/` and `workflows/` for the code they test |
+| `release/` | the TypeScript this repository's own release runs: the changelog build and the major tag move |
+| `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/`, `release/` and `workflows/` for the code they test |
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
 | `.github/workflows/release-pr.yml` | the reusable release pull request, plan on dispatch and tag on merge |
 | `.github/workflows/release-smoke.yml` | the release pull request smoke, manual and push on edit |
 | `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command and the opt-in GitHub release |
+| `.github/workflows/own-release-pr.yml`, `.github/workflows/own-release.yml` | this repository's own release, calling the two release runs by local path |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
