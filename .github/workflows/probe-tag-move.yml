@@ -1,0 +1,25 @@
+name: probe-tag-move
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      FROM: 2fe98227e9b6509f467f8799dca574dca1b644f4
+      TO: 854c2872cb8b6b5115064f065b67a10d06580b71
+    steps:
+      - name: create probe-tag-move on the 2.3.1 release commit
+        run: gh api -i -X POST "repos/$REPO/git/refs" -f ref=refs/tags/probe-tag-move -f sha="$FROM"
+      - name: move probe-tag-move by force to current main
+        run: gh api -i -X PATCH "repos/$REPO/git/refs/tags/probe-tag-move" -f sha="$TO" -F force=true
+      - name: read where probe-tag-move points
+        if: always()
+        run: gh api "repos/$REPO/git/refs/tags/probe-tag-move" --jq .object.sha
+      - name: delete probe-tag-move
+        if: always()
+        run: gh api -i -X DELETE "repos/$REPO/git/refs/tags/probe-tag-move"
