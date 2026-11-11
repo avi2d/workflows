@@ -84,3 +84,13 @@ test.each([
   const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
   expect(exitCode).toBe(0);
 });
+
+test("a command killed by a signal within its limit that ends the check instead of reading as failed fails", () => {
+  const program = `
+    import { Duration, Effect } from "effect";
+    import { commandPassesWithin, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandPassesWithin("bash", ["-c", "kill -KILL $$"], Duration.seconds(30)).pipe(Effect.map((passed) => passed === false)));
+  `;
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
+  expect(exitCode).toBe(0);
+});
