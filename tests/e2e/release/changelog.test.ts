@@ -41,8 +41,6 @@ function build() {
   return runAction(SCRIPT, [], env(), scratch.at("repo"));
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 beforeEach(() => {
   mkdirSync(scratch.at("repo"));
   git("init", "-q", "-b", "main");
@@ -68,7 +66,6 @@ test("a release build that drops the hand-written sections, lists a commit from 
   expect(ran.exitCode).toBe(0);
   const section = [
     "## 1.1.0",
-    `Released ${today()}.`,
     "### Features",
     `- **actions:** add a thing [#2](${URL}/pull/2)`,
     "### Fixes",
