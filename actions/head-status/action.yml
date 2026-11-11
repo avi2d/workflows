@@ -17,7 +17,7 @@ inputs:
     description: The status description. Empty writes none.
     default: ""
   token:
-    description: The token that writes the status. It needs statuses write.
+    description: The token that writes the status. It needs statuses write, and pull-requests read when pull-request is set.
     default: ${{ github.token }}
   attempts:
     description: How many times to try the head read and the status call, waiting 10 seconds longer after each failure.
