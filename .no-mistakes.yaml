@@ -1,0 +1,4 @@
+# The gate's worktree holds tracked files only, so dependencies are installed before lint imports them.
+commands:
+  prepare: bun install --frozen-lockfile && bun run install:instrumenter
+  lint: bun run lint
