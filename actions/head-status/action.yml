@@ -8,10 +8,10 @@ inputs:
     description: The status name, which a required check of the same name counts.
     default: ${{ github.job }}
   head-sha:
-    description: The commit the status lands on. Empty falls back to the head of pull-request, then to GITHUB_SHA.
+    description: The commit the status lands on. Empty falls back to the head of pull-request, then to GITHUB_SHA. A job that checks code at a commit passes that commit here.
     default: ""
   pull-request:
-    description: The number of the pull request whose head the status lands on when head-sha is empty, such as on an issue_comment run.
+    description: The number of the pull request whose head the status lands on when head-sha is empty, such as on an issue_comment run. Use it only for a check of the pull request itself. The head is read when the status posts.
     default: ""
   description:
     description: The status description. Empty writes none.
