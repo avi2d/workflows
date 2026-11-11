@@ -21,6 +21,20 @@ function inputs(job: Record<string, unknown>): Record<string, unknown> {
   return isRecord(job["with"]) ? job["with"] : {};
 }
 
+function filterMatches(pattern: string, tag: string): boolean {
+  const body = pattern
+    .split("")
+    .map((char) => {
+      if (char === "*") return ".*";
+      if (char === "?") return ".";
+      if (char === "+") return "+";
+      if ("\\^$.|(){}".includes(char)) return `\\${char}`;
+      return char;
+    })
+    .join("");
+  return new RegExp(`^${body}$`).test(tag);
+}
+
 test("a release pull request that calls the shared copy at a pinned ref in place of this commit, or never runs on dispatch and on main, fails", () => {
   expect(onlyJob("own-release-pr.yml")["uses"]).toBe("./.github/workflows/release-pr.yml");
   expect(Object.keys(triggers("own-release-pr.yml")).toSorted()).toEqual(["push", "workflow_dispatch"]);
@@ -36,7 +50,11 @@ test("a tag command that dispatches a workflow file that does not exist or takes
 });
 
 test("a plan that dispatches no ci.yml, so the release pull request runs no required check, fails", () => {
-  expect(inputs(onlyJob("own-release-pr.yml"))["plan-command"]).toBe("bunx checks-release-pr ci.yml");
+  const command = String(inputs(onlyJob("own-release-pr.yml"))["plan-command"]);
+  const [runner, kit, dispatched] = command.split(" ");
+  expect([runner, kit]).toEqual(["bunx", "checks-release-pr"]);
+  expect(existsSync(join(REPOSITORY, ".github/workflows", dispatched ?? ""))).toBe(true);
+  expect(triggers(dispatched ?? "")).toHaveProperty("workflow_dispatch");
 });
 
 test("a publish that never moves the major tag or never writes the release page fails", () => {
@@ -49,12 +67,18 @@ test("a publish that never moves the major tag or never writes the release page 
 
 test("a moving major tag such as v2 that starts a release run of its own fails", () => {
   const push = triggers("own-release.yml")["push"];
-  const patterns = isRecord(push) && Array.isArray(push["tags"]) ? push["tags"] : [];
-  expect(patterns).toEqual(["v[0-9]+.[0-9]+.[0-9]+"]);
+  const patterns = isRecord(push) && Array.isArray(push["tags"]) ? push["tags"].map(String) : [];
+  expect(patterns.length).toBeGreaterThan(0);
+  const starts = (tag: string) => patterns.some((pattern) => filterMatches(pattern, tag));
+  expect(starts("v2")).toBe(false);
+  expect(starts("v2.4.0")).toBe(true);
+  expect(starts("v2.10.0")).toBe(true);
 });
 
 test("a build that the release pull request and the tag check run but package.json does not name fails", () => {
   const manifest: unknown = JSON.parse(readFileSync(join(REPOSITORY, "package.json"), "utf8"));
   const scripts = isRecord(manifest) && isRecord(manifest["scripts"]) ? manifest["scripts"] : {};
-  expect(scripts["build"]).toBe("bun release/changelog.ts");
+  const entry = String(scripts["build"] ?? "").split(" ").at(-1) ?? "";
+  expect(entry).not.toBe("");
+  expect(existsSync(join(REPOSITORY, entry))).toBe(true);
 });

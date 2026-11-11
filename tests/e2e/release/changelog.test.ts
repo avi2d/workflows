@@ -92,6 +92,16 @@ test("a landed release commit whose build rewrites the changelog, which the tag 
   expect(git("status", "--porcelain")).toBe("");
 });
 
+test("a cancelled release whose section stays in the changelog fails", async () => {
+  manifest("1.1.0");
+  await build();
+  commit("chore: release 1.1.0 (#5)");
+  manifest("1.0.0");
+  const ran = await build();
+  expect(ran.exitCode).toBe(0);
+  expect(scratch.read("repo/CHANGELOG.md")).toBe(HAND);
+});
+
 test("a release that merged behind main whose build leaves the changelog unchanged fails", async () => {
   manifest("1.1.0");
   await build();

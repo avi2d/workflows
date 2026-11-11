@@ -80,6 +80,18 @@ export function withSection(changelog: string, version: string, section: string)
   return `${[intro.trimEnd(), ...kept.map((chunk) => chunk.trimEnd())].join("\n\n")}\n`;
 }
 
+export function dropStaleSections(changelog: string, since: string | undefined, version: string): string {
+  if (since === undefined) return changelog;
+  const [intro = "", ...sections] = chunksOf(changelog);
+  const kept = sections.filter((chunk) => {
+    const headed = /^## (\S+)/.exec(chunk)?.[1] ?? "";
+    if (headed === version || !PLAIN_VERSION.test(headed)) return true;
+    return Bun.semver.order(headed, since.slice(1)) !== 1;
+  });
+  if (kept.length === sections.length) return changelog;
+  return `${[intro.trimEnd(), ...kept.map((chunk) => chunk.trimEnd())].join("\n\n")}\n`;
+}
+
 const git = Effect.fn("git")(function* (root: string, args: readonly string[]) {
   const { stdout, passed } = yield* commandOutput("git", ["-C", root, ...args]);
   if (!passed) return yield* new ChangelogRefused({ message: `git ${args.join(" ")} failed` });
@@ -102,9 +114,8 @@ const readManifest = Effect.fn("readManifest")(function* (root: string) {
   const { version, repository } = yield* decodeManifest(text).pipe(
     Effect.mapError((cause) => new ChangelogRefused({ message: `${MANIFEST}: ${cause.message}` })),
   );
-  const repositoryUrl = repository.replace(/^git\+/, "").replace(/\.git$/, "").replace(/\/$/, "");
-  if (!repositoryUrl.startsWith("https://")) return yield* new ChangelogRefused({ message: `${MANIFEST} repository ${repository} is no https address` });
-  return { version, repositoryUrl };
+  if (!repository.startsWith("https://")) return yield* new ChangelogRefused({ message: `${MANIFEST} repository ${repository} is no https address` });
+  return { version, repositoryUrl: repository };
 });
 
 // checks-changelog writes the whole file from the version bumps in package.json, and the sections before the first bump were written by hand.
@@ -116,22 +127,28 @@ const build = Effect.gen(function* () {
   }
   const { version, repositoryUrl } = yield* readManifest(root);
   const since = yield* lastTag(root);
+  const target = (yield* Path.Path).join(root, CHANGELOG);
+  const found = yield* fs.readFileString(target);
+  const changelog = dropStaleSections(found, since, version);
   if (since === `v${version}`) {
+    if (changelog !== found) {
+      yield* fs.writeFileString(target, changelog);
+      yield* Console.log(`changelog: dropped the sections past ${since} that ${version} never published`);
+      return true;
+    }
     yield* Console.log(`changelog: ${since} is tagged, so ${CHANGELOG} stays as it is`);
     return true;
   }
   if (since !== undefined && Bun.semver.order(version, since.slice(1)) !== 1) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, which is not past the last release tag ${since}` });
   }
-  const target = (yield* Path.Path).join(root, CHANGELOG);
-  const changelog = yield* fs.readFileString(target);
   const date = sectionDate(changelog, version) ?? DateTime.formatIsoDateUtc(yield* DateTime.now);
   const section = renderSection({ version, date, subjects: yield* subjectsSince(root, since), repositoryUrl });
   if (section === undefined) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, yet no feat, fix, perf, revert or breaking commit landed since ${since ?? "the first commit"}` });
   }
   const written = withSection(changelog, version, section);
-  if (written !== changelog) yield* fs.writeFileString(target, written);
+  if (written !== found) yield* fs.writeFileString(target, written);
   yield* Console.log(`changelog: wrote ${version} into ${CHANGELOG} from the commits since ${since ?? "the first commit"}`);
   return true;
 });

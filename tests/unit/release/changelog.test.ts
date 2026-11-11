@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { groupOf, renderSection, sectionDate, withSection } from "../../../release/changelog.ts";
+import { dropStaleSections, groupOf, renderSection, sectionDate, withSection } from "../../../release/changelog.ts";
 
 const URL = "https://github.com/owner/repo";
 
@@ -60,6 +60,20 @@ test("a section written twice, or one whose rewrite keeps the old entries, fails
 
 test("a section rewritten into the last place of the file that loses its final newline fails", () => {
   expect(withSection(HAND, "2.3.0", "## 2.3.0\n\nReleased 2026-11-10.\n\n- again.")).toBe(HAND.replace("### Features\n\n- by hand too.", "- again."));
+});
+
+test("a section past the last tag that is not the held version stays fails", () => {
+  const changelog = HAND.replace("## 2.3.1", "## 2.3.2\n\nReleased 2026-11-12.\n\n### Fixes\n\n- never published.\n\n## 2.3.1");
+  expect(dropStaleSections(changelog, "v2.3.1", "2.3.1")).toBe(HAND);
+  expect(dropStaleSections(changelog, "v2.3.1", "2.4.0")).toBe(HAND);
+});
+
+test("a held or released section, or a heading with no version, dropped with the stale ones fails", () => {
+  const changelog = HAND.replace("## 2.3.1", "## 2.3.2\n\nReleased 2026-11-12.\n\n### Fixes\n\n- never published.\n\n## 2.3.1");
+  expect(dropStaleSections(changelog, "v2.3.1", "2.3.2")).toBe(changelog);
+  expect(dropStaleSections(changelog, undefined, "2.3.2")).toBe(changelog);
+  const draft = HAND.replace("## 2.3.1", "## Unreleased\n\n- draft.\n\n## 2.3.1");
+  expect(dropStaleSections(draft, "v2.3.1", "2.3.1")).toBe(draft);
 });
 
 test("a date read from another version's section, or one read where the version has none, fails", () => {

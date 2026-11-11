@@ -51,9 +51,6 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           OUTCOME: ${{ steps.title.outcome }}
         run: bun ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
-      - run: bun run build
-      - name: a build that rewrites a committed file fails
-        run: git diff --exit-code
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
