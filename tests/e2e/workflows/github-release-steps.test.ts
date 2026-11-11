@@ -14,12 +14,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function publishStep(name: string): Record<string, unknown> {
+function publishSteps(): Record<string, unknown>[] {
   const document: unknown = Bun.YAML.parse(readFileSync(RELEASE, "utf8"));
   const jobs = isRecord(document) ? document["jobs"] : undefined;
   const publish = isRecord(jobs) ? jobs["publish"] : undefined;
   const steps: unknown[] = isRecord(publish) && Array.isArray(publish["steps"]) ? publish["steps"] : [];
-  const step = steps.filter(isRecord).find((candidate) => candidate["name"] === name);
+  return steps.filter(isRecord);
+}
+
+function publishStep(name: string): Record<string, unknown> {
+  const step = publishSteps().find((candidate) => candidate["name"] === name);
   if (step === undefined) throw new Error(`release.yml publish has no step named ${name}`);
   return step;
 }
@@ -30,10 +34,11 @@ function publishRun(name: string): string {
   return run;
 }
 
-function runStep(name: string): number {
+function runnerFor(changelog: string): (run: string) => number {
   mkdirSync(scratch.at("temp"), { recursive: true });
-  scratch.write("CHANGELOG.md", CHANGELOG);
+  scratch.write("CHANGELOG.md", changelog);
   stubBin(scratch.at("bin"), "gh", "exit 0");
+  stubBin(scratch.at("bin"), "publish-stub", "exit 0");
   const env = {
     ...process.env,
     PATH: `${scratch.at("bin")}:${join(REPOSITORY, "node_modules/.bin")}:${process.env["PATH"] ?? ""}`,
@@ -42,8 +47,58 @@ function runStep(name: string): number {
     GITHUB_REF_NAME: "v1.2.3",
     VERSION: "1.2.3",
   };
-  return Bun.spawnSync(["bash", "-e", "-c", publishRun(name)], { cwd: scratch.at(), env }).exitCode;
+  return (run) => Bun.spawnSync(["bash", "-e", "-c", run], { cwd: scratch.at(), env }).exitCode;
 }
+
+function runStep(name: string): number {
+  return runnerFor(CHANGELOG)(publishRun(name));
+}
+
+type Inputs = { readonly "publish-command": string; readonly "github-release": boolean };
+
+// Every if the publish job holds must be listed, so a new condition fails the walk instead of being guessed.
+function runsFor(condition: unknown, inputs: Inputs): boolean {
+  const picked: Record<string, boolean> = {
+    "": true,
+    "inputs.publish-command == '' && !inputs.github-release": inputs["publish-command"] === "" && !inputs["github-release"],
+    "inputs.github-release": inputs["github-release"],
+    "inputs.publish-command != ''": inputs["publish-command"] !== "",
+    "inputs.build-command != ''": false,
+    "inputs.clean-tree-command != ''": false,
+    "inputs.node-version != ''": false,
+  };
+  const key = String(condition ?? "");
+  const runs = picked[key];
+  if (runs === undefined) throw new Error(`release.yml publish has a step condition the walk does not know: ${key}`);
+  return runs;
+}
+
+function walkPublishJob(inputs: Inputs, changelog: string): { readonly failed: boolean } {
+  const runStepScript = runnerFor(changelog);
+  for (const step of publishSteps()) {
+    if (!runsFor(step["if"], inputs) || typeof step["run"] !== "string") continue;
+    const run = step["run"].replace("${{ inputs.publish-command }}", inputs["publish-command"]);
+    if (runStepScript(run) !== 0) return { failed: true };
+  }
+  return { failed: false };
+}
+
+const WITHOUT_SECTION = CHANGELOG.replace("## 1.2.3", "## 1.2.3-draft");
+
+test("a GitHub release opt-in that runs the publish command although the notes cannot be written fails", () => {
+  expect(walkPublishJob({ "publish-command": "publish-stub", "github-release": true }, WITHOUT_SECTION)).toEqual({ failed: true });
+  expect(recordedCalls(scratch.at("calls"))).toEqual([]);
+});
+
+test("a GitHub release opt-in that creates the release before the publish command or skips either fails", () => {
+  expect(walkPublishJob({ "publish-command": "publish-stub", "github-release": true }, CHANGELOG)).toEqual({ failed: false });
+  expect(recordedCalls(scratch.at("calls"))).toEqual([[], ["release", "create", "v1.2.3", "--title", "v1.2.3", "--notes-file", scratch.at("temp", "release-notes.md")]]);
+});
+
+test("a caller with only a publish command whose job writes notes or creates a GitHub release fails", () => {
+  expect(walkPublishJob({ "publish-command": "publish-stub", "github-release": false }, WITHOUT_SECTION)).toEqual({ failed: false });
+  expect(recordedCalls(scratch.at("calls"))).toEqual([[]]);
+});
 
 test("a publish with no publish command and no GitHub release that passes fails", () => {
   const step = publishStep("require publish-command or github-release");

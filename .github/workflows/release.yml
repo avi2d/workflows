@@ -43,7 +43,7 @@ on:
         type: string
         default: ""
       github-release:
-        description: Whether to create the GitHub release for the tag after the publish command, with the CHANGELOG.md section of its version as the notes.
+        description: Whether to create the GitHub release for the tag, with the CHANGELOG.md section of its version as the notes written before the publish command and the release created after it.
         type: boolean
         default: false
 permissions:
@@ -112,6 +112,22 @@ jobs:
       - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
         with:
           fetch-depth: 0
+      # A publish cannot be undone, so the notes are written before it and a missing changelog section stops the release unpublished.
+      - id: version
+        name: read the released version for the notes
+        if: inputs.github-release
+        uses: avi2d/workflows/actions/release-version@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
+        with:
+          package-path: ${{ inputs.package-path }}
+      - if: inputs.github-release
+        uses: avi2d/workflows/actions/kit-bin@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
+        with:
+          commands: checks-release-notes
+      - name: write the release notes
+        if: inputs.github-release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: checks-release-notes "$VERSION" "$RUNNER_TEMP/release-notes.md"
       # The shared copy cannot know which paths the caller's build writes, so it builds the verified tag again in place of carrying an artifact.
       - name: build the tag
         if: inputs.build-command != ''
@@ -129,21 +145,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ${{ inputs.publish-command }}
-      - id: version
-        name: read the released version for the notes
-        if: inputs.github-release
-        uses: avi2d/workflows/actions/release-version@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
-        with:
-          package-path: ${{ inputs.package-path }}
-      - if: inputs.github-release
-        uses: avi2d/workflows/actions/kit-bin@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
-        with:
-          commands: checks-release-notes
-      - name: write the release notes
-        if: inputs.github-release
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: checks-release-notes "$VERSION" "$RUNNER_TEMP/release-notes.md"
       - name: create the GitHub release
         if: inputs.github-release
         env:

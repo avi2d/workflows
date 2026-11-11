@@ -37,6 +37,12 @@ function ungatedAfterPublish(publish: Record<string, unknown>): boolean {
   return steps.slice(at + 1).some((step) => !isRecord(step) || !String(step["if"] ?? "").includes("inputs.github-release"));
 }
 
+function notesAfterPublish(publish: Record<string, unknown>): boolean {
+  const steps = runs(publish);
+  const published = steps.findIndex((run) => run.includes("inputs.publish-command"));
+  return steps.slice(published + 1).some((run) => run.includes("checks-release-notes"));
+}
+
 const NO_OP_GUARD = "inputs.publish-command == '' && !inputs.github-release";
 
 function hasNoOpGuard(publish: Record<string, unknown>): boolean {
@@ -84,6 +90,7 @@ function publishFaults(publish: Record<string, unknown>): string[] {
   if (!hasNoOpGuard(publish)) found.push("publish passes with no publish command and no GitHub release");
   if (!steps.some((run) => run.includes("inputs.publish-command"))) found.push("publish never runs the caller publish command");
   else if (ungatedAfterPublish(publish)) found.push("publish runs a step after the caller publish command that the GitHub release does not gate");
+  else if (notesAfterPublish(publish)) found.push("publish writes the release notes after the caller publish command");
   return found;
 }
 

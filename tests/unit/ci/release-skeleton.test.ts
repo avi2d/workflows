@@ -157,6 +157,20 @@ describe("release skeleton", () => {
     publish.steps.push({ if: "inputs.github-release", run: 'gh release create "$GITHUB_REF_NAME"' });
     expect(faults(goodPr, release)).toEqual([]);
   });
+  test("a publish that writes the release notes after the caller publish command and passes fails", () => {
+    const release = structuredClone(goodRelease);
+    const publish: { steps: Record<string, string>[] } = release.jobs.publish;
+    publish.steps.push({ if: "inputs.github-release", run: 'checks-release-notes "$VERSION" "$RUNNER_TEMP/release-notes.md"' });
+    publish.steps.push({ if: "inputs.github-release", run: 'gh release create "$GITHUB_REF_NAME"' });
+    expect(faults(goodPr, release)).toEqual(["publish writes the release notes after the caller publish command"]);
+  });
+  test("a publish that writes the release notes before the caller publish command that reports a fault fails", () => {
+    const release = structuredClone(goodRelease);
+    const publish: { steps: Record<string, string>[] } = release.jobs.publish;
+    publish.steps.splice(1, 0, { if: "inputs.github-release", run: 'checks-release-notes "$VERSION" "$RUNNER_TEMP/release-notes.md"' });
+    publish.steps.push({ if: "inputs.github-release", run: 'gh release create "$GITHUB_REF_NAME"' });
+    expect(faults(goodPr, release)).toEqual([]);
+  });
   test.each([["ubuntu-latest"], ["self-hosted"], ["${{ inputs.runs-on }}"], ["${{ vars.CI_RUNS_ON || 'self-hosted' }}"], [["self-hosted", "linux"]]])(
     "a release job on %p in place of the caller's runner pick that passes fails",
     (runsOn) => {
