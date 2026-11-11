@@ -66,10 +66,18 @@ test("a pull request run that restores, reuses or compares against a result from
   ]);
 });
 
-test("a mutation action pinned at commits that disagree, or running a part the workflow names that is unknown, fails", () => {
+test("a mutation action pinned at commits that disagree or are unreachable, or running a part the workflow names that is unknown, fails", () => {
   const { pins, parts } = mutationPinsAndParts();
   expect(pins.length).toBeGreaterThan(0);
   expect(new Set(pins).size).toBe(1);
+  for (const pin of new Set(pins)) {
+    const reachable = Bun.spawnSync(["git", "merge-base", "--is-ancestor", pin, "HEAD"], {
+      cwd: REPOSITORY,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(reachable.exitCode).toBe(0);
+  }
   expect(parts).toEqual(["count-scope", "fork-summary", "over-cap", "scope-score", "score", "shards"]);
 });
 
