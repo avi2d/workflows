@@ -59,7 +59,8 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 
 ## docs-only
 
-Tells whether a change touches only documentation, through `checks-docs-only` from the caller's install of the kit, or from its own source in the kit's own repository, as [kit-bin](#kit-bin) finds it.
+Tells whether a change touches only documentation.
+Without `paths` it runs `checks-docs-only` from the caller's install of the kit, or from the kit's own repository as [kit-bin](#kit-bin) finds it.
 
 With `paths` set, it runs no kit command and reads the change itself.
 The change counts as documentation when every path changed since the merge base of `base` and `head` matches one of the patterns.
