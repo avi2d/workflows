@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { useScratch } from "./scratch.ts";
+
+const scratch = useScratch("run");
 
 const RUN = join(import.meta.dir, "../../../lib/run.ts");
 
@@ -39,6 +43,53 @@ test("a failing child read as passed fails", () => {
     import { Effect } from "effect";
     import { commandOutput, runCheck } from ${JSON.stringify(RUN)};
     runCheck(commandOutput("bash", ["-c", "exit 3"]).pipe(Effect.map(({ passed }) => passed === false)));
+  `;
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
+  expect(exitCode).toBe(0);
+});
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const LEAVES_A_SESSION_CHILD_RUNNING = 'setsid sleep 300 & echo $! > "$PID_FILE"; sleep 300';
+
+test("a command past its limit left running, or a descendant in its own session left behind, fails", () => {
+  const program = `
+    import { Duration, Effect } from "effect";
+    import { commandPassesWithin, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandPassesWithin("bash", ["-c", ${JSON.stringify(LEAVES_A_SESSION_CHILD_RUNNING)}], Duration.seconds(1)).pipe(Effect.map((passed) => !passed)));
+  `;
+  const started = performance.now();
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore", env: { ...process.env, PID_FILE: scratch.at("pid") } });
+  expect(exitCode).toBe(0);
+  expect(performance.now() - started).toBeLessThan(10_000);
+  expect(isAlive(Number(readFileSync(scratch.at("pid"), "utf8").trim()))).toBe(false);
+}, 15_000);
+
+test.each([
+  ["exit 0", true],
+  ["exit 3", false],
+])("a command that ends within its limit with %p read other than by its exit code fails", (script, expected) => {
+  const program = `
+    import { Duration, Effect } from "effect";
+    import { commandPassesWithin, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandPassesWithin("bash", ["-c", ${JSON.stringify(script)}], Duration.seconds(30)).pipe(Effect.map((passed) => passed === ${String(expected)})));
+  `;
+  const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
+  expect(exitCode).toBe(0);
+});
+
+test("a command killed by a signal within its limit that ends the check instead of reading as failed fails", () => {
+  const program = `
+    import { Duration, Effect } from "effect";
+    import { commandPassesWithin, runCheck } from ${JSON.stringify(RUN)};
+    runCheck(commandPassesWithin("bash", ["-c", "kill -KILL $$"], Duration.seconds(30)).pipe(Effect.map((passed) => passed === false)));
   `;
   const { exitCode } = Bun.spawnSync(["bun", "-e", program], { stdin: "ignore" });
   expect(exitCode).toBe(0);

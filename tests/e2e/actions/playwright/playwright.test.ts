@@ -21,6 +21,17 @@ function installDeps(dryRun: { readonly stdout: string; readonly exitCode: numbe
   });
 }
 
+test("browsers installed other than by one playwright-core install through bunx fail", async () => {
+  stubBin(scratch.at("bin"), "bunx", "exit 0");
+  const ran = await runAction(MAIN, ["install"], {
+    PATH: `${scratch.at("bin")}:${process.env["PATH"] ?? ""}`,
+    STUB_RECORD: scratch.at("calls"),
+    BROWSERS: "webkit chromium",
+  });
+  expect(ran.exitCode).toBe(0);
+  expect(recordedCalls(scratch.at("calls"))).toEqual([["playwright-core", "install", "webkit", "chromium"]]);
+});
+
 test("a machine that holds every system package and still has apt-get run fails", async () => {
   const ran = await installDeps({ stdout: "All system dependencies are installed.", exitCode: 0 });
   expect(ran.exitCode).toBe(0);
