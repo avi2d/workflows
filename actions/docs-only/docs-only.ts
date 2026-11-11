@@ -69,9 +69,8 @@ function memberTest(element: BracketElement): CharTest {
   return char === undefined ? never : (value) => value === char;
 }
 
-// A class or an equivalence class as a range's end makes Bash match nothing with the whole bracket.
-function rangeTest(low: string | undefined, high: BracketElement): CharTest | "invalid" {
-  if (high.kind === "class" || high.kind === "equivalence") return "invalid";
+function rangeTest(low: string | undefined, high: BracketElement): CharTest {
+  if (high.kind === "class") return never;
   if (low === undefined || high.char === undefined) return never;
   const from = low.codePointAt(0) ?? 0;
   const to = high.char.codePointAt(0) ?? 0;
@@ -86,11 +85,9 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
   const negated = symbols[at] === "!" || symbols[at] === "^";
   if (negated) at += 1;
   const members: CharTest[] = [];
-  let invalid = false;
   for (let first = true; at < symbols.length; first = false) {
     if (symbols[at] === "]" && !first) {
-      const matchesNothing = invalid;
-      return { test: (char) => !matchesNothing && negated !== members.some((member) => member(char)), end: at };
+      return { test: (char) => negated !== members.some((member) => member(char)), end: at };
     }
     const { element, next } = bracketElementAt(symbols, at);
     at = next;
@@ -99,11 +96,14 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
       members.push(memberTest(element));
       continue;
     }
+    if (symbols[at + 1] === "[" && (symbols[at + 2] === ":" || symbols[at + 2] === "=")) {
+      members.push(rangeTest(element.char, { kind: "char", char: "[" }));
+      at += 2;
+      continue;
+    }
     const high = bracketElementAt(symbols, at + 1);
     at = high.next;
-    const range = rangeTest(element.char, high.element);
-    if (range === "invalid") invalid = true;
-    else members.push(range);
+    members.push(rangeTest(element.char, high.element));
   }
   return undefined;
 }
