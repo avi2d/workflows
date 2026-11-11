@@ -209,12 +209,10 @@ const pathsVerdict = Effect.fn("pathsVerdict")(function* (base: string, head: st
   const changed = (yield* git("-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", mergeBase, head)).split("\n").filter((path) => path !== "");
   if (changed.length === 0) return false;
   const patterns = wordsOf(paths);
-  let unmatched: string | undefined;
-  try {
-    unmatched = changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path)));
-  } catch (cause) {
-    return yield* (cause instanceof DocsOnlyError ? cause : new DocsOnlyError({ message: `docs-only: ${String(cause)}` }));
-  }
+  const unmatched = yield* Effect.try({
+    try: () => changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path))),
+    catch: (cause) => (cause instanceof DocsOnlyError ? cause : new DocsOnlyError({ message: `docs-only: ${String(cause)}` })),
+  });
   if (unmatched === undefined) return true;
   yield* Console.error(`docs-only: ${unmatched} matches none of ${paths}`);
   return false;
