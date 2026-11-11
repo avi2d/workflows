@@ -141,7 +141,85 @@ const PATTERN_CASES: readonly (readonly [string, string])[] = [
   ["docs/\u{1F4D8}*.md", "docs/\u{1F4D8}guide.md"],
   ["\\\u{1F600}", "\u{1F600}"],
   ["@(\u{1F600}|x)", "\u{1F600}"],
+  ["[z-ab]", "b"],
+  ["[z-ab]", "z"],
+  ["[[:foo:]x]", "x"],
+  ["[[:foo:]x]", "f"],
+  ["[[:alpha:]]", "é"],
+  ["[[:lower:]]", "é"],
+  ["[[:upper:]]", "É"],
+  ["[[:punct:]]", "«"],
+  ["[[:digit:]]", "٣"],
+  ["[[:space:]]", "\u00A0"],
+  ["[[.a.]]", "a"],
+  ["[[.-.]]", "-"],
+  ["[[=a=]]", "a"],
+  ["[[=a=]]", "b"],
+  ["[[.].]]", "]"],
+  ["[[=]=]x]", "x"],
+  ["[[=]=]]", "[=]]"],
+  ["[[=]=]]", "]"],
+  ["[[=]=]x]", "==]x]"],
+  ["[x[=]=]x]", "x=]x]"],
+  ["[[=]=]", "[=]"],
+  ["[[:]:]]", "[:]]"],
+  ["[[:]:]]", "]"],
+  ["[[.a.]-c]", "b"],
+  ["[[.a.]-c]", "-"],
+  ["[a-[.c.]]", "b"],
+  ["[[=a=]-c]", "-"],
+  ["[[=a=]-c]", "b"],
+  ["[a-[=c=]]", "b"],
+  ["[a-[:alpha:]]", "b"],
+  ["[!a-[:alpha:]]", "b"],
+  ["[a-[:alpha:]]", "l]"],
+  ["[!a-[:alpha:]]", "b]"],
+  ["[A-[:alpha:]]", "B]"],
+  ["[A-[=c=]]", "c]"],
+  ["[[.ab.]x]", "x"],
+  ["[[.ab.]x]", "a"],
+  ["[[:foo]", "f"],
+  ["[[.a]", "["],
+  ["[[:alpha:]", "a"],
+  ["[!z-ab]", "c"],
+  ["[x[=a]=]]", "x=]]"],
+  ["[[=a]b=]x", "=b=]x"],
+  ["[[:a]b:]]", "[b:]]"],
+  ["[x[:a]:]]", "x:]]"],
+  ["[[:al]pha:]]", "apha:]]"],
+  ["[[=?-]a=]*", "-a=]x"],
+  ["[c[:.]-x:]]", "[-x:]]"],
+  ["docs/[[=a]=]*.md", "docs/a=]x.md"],
+  ["[[.a]b.]]", "a]b.]"],
 ];
+
+const CLASS_NAMES = ["alnum", "alpha", "blank", "cntrl", "digit", "graph", "lower", "print", "punct", "space", "upper", "word", "xdigit"];
+const CLASS_SAMPLE_BLOCKS: readonly (readonly [number, number])[] = [
+  [0x01, 0x09],
+  [0x0b, 0x3ff],
+  [0x0600, 0x06ff],
+  [0x1f80, 0x206f],
+  [0x2100, 0x214f],
+  [0x3000, 0x303f],
+  [0xe000, 0xe00f],
+  [0xfef0, 0xff20],
+  [0x1d400, 0x1d40f],
+];
+
+test("a class whose members differ from Bash's under C.UTF-8 over the sampled blocks fails", () => {
+  const chars = CLASS_SAMPLE_BLOCKS.flatMap(([from, to]) => Array.from({ length: to - from + 1 }, (_, offset) => String.fromCodePoint(from + offset)));
+  const script = `while IFS= read -r c; do out=""; for k in ${CLASS_NAMES.join(" ")}; do case "$c" in [[:$k:]]) out+=1;; *) out+=0;; esac; done; printf '%s\\n' "$out"; done`;
+  const bash = Bun.spawnSync(["bash", "-c", script], {
+    env: { PATH: process.env["PATH"] ?? "", LC_ALL: "C.UTF-8" },
+    stdin: new TextEncoder().encode(`${chars.join("\n")}\n`),
+  });
+  const rows = bash.stdout.toString().trimEnd().split("\n");
+  expect(rows).toHaveLength(chars.length);
+  const differences = chars.flatMap((char, row) =>
+    CLASS_NAMES.filter((name, column) => bashPatternMatches(`[[:${name}:]]`, char) !== (rows[row]?.[column] === "1")).map((name) => `U+${(char.codePointAt(0) ?? 0).toString(16)} ${name}`),
+  );
+  expect(differences).toEqual([]);
+});
 
 test.each(PATTERN_CASES)("the pattern %p read against %p other than as Bash's [[ == ]] reads it fails", (pattern, path) => {
   const bash = Bun.spawnSync(["bash", "-c", '[[ $2 == $1 ]]', "bash", pattern, path], {

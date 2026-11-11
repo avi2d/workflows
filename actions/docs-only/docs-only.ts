@@ -5,59 +5,108 @@ import { writeOutputs } from "../../lib/step-output.ts";
 
 class DocsOnlyError extends Data.TaggedError("DocsOnlyError")<{ readonly message: string }> {}
 
-const POSIX_CLASSES: Readonly<Record<string, string>> = {
-  alnum: "A-Za-z0-9",
-  alpha: "A-Za-z",
-  blank: " \\t",
-  cntrl: "\\x00-\\x1F\\x7F",
-  digit: "0-9",
-  graph: "\\x21-\\x7E",
-  lower: "a-z",
-  print: "\\x20-\\x7E",
-  punct: "!-\\/:-@\\[-\`{-~",
-  space: " \\t\\n\\r\\f\\v",
-  upper: "A-Z",
-  word: "A-Za-z0-9_",
-  xdigit: "0-9A-Fa-f",
+type CharTest = (char: string) => boolean;
+
+const never: CharTest = () => false;
+const matching =
+  (expression: RegExp): CharTest =>
+  (char) =>
+    expression.test(char);
+
+const NON_BREAKING_SPACE = /[\u00A0\u2007\u202F]/u;
+const isBlank: CharTest = (char) => char === "\t" || (/\p{Zs}/u.test(char) && !NON_BREAKING_SPACE.test(char));
+const isSpace: CharTest = (char) => /[\t-\r\u2028\u2029]/u.test(char) || isBlank(char);
+const isAlnum = matching(/[\p{Alphabetic}\p{Nd}]/u);
+const isPrint: CharTest = (char) => !/[\p{Cc}\p{Cs}\p{Cn}\u2028\u2029]/u.test(char);
+const isGraph: CharTest = (char) => isPrint(char) && !isSpace(char);
+
+// The member sets of glibc's C.UTF-8, the runner's locale, which Bash reads its classes from.
+const POSIX_CLASSES: Readonly<Record<string, CharTest>> = {
+  alnum: isAlnum,
+  alpha: (char) => isAlnum(char) && !/[0-9]/.test(char),
+  blank: isBlank,
+  cntrl: matching(/[\p{Cc}\u2028\u2029]/u),
+  digit: matching(/[0-9]/),
+  graph: isGraph,
+  // glibc counts these four titlecase digraphs as lower and the other titlecase letters as upper only.
+  lower: matching(/[\p{Lowercase}\u01C5\u01C8\u01CB\u01F2]/u),
+  print: isPrint,
+  punct: (char) => isGraph(char) && !isAlnum(char),
+  space: isSpace,
+  upper: matching(/[\p{Uppercase}\p{Lt}]/u),
+  word: matching(/[\p{Alphabetic}\p{Nd}_]/u),
+  xdigit: matching(/[0-9A-Fa-f]/),
 };
 
-const escapeLiteral = (char: string) => char.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
+type BracketElement =
+  | { readonly kind: "char"; readonly char: string }
+  | { readonly kind: "collating"; readonly char: string | undefined }
+  | { readonly kind: "equivalence"; readonly char: string | undefined }
+  | { readonly kind: "class"; readonly test: CharTest };
 
-function bracketAt(symbols: readonly string[], open: number): { readonly source: string; readonly end: number } | undefined {
+const BRACKET_FORMS = { ":": "class", ".": "collating", "=": "equivalence" } as const;
+
+function bracketElementAt(symbols: readonly string[], at: number): { readonly element: BracketElement; readonly next: number } {
+  const char = symbols[at] ?? "";
+  const delimiter = symbols[at + 1] ?? "";
+  if (char === "[" && (delimiter === ":" || delimiter === "." || delimiter === "=")) {
+    for (let close = at + 2; close + 1 < symbols.length; close += 1) {
+      if (symbols[close] === "]" && delimiter !== ".") break;
+      if (symbols[close] !== delimiter || symbols[close + 1] !== "]") continue;
+      const name = symbols.slice(at + 2, close);
+      const next = close + 2;
+      const kind = BRACKET_FORMS[delimiter];
+      if (kind === "class") return { element: { kind, test: POSIX_CLASSES[name.join("")] ?? never }, next };
+      return { element: { kind, char: name.length === 1 ? name[0] : undefined }, next };
+    }
+  }
+  if (char === "\\" && at + 1 < symbols.length) return { element: { kind: "char", char: symbols[at + 1] ?? "" }, next: at + 2 };
+  return { element: { kind: "char", char }, next: at + 1 };
+}
+
+function memberTest(element: BracketElement): CharTest {
+  if (element.kind === "class") return element.test;
+  const { char } = element;
+  return char === undefined ? never : (value) => value === char;
+}
+
+function rangeTest(low: string | undefined, high: string | undefined): CharTest {
+  if (low === undefined || high === undefined) return never;
+  const from = low.codePointAt(0) ?? 0;
+  const to = high.codePointAt(0) ?? 0;
+  return (char) => {
+    const point = char.codePointAt(0) ?? 0;
+    return from <= point && point <= to;
+  };
+}
+
+function bracketAt(symbols: readonly string[], open: number): { readonly test: CharTest; readonly end: number } | undefined {
   let at = open + 1;
   const negated = symbols[at] === "!" || symbols[at] === "^";
   if (negated) at += 1;
-  let body = "";
+  const members: CharTest[] = [];
   for (let first = true; at < symbols.length; first = false) {
-    const char = symbols[at] ?? "";
-    if (char === "]" && !first) return { source: `[${negated ? "^" : ""}${body}]`, end: at };
-    const posix = /^\[:([a-z]+):\]/.exec(symbols.slice(at).join(""));
-    if (posix !== null) {
-      const members = POSIX_CLASSES[posix[1] ?? ""];
-      if (members === undefined) return undefined;
-      body += members;
-      at += Array.from(posix[0]).length;
+    if (symbols[at] === "]" && !first) {
+      return { test: (char) => negated !== members.some((member) => member(char)), end: at };
+    }
+    const { element, next } = bracketElementAt(symbols, at);
+    at = next;
+    const low = "char" in element ? element.char : undefined;
+    const startsRange = (element.kind === "char" || element.kind === "collating") && symbols[at] === "-" && at + 1 < symbols.length && symbols[at + 1] !== "]";
+    if (!startsRange) {
+      members.push(memberTest(element));
       continue;
     }
-    if (char === "\\" && at + 1 < symbols.length) {
-      body += escapeLiteral(symbols[at + 1] ?? "");
+    if (symbols[at + 1] === "[" && (symbols[at + 2] === ":" || symbols[at + 2] === "=")) {
+      members.push(rangeTest(low, "["));
       at += 2;
       continue;
     }
-    body += char === "-" && !first && symbols[at + 1] !== "]" ? "-" : escapeLiteral(char);
-    at += 1;
+    const high = bracketElementAt(symbols, at + 1);
+    at = high.next;
+    members.push(rangeTest(low, "char" in high.element ? high.element.char : undefined));
   }
   return undefined;
-}
-
-function bracketTest(source: string, pattern: string): (char: string) => boolean {
-  try {
-    const expression = new RegExp(`^${source}$`, "su");
-    return (value) => expression.test(value);
-  } catch (error) {
-    if (error instanceof SyntaxError && /out of order/i.test(error.message)) return () => false;
-    throw new DocsOnlyError({ message: `docs-only: cannot read ${pattern}` });
-  }
 }
 
 // Matches as Bash's [[ path == pattern ]] does, where * also crosses /.
@@ -74,16 +123,16 @@ type PatternNode =
   | { readonly kind: "extglob"; readonly op: string; readonly arms: readonly (readonly PatternNode[])[] };
 
 function parsePattern(pattern: string): readonly PatternNode[] {
-  return parseSequence(Array.from(pattern), pattern, 0, false).nodes;
+  return parseSequence(Array.from(pattern), 0, false).nodes;
 }
 
-function parseSequence(symbols: readonly string[], pattern: string, at: number, nested: boolean): { readonly nodes: readonly PatternNode[]; readonly end: number; readonly stop: string | undefined } {
+function parseSequence(symbols: readonly string[], at: number, nested: boolean): { readonly nodes: readonly PatternNode[]; readonly end: number; readonly stop: string | undefined } {
   const nodes: PatternNode[] = [];
   let cursor = at;
   while (cursor < symbols.length) {
     const char = symbols[cursor] ?? "";
     if ((char === "|" || char === ")") && nested) return { nodes, end: cursor, stop: char };
-    const extglob = parseExtglob(symbols, pattern, cursor);
+    const extglob = parseExtglob(symbols, cursor);
     if (extglob !== undefined) {
       nodes.push(extglob.node);
       cursor = extglob.end;
@@ -104,7 +153,7 @@ function parseSequence(symbols: readonly string[], pattern: string, at: number, 
         nodes.push({ kind: "literal", char: "[" });
         cursor += 1;
       } else {
-        nodes.push({ kind: "bracket", test: bracketTest(bracket.source, pattern) });
+        nodes.push({ kind: "bracket", test: bracket.test });
         cursor = bracket.end + 1;
       }
     } else {
@@ -115,14 +164,14 @@ function parseSequence(symbols: readonly string[], pattern: string, at: number, 
   return { nodes, end: cursor, stop: undefined };
 }
 
-function parseExtglob(symbols: readonly string[], pattern: string, at: number): { readonly node: PatternNode; readonly end: number } | undefined {
+function parseExtglob(symbols: readonly string[], at: number): { readonly node: PatternNode; readonly end: number } | undefined {
   const op = symbols[at] ?? "";
   if (op !== "*" && op !== "?" && op !== "+" && op !== "@" && op !== "!") return undefined;
   if ((symbols[at + 1] ?? "") !== "(") return undefined;
   const arms: PatternNode[][] = [];
   let cursor = at + 2;
   while (true) {
-    const parsed = parseSequence(symbols, pattern, cursor, true);
+    const parsed = parseSequence(symbols, cursor, true);
     if (parsed.stop === "|") {
       arms.push([...parsed.nodes]);
       cursor = parsed.end + 1;
@@ -209,10 +258,7 @@ const pathsVerdict = Effect.fn("pathsVerdict")(function* (base: string, head: st
   const changed = (yield* git("-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", mergeBase, head)).split("\n").filter((path) => path !== "");
   if (changed.length === 0) return false;
   const patterns = wordsOf(paths);
-  const unmatched = yield* Effect.try({
-    try: () => changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path))),
-    catch: (cause) => (cause instanceof DocsOnlyError ? cause : new DocsOnlyError({ message: `docs-only: ${String(cause)}` })),
-  });
+  const unmatched = changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path)));
   if (unmatched === undefined) return true;
   yield* Console.error(`docs-only: ${unmatched} matches none of ${paths}`);
   return false;

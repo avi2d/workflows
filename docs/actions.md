@@ -117,6 +117,9 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
 | `head` | `HEAD` | the commit the change ends at |
 | `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched against a whole path, where `*` also crosses `/` |
 
+Collating and equivalence names longer than one character such as `[.hyphen.]` match nothing.
+`[xa-[:alpha:]]` matches `x` in Bash but not here.
+
 | Output | Value |
 | --- | --- |
 | `docs-only` | `true` when the change touches only documentation, else `false` |
