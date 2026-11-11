@@ -28,10 +28,6 @@ test("a job holding Bun that is told to install another over it fails", () => {
   expect(bunHeld()).toEqual({ exitCode: 0, output: `held=true\nversion=${PINNED}\n` });
 });
 
-test("a job without Bun that is told it holds one fails", () => {
+test("a job without Bun that is told it holds one, or given the caller's pin in place of this repository's, fails", () => {
   expect(bunHeld()).toEqual({ exitCode: 0, output: `held=false\nversion=${PINNED}\n` });
-});
-
-test("a pin read from the caller's working directory in place of this repository's fails", () => {
-  expect(bunHeld().output).toBe(`held=false\nversion=${PINNED}\n`);
 });
