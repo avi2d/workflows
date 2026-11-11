@@ -1,9 +1,6 @@
 name: github-release
 description: Create the GitHub release for a tag, or update the one that exists, with the notes a file holds, and mark it latest only when its tag is the highest release version.
 inputs:
-  tag:
-    description: The tag to release, as v<version>. Empty reads the tag the run was started on.
-    default: ""
   notes-file:
     description: The file holding the release notes.
     required: true
@@ -21,6 +18,6 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
-        TAG: ${{ inputs.tag || github.ref_name }}
+        TAG: ${{ github.ref_name }}
         NOTES_FILE: ${{ inputs.notes-file }}
       run: bun "$GITHUB_ACTION_PATH/main.ts"

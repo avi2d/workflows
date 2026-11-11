@@ -243,7 +243,6 @@ A caller writes the notes first, such as with `checks-release-notes` through [ki
 
 | Input | Default | What it sets |
 | --- | --- | --- |
-| `tag` | the ref the run started on | the tag to release, which also names the release |
 | `notes-file` | required | the file holding the release notes |
 | `token` | the job's token | the token that writes the release |
 

@@ -1,6 +1,6 @@
 import { Console, Effect, FileSystem, Schema } from "effect";
 import { github, repositoryFromEnv, type Repository } from "../../lib/github.ts";
-import { requiredInput } from "../../lib/inputs.ts";
+import { InputMissing, optionalInput, requiredInput } from "../../lib/inputs.ts";
 
 const ACTION = "github-release";
 const PAGE_SIZE = 100;
@@ -55,7 +55,8 @@ const listReleases = Effect.fn("listReleases")(function* (repository: Repository
 
 export const main = Effect.gen(function* () {
   const repository = yield* repositoryFromEnv(ACTION);
-  const tag = yield* requiredInput(ACTION, "tag", "TAG");
+  const tag = yield* optionalInput("TAG");
+  if (tag === "") return yield* new InputMissing({ message: `${ACTION} needs the tag the run started on, and it is empty` });
   const notesFile = yield* requiredInput(ACTION, "notes-file", "NOTES_FILE");
   const notes = yield* (yield* FileSystem.FileSystem)
     .readFileString(notesFile)
