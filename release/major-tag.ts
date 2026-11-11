@@ -22,7 +22,7 @@ function newer(left: string, right: string): string {
   return Bun.semver.order(left.slice(1), right.slice(1)) === 1 ? left : right;
 }
 
-// The tag is a release tag of the major it names; a tag newer than it in that major keeps the major tag where it is.
+// The tag is a release tag of the major it names.
 export function majorMove(tags: readonly Tag[], tag: string, sha: string, major: string): Move {
   const newest = tags
     .map(({ name }) => name)

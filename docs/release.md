@@ -144,7 +144,7 @@ Each calls the shared copy from the same commit, so a release runs the release w
 `bun run build` runs `release/changelog.ts`, which writes the section of the version `package.json` holds from the conventional commits since the last release tag.
 It groups them the way `checks-release-pr` reads them to pick the version, so the notes list the commits that chose it.
 It leaves every other section as it stands, so the sections written by hand before `package.json` held a version stay.
-It writes nothing once the version's own tag is the last release tag, so the build on the tag leaves the tree clean.
+Once the version's own tag is the last release tag, it writes no new section, so the build on the tag leaves the tree clean.
 It drops every section past the last release tag that is not the version `package.json` holds, so a cancelled release leaves no section behind.
 On the landed release commit it writes the section again, so a release pull request merged behind `main` rewrites the changelog and `checks-release-tag` refuses to tag it.
 It refuses a version not past the last release tag and a version with no listed change since it.
