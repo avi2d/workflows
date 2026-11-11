@@ -33,6 +33,23 @@ function stepRun(step: Record<string, unknown>): string | null {
   return typeof step["run"] === "string" ? step["run"] : null;
 }
 
+function mutationPinsAndParts(): { readonly pins: readonly string[]; readonly parts: readonly string[] } {
+  const jobs = ["baseline", "compare", "refresh-plan", "refresh-merge"];
+  const pins: string[] = [];
+  const partSet = new Set<string>();
+  for (const job of jobs) {
+    for (const step of workflowSteps(job)) {
+      const uses = typeof step["uses"] === "string" ? step["uses"] : "";
+      const prefix = "avi2d/workflows/actions/mutation@";
+      if (!uses.startsWith(prefix)) continue;
+      pins.push(uses.slice(prefix.length));
+      const part = stepPart(step);
+      if (part !== null) partSet.add(part);
+    }
+  }
+  return { pins, parts: [...partSet].toSorted() };
+}
+
 test("a pull request run that restores, reuses or compares against a result from main fails", () => {
   const actual = workflowSteps("compare").map((step) => ({ uses: usesBase(step["uses"]), part: stepPart(step), run: stepRun(step) }));
   expect(actual).toEqual([
@@ -49,23 +66,14 @@ test("a pull request run that restores, reuses or compares against a result from
   ]);
 });
 
-test("a part the workflow runs that the mutation action does not implement fails", () => {
-  const jobs = ["baseline", "compare", "refresh-plan", "refresh-merge"];
-  const pins: string[] = [];
-  const parts = new Set<string>();
-  for (const job of jobs) {
-    for (const step of workflowSteps(job)) {
-      const uses = typeof step["uses"] === "string" ? step["uses"] : "";
-      const prefix = "avi2d/workflows/actions/mutation@";
-      if (!uses.startsWith(prefix)) continue;
-      pins.push(uses.slice(prefix.length));
-      const part = stepPart(step);
-      if (part !== null) parts.add(part);
-    }
-  }
+test("a mutation action pinned at commits that disagree, or running a part the workflow names that is unknown, fails", () => {
+  const { pins, parts } = mutationPinsAndParts();
   expect(pins.length).toBeGreaterThan(0);
   expect(new Set(pins).size).toBe(1);
-  expect([...parts].toSorted()).toEqual(["count-scope", "fork-summary", "over-cap", "scope-score", "score", "shards"]);
+  expect(parts).toEqual(["count-scope", "fork-summary", "over-cap", "scope-score", "score", "shards"]);
+});
+
+test.each(mutationPinsAndParts().parts)("a workflow part %s that the mutation action does not implement fails", (part) => {
   const root = mkdtempSync(join(tmpdir(), "mutation-pin-"));
   try {
     const workspace = join(root, "workspace");
@@ -78,29 +86,27 @@ test("a part the workflow runs that the mutation action does not implement fails
     writeFileSync(stepSummary, "");
     const githubOutput = join(root, "github-output");
     writeFileSync(githubOutput, "");
-    for (const part of parts) {
-      const result = Bun.spawnSync(["bun", join(REPOSITORY, "actions/mutation/main.ts")], {
-        cwd: workspace,
-        env: {
-          PATH: process.env["PATH"] ?? "",
-          HOME: root,
-          RUNNER_TEMP: temp,
-          GITHUB_ENV: githubEnv,
-          GITHUB_STEP_SUMMARY: stepSummary,
-          GITHUB_OUTPUT: githubOutput,
-          PART: part,
-          MODE: "baseline",
-          SCOPE: "src/a.ts",
-          MUTANT_CAP: "1500",
-          SHARDS: "4",
-          SCOPED_MUTANTS: "0",
-        },
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const output = `${result.stdout?.toString() ?? ""}${result.stderr?.toString() ?? ""}`;
-      expect(output).not.toContain("part must be one of");
-    }
+    const result = Bun.spawnSync(["bun", join(REPOSITORY, "actions/mutation/main.ts")], {
+      cwd: workspace,
+      env: {
+        PATH: process.env["PATH"] ?? "",
+        HOME: root,
+        RUNNER_TEMP: temp,
+        GITHUB_ENV: githubEnv,
+        GITHUB_STEP_SUMMARY: stepSummary,
+        GITHUB_OUTPUT: githubOutput,
+        PART: part,
+        MODE: "baseline",
+        SCOPE: "src/a.ts",
+        MUTANT_CAP: "1500",
+        SHARDS: "4",
+        SCOPED_MUTANTS: "0",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const output = `${result.stdout?.toString() ?? ""}${result.stderr?.toString() ?? ""}`;
+    expect(output).not.toContain("part must be one of");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
