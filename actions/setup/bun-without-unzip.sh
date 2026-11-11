@@ -10,7 +10,7 @@ if ! command -v npm > /dev/null; then
   exit 1
 fi
 
-version="$(< .bun-version)"
+version="${BUN_VERSION:-$(< .bun-version)}"
 prefix="$RUNNER_TEMP/bun-from-npm"
 package="$prefix/node_modules/bun"
 # npm leaves a placeholder at bin/bun.exe, and an npm that holds install scripts back never swaps the binary in.

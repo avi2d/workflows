@@ -5,6 +5,7 @@ import { useScratch } from "../../lib/scratch.ts";
 import { stubBin } from "../../lib/stub-bin.ts";
 
 const SCRIPT = join(import.meta.dir, "../../../../actions/setup/main.sh");
+const PINNED = readFileSync(join(import.meta.dir, "../../../../.bun-version"), "utf8").trim();
 const scratch = useScratch("bun-held");
 
 beforeEach(() => {
@@ -22,9 +23,9 @@ function bunHeld() {
 
 test("a job holding Bun that is told to install another over it fails", () => {
   stubBin(scratch.at("bin"), "bun", "");
-  expect(bunHeld()).toEqual({ exitCode: 0, output: "held=true\n" });
+  expect(bunHeld()).toEqual({ exitCode: 0, output: `held=true\nversion=${PINNED}\n` });
 });
 
 test("a job without Bun that is told it holds one fails", () => {
-  expect(bunHeld()).toEqual({ exitCode: 0, output: "held=false\n" });
+  expect(bunHeld()).toEqual({ exitCode: 0, output: `held=false\nversion=${PINNED}\n` });
 });

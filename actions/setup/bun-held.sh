@@ -5,3 +5,5 @@ if command -v bun > /dev/null; then
 else
   echo "held=false" >> "$GITHUB_OUTPUT"
 fi
+version="$(< "${BASH_SOURCE[0]%/*}/../../.bun-version")"
+echo "version=$version" >> "$GITHUB_OUTPUT"

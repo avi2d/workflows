@@ -32,8 +32,8 @@ beforeEach(() => {
   scratch.write("repository/.bun-version", "1.4.3\n");
 });
 
-function setup(part: string) {
-  const env = { PATH: scratch.at("bin"), HOME: scratch.at("home"), RUNNER_TEMP: scratch.at("temp"), STUB_RECORD: scratch.at("calls") };
+function setup(part: string, extraEnv: Record<string, string> = {}) {
+  const env = { PATH: scratch.at("bin"), HOME: scratch.at("home"), RUNNER_TEMP: scratch.at("temp"), STUB_RECORD: scratch.at("calls"), ...extraEnv };
   const result = Bun.spawnSync([onPath("bash"), SCRIPT, part], { cwd: scratch.at("repository"), env });
   return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
@@ -47,6 +47,17 @@ test("an image without unzip that is left with npm's placeholder, or without the
     [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
   ]);
   expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.3\n");
+});
+
+test("a version from the environment that the file on disk replaces fails", () => {
+  stubBin(scratch.at("bin"), "npm", NPM_LEAVES_A_PLACEHOLDER_THAT_FAILS);
+  stubBin(scratch.at("bin"), "node", INSTALL_JS_SWAPS_IN_A_BUN_THAT_PRINTS_ITS_VERSION);
+  expect(setup("bun-without-unzip", { BUN_VERSION: "1.4.4" })).toEqual({ exitCode: 0, stdout: "1.4.4\n" });
+  expect(recordedCalls(scratch.at("calls"))).toEqual([
+    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), "bun@1.4.4"],
+    [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
+  ]);
+  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.4\n");
 });
 
 test("an image with unzip that fetches Bun through npm in place of setup-bun fails", () => {
