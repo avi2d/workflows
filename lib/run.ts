@@ -70,15 +70,7 @@ const descendantsOf = (pid: string): Effect.Effect<readonly string[], never, Chi
   });
 
 const killEach = (tree: readonly string[]) =>
-  Effect.sync(() => {
-    for (const pid of tree) {
-      try {
-        process.kill(Number(pid), "SIGKILL");
-      } catch {
-        void 0;
-      }
-    }
-  });
+  Effect.forEach(tree, (pid) => Effect.try(() => process.kill(Number(pid), "SIGKILL")).pipe(Effect.ignore), { discard: true });
 
 // A process group kill misses a descendant sudo started in its own session, and one owned by root needs sudo to stop.
 const stopTree = Effect.fn("stopTree")(function* (pid: string) {
