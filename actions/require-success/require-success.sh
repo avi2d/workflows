@@ -2,6 +2,7 @@
 set -u
 
 read -rd '' -ra results <<< "$RESULTS" || true
+read -rd '' -ra skips <<< "${SKIPS:-}" || true
 if [ "${#results[@]}" -eq 0 ]; then
   echo "::error::require-success needs at least one name=result in results"
   exit 1
@@ -12,7 +13,11 @@ for pair in "${results[@]}"; do
     echo "::error::require-success takes name=result pairs, not '$pair'"
     exit 1
   fi
-  if [ "${pair#*=}" != success ]; then
+  result=${pair#*=}
+  if [ "$result" = skipped ] && [[ " ${skips[*]-} " == *" ${pair%%=*}=true "* ]]; then
+    continue
+  fi
+  if [ "$result" != success ]; then
     failed+=("$pair")
   fi
 done

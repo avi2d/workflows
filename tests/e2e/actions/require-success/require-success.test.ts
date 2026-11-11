@@ -3,8 +3,8 @@ import { join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "../../../../actions/require-success/main.sh");
 
-function gate(results: string) {
-  const result = Bun.spawnSync(["bash", SCRIPT], { env: { RESULTS: results } });
+function gate(results: string, skips = "") {
+  const result = Bun.spawnSync(["bash", SCRIPT], { env: { RESULTS: results, SKIPS: skips } });
   return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
 
@@ -30,6 +30,20 @@ test("a failure message that does not name each job that did not succeed fails",
 
 test("no results, which would require nothing, that passes fails", () => {
   expect(gate("  ")).toEqual({ exitCode: 1, stdout: "::error::require-success needs at least one name=result in results\n" });
+});
+
+test("a skip the caller expects that fails the gate, or a skip it does not expect that passes, fails", () => {
+  const parts = "changes=success unit=success static=success e2e=skipped";
+  expect(gate(parts, "e2e=true")).toEqual({ exitCode: 0, stdout: `${parts}\n` });
+  expect(gate(parts, "e2e=false").exitCode).toBe(1);
+  expect(gate(parts, "e2e=").exitCode).toBe(1);
+  expect(gate(parts, "unit=true").exitCode).toBe(1);
+  expect(gate(parts, "xe2e=true").exitCode).toBe(1);
+});
+
+test("an expected skip that excuses a failure fails", () => {
+  expect(gate("unit=success e2e=failure", "e2e=true").exitCode).toBe(1);
+  expect(gate("unit=success e2e=cancelled", "e2e=true").exitCode).toBe(1);
 });
 
 test("a bare result without its job name that passes fails", () => {
