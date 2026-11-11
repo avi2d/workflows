@@ -60,7 +60,7 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'` on 
 | `head-sha` | empty, `GITHUB_SHA` | the commit the status lands on, such as the pull request head on an `issue_comment` run, where `GITHUB_SHA` is the default branch |
 | `pull-request` | empty | the pull request number whose head the status lands on when `head-sha` is empty, such as `${{ github.event.issue.number }}` |
 | `description` | empty, none | the status description |
-| `token` | the job's token | the token that writes the status |
+| `token` | the job's token | the token that writes the status, which needs `statuses: write`, and `pull-requests: read` when `pull-request` is set |
 | `attempts` | `1` | how many times to try the head read and the status call, waiting 10 seconds longer after each failure |
 
 ## held-runs
@@ -254,6 +254,22 @@ The release publish run calls it on the tag before anything publishes.
 | Output | Value |
 | --- | --- |
 | `version` | the version the manifest holds, without the `v` |
+
+## github-release
+
+Creates the GitHub release for the tag the run started on with the notes a file holds, or updates the release that tag already has.
+Call it from a run that started on a tag push.
+It reads every page of the repository's releases.
+It marks the release latest only when its tag is the highest `v`-version among those releases and the tag.
+A release on an older line leaves latest where it is.
+The release is never a draft or a prerelease.
+The token needs `contents: write`.
+A caller writes the notes first, such as with `checks-release-notes` through [kit-bin](#kit-bin).
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `notes-file` | required | the file holding the release notes |
+| `token` | the job's token | the token that writes the release |
 
 ## The site actions
 
