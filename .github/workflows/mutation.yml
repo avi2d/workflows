@@ -1,233 +1,160 @@
 name: mutation
 on:
-  # Firstmate starts the refresh by hand from here every 28 days, since a schedule is not allowed.
   workflow_dispatch:
-    inputs:
-      mode:
-        description: Which run to do, one of baseline, compare or refresh.
-        type: choice
-        options: [baseline, compare, refresh]
-        default: baseline
-      shards:
-        description: How many shard jobs a refresh splits the full run into.
-        type: number
-        default: 4
-      mutant-cap:
-        description: How many scoped mutants a compare runs before it skips with a note.
-        type: number
-        default: 1500
-  workflow_call:
-    inputs:
-      mode:
-        description: Which run to do, one of baseline, compare or refresh.
-        type: string
-        default: baseline
-      shards:
-        description: How many shard jobs a refresh splits the full run into.
-        type: number
-        default: 4
-      mutant-cap:
-        description: How many scoped mutants a compare runs before it skips with a note.
-        type: number
-        default: 1500
 
 permissions:
   contents: read
-  actions: write
-  pull-requests: write
 
-# One job per push, and a newer push cancels the run it supersedes.
 concurrency:
-  group: mutation-${{ inputs.mode }}-${{ github.event.pull_request.number || 'main' }}
+  group: mutation-seed-trial
   cancel-in-progress: true
 
-# Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
 env:
   RUNNER_ENVIRONMENT: github-hosted
+  CHECKS_SHA: 2cdadbdce96946ec38bab96044353aebb1aafc06
 
 jobs:
-  baseline:
-    if: inputs.mode == 'baseline'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
-        with:
-          commands: checks-mutation-baseline
-      - name: Restore previous baseline state
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline reports/stryker-incremental.json
-      - name: Run the incremental baseline
-        run: bunx stryker run --incremental
-      - name: Score the baseline
-        if: always()
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: score
-          mode: baseline
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: mutation-baseline
-          path: reports/
-          retention-days: 7
-          if-no-files-found: error
-      - name: Prune superseded baselines
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline --prune
-  compare:
-    if: inputs.mode == 'compare'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      # The head is what the run judges, and the scope diffs it against the base, so the checkout holds the whole history.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
-        with:
-          commands: checks-mutation-baseline checks-mutation-scope checks-mutation-compare
-      - name: Select mutation scope
-        uses: avi2d/workflows/mutation-scope@2c01573c59ebb0d94e1f6e29cd51b1400ca325e4
-        env:
-          GH_TOKEN: ${{ github.token }}
-        with:
-          base-ref: ${{ github.event.pull_request.base.ref }}
-      - name: Report empty scope
-        if: env.SCOPE == ''
-        run: 'echo "::notice::mutation: no source files changed, so neither the run nor the comparison starts"'
-      - name: Count scoped mutants
-        if: env.SCOPE != ''
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: count-scope
-          mutant-cap: ${{ inputs['mutant-cap'] }}
-      - name: Note a scope over the cap
-        if: env.OVER_CAP == 'true'
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: over-cap
-          mutant-cap: ${{ inputs['mutant-cap'] }}
-      - name: Restore the baseline state and report
-        if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline reports/stryker-incremental.json "$RUNNER_TEMP/baseline/mutation.json"
-      # A test that reads a changed file counts as changed, so its stored results go before the run.
-      - name: Drop stale tests from the restored state
-        if: env.SCOPE != '' && env.OVER_CAP != 'true' && env.STALE_TESTS != ''
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: drop-stale-tests
-      - name: Run the scoped head
-        if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        run: bunx stryker run --incremental --mutate "$SCOPE"
-      - name: Compare the head against the baseline
-        if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: compare
-      # A fork pull request runs with a read-only token, so filing a comment fails and the note goes to the summary instead.
-      - name: File the advisory comment
-        if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/comment.md"
-      - name: Write the note to the summary on a fork
-        if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name != github.repository
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: fork-summary
-  refresh-plan:
-    if: inputs.mode == 'refresh'
+  plan:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       shards: ${{ steps.shards.outputs.shards }}
     steps:
-      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          commands: checks-mutation-baseline checks-mutation-scope
-      - name: Restore the last full report
+          repository: avi2d/checks
+          ref: ${{ env.CHECKS_SHA }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Fetch the 9 Nov full report for the shard weights
         env:
           GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
+        run: gh run download 42605254612 --repo avi2d/checks --name mutation-baseline-full --dir "$RUNNER_TEMP/last-full" || echo "::notice::the last full report did not download, so the shards split by file count"
       - id: shards
         name: Split the tree into shards
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: shards
-          shards: ${{ inputs.shards }}
+        run: bun src/testing/mutation-scope.ts --shards 4 $(ls "$RUNNER_TEMP/last-full/mutation.json" 2>/dev/null) | sed -n 's/^SHARDS=/shards=/p' >> "$GITHUB_OUTPUT"
 
   refresh-shard:
-    if: inputs.mode == 'refresh'
-    needs: refresh-plan
+    needs: plan
     strategy:
+      fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.refresh-plan.outputs.shards) }}
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      - name: Run one shard
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: avi2d/checks
+          ref: ${{ env.CHECKS_SHA }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Run one shard without static mutants, as the refresh does
         env:
-          # The preset skips static mutants and their timing run only in a refresh.
           CHECKS_MUTATION_MODE: refresh
           SHARD: ${{ matrix.shard }}
         run: bunx stryker run --mutate "$SHARD"
-      # A lone shard's artifact downloads with no folder of its own, so only the file's name can tell the reports apart.
-      - name: Name the report after its shard
-        env:
+      - env:
           INDEX: ${{ strategy.job-index }}
         run: mv reports/mutation/mutation.json "reports/mutation/shard-$INDEX.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mutation-shard-${{ strategy.job-index }}
+          name: trial-refresh-shard-${{ strategy.job-index }}
           path: reports/mutation/shard-${{ strategy.job-index }}.json
-          retention-days: 1
+          retention-days: 7
           if-no-files-found: error
 
   refresh-merge:
-    if: inputs.mode == 'refresh'
-    needs: [refresh-plan, refresh-shard]
+    needs: refresh-shard
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
-      - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          commands: checks-mutation-baseline checks-mutation-merge
+          repository: avi2d/checks
+          ref: ${{ env.CHECKS_SHA }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: mutation-shard-*
+          pattern: trial-refresh-shard-*
           path: shards
           merge-multiple: true
-      - name: Merge the shard reports
-        run: checks-mutation-merge reports/mutation/mutation.json shards/shard-*.json
-      - name: Score the refresh
-        if: always()
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: score
-          mode: refresh
-      - name: Slim the merged report
-        run: checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
+      - run: bun src/testing/mutation-merge.ts reports/mutation/mutation.json shards/shard-*.json
+      - run: bun src/testing/mutation-baseline.ts --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mutation-baseline-full
+          name: trial-merged-slim
           path: ${{ runner.temp }}/full/
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: error
-      - name: Prune superseded baselines
+
+  seeded-full:
+    needs: refresh-merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: avi2d/checks
+          ref: ${{ env.CHECKS_SHA }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: trial-merged-slim
+          path: ${{ runner.temp }}/seed
+      - name: Use the merged shard report as the incremental file
+        run: mkdir -p reports && cp "$RUNNER_TEMP/seed/mutation.json" reports/stryker-incremental.json
+      - name: Run the whole tree incremental in one job, static mutants included
+        run: bunx stryker run --incremental
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trial-seeded-full
+          path: |
+            reports/mutation/mutation.json
+            reports/stryker-incremental.json
+          retention-days: 7
+
+  seeded-shard:
+    needs: [plan, refresh-merge]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: avi2d/checks
+          ref: ${{ env.CHECKS_SHA }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: trial-merged-slim
+          path: ${{ runner.temp }}/seed
+      - name: Use the merged shard report as the incremental file
+        run: mkdir -p reports && cp "$RUNNER_TEMP/seed/mutation.json" reports/stryker-incremental.json
+      - name: Run one shard incremental, static mutants included
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline --prune
+          SHARD: ${{ matrix.shard }}
+        run: bunx stryker run --incremental --mutate "$SHARD"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trial-seeded-shard-${{ strategy.job-index }}
+          path: reports/mutation/mutation.json
+          retention-days: 7
