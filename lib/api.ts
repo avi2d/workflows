@@ -31,7 +31,7 @@ export function reasonOf(text: string): string {
 }
 
 // The message names the path alone, since the base can hold an account the caller keeps as a secret.
-const callApi = Effect.fn("callApi")(function* ({ base, path, method, token, body }: ApiCall) {
+export const callApi = Effect.fn("callApi")(function* ({ base, path, method, token, body }: ApiCall) {
   const response = yield* Effect.tryPromise({
     try: () =>
       fetch(`${base}${path}`, {

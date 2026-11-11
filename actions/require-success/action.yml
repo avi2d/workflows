@@ -1,9 +1,12 @@
 name: require-success
-description: Fail unless each named result, such as a needed job's result, is success.
+description: Fail unless each named result, such as a needed job's result, is success, or is skipped where the caller says the skip is expected.
 inputs:
   results:
     description: The results to check, as name=result pairs separated by whitespace, such as e2e= followed by the e2e job's result.
     required: true
+  skips:
+    description: The expected skips, as name=true pairs separated by whitespace, such as e2e= followed by the output that says the change skips e2e. A named result that is skipped passes only when its pair here is true.
+    default: ""
 runs:
   using: composite
   steps:
@@ -11,4 +14,5 @@ runs:
       shell: bash
       env:
         RESULTS: ${{ inputs.results }}
+        SKIPS: ${{ inputs.skips }}
       run: bash "$GITHUB_ACTION_PATH/main.sh"

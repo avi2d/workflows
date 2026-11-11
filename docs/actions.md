@@ -45,26 +45,71 @@ Call it with `if: always()` so a failed title lint still reports.
 ## head-status
 
 Reports a job's result as a commit status on `GITHUB_SHA`, or on the commit `head-sha` names, since GitHub keeps a dispatched run's check off the pull request.
+With `pull-request` set and `head-sha` empty, it reads that pull request head through `gh api` and posts there.
+It fails without posting when the answer is no full commit SHA.
+Use `pull-request` only for a check of the pull request itself.
+The head is read when the status posts, so a job that checks code at a commit passes that commit as `head-sha`.
 Only the status `success` reports success.
-Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
+Call it last with `if: always() && github.event_name == 'workflow_dispatch'` on a dispatch run or `if: always() && github.event_name == 'issue_comment'` on a comment run.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `job-status` | required | the job's status, as `${{ job.status }}` |
 | `context` | the job id | the status name, which a required check of that name counts |
 | `head-sha` | empty, `GITHUB_SHA` | the commit the status lands on, such as the pull request head on an `issue_comment` run, where `GITHUB_SHA` is the default branch |
+| `pull-request` | empty | the pull request number whose head the status lands on when `head-sha` is empty, such as `${{ github.event.issue.number }}` |
 | `description` | empty, none | the status description |
 | `token` | the job's token | the token that writes the status |
-| `attempts` | `1` | how many times to try, waiting 10 seconds longer after each failure |
+| `attempts` | `1` | how many times to try the head read and the status call, waiting 10 seconds longer after each failure |
+
+## held-runs
+
+Deletes the pull request runs GitHub holds for approval on the tip of a branch, the release branch by default.
+A pull request opened with the workflow token gets its `pull_request` runs held for approval.
+GitHub expires each held run at merge as a failure with no job.
+Call it right after the step that opens or refreshes the pull request, in a job with `actions: write` and `contents: read`.
+
+It reads the tip of the branch, and a branch that does not exist ends the step with nothing to do.
+It deletes a run only when its event is `pull_request` and its conclusion is `action_required`.
+Its head must also be that tip, on that branch, in this repository.
+A fork's held run, a held run on any other head and a run that has jobs stay.
+It prints one line per deleted run with the workflow name, the run id and the head.
+
+It reads every 5 seconds for 30 seconds and deletes what each read finds.
+It stops at the first empty read after a delete.
+Once 30 seconds pass with nothing found, it says so in one line and passes.
+It deletes with the job's token.
+A delete GitHub refuses fails the step with GitHub's answer.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `branch` | `release/` and the branch the run is on | the branch whose tip the held runs are on |
 
 ## docs-only
 
-Tells whether a change touches only documentation, through `checks-docs-only` from the caller's install of the kit.
+Tells whether a change touches only documentation.
+Without `paths` it runs `checks-docs-only` from the caller's install of the kit, or from the kit's own repository as [kit-bin](#kit-bin) finds it.
+
+With `paths` set, it runs no kit command and reads the change itself.
+The change counts as documentation when every path changed since the merge base of `base` and `head` matches one of the patterns.
+A renamed file counts as its old path and its new path.
+A range that changes nothing, or an empty `base`, reports `false`, and a range git cannot read fails the step.
+Matching is case sensitive, so `*.[mM][dD]` matches Markdown in any letter case and `copy.json` matches only that exact name.
+To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller writes:
+
+```yaml
+- id: skip
+  uses: avi2d/workflows/actions/docs-only@v2
+  with:
+    head: ${{ github.event.pull_request.head.sha }}
+    paths: "*.[mM][dD] copy.json"
+```
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `base` | the pull request base | the commit the change starts from, where empty reports `false` |
 | `head` | `HEAD` | the commit the change ends at |
+| `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched against a whole path, where `*` also crosses `/` |
 
 | Output | Value |
 | --- | --- |
@@ -154,11 +199,17 @@ The caller pins it to the commit the release tag points at, found as [Install](.
 ```
 
 An empty pack fails the step and writes nothing.
-A caller whose secret may be unset guards the call with an `if:`.
+With `if-missing: skip`, an empty pack instead writes a notice and a step summary line, exports nothing and reports `configured` as `false`.
+A later step then guards on `steps.<id>.outputs.configured == 'true'`.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
+| `if-missing` | `fail` | what an empty pack does, `fail` or `skip` |
+
+| Output | Value |
+| --- | --- |
+| `configured` | `true` when the pack was written, `false` when an empty pack was skipped |
 
 ## release-version
 
@@ -256,12 +307,14 @@ A build that changes nothing makes no commit.
 
 ### require-success
 
-Fails unless every named result is `success`, and names each one that is not.
-A gate job that `needs` other jobs runs it with `if: always()`, so a skipped or cancelled job fails the gate.
+Fails unless every named result is `success` or an expected skip, and names each one that is not.
+A gate job that `needs` other jobs runs it with `if: always()`, so a cancelled job or an unexpected skip fails the gate.
+A result that is `skipped` passes only when `skips` holds the same name with `true`, such as a job whose `if:` skips it on a docs-only change.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `results` | required | `name=result` pairs separated by whitespace, such as `e2e=${{ needs.e2e.result }}` |
+| `skips` | empty, no skip passes | `name=true` pairs separated by whitespace, such as `e2e=${{ needs.changes.outputs.e2e-skip }}` |
 
 ### affected-tests
 
