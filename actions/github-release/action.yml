@@ -1,0 +1,24 @@
+name: github-release
+description: Create the GitHub release for the tag the run started on, or update the one that exists, with the notes a file holds, and mark it latest only when its tag is the highest release version. Call it from a run that started on a tag push.
+inputs:
+  notes-file:
+    description: The file holding the release notes.
+    required: true
+  token:
+    description: The token that writes the release. It needs contents write.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: create or update the GitHub release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ github.ref_name }}
+        REF_TYPE: ${{ github.ref_type }}
+        NOTES_FILE: ${{ inputs.notes-file }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"
