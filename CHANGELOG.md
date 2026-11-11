@@ -2,10 +2,6 @@
 
 Every release of `workflows`, newest first.
 
-## Unreleased
-
-A caller that sends no mode now runs compare on the changed files on a pull request, refresh in parts on a manual start, and nothing on a push to main, instead of a baseline on every event.
-
 ## 2.3.1
 
 Released 2026-11-11.
