@@ -1,0 +1,13 @@
+name: probe-mutation-caller
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  actions: write
+  pull-requests: write
+jobs:
+  mutation:
+    uses: ./.github/workflows/mutation.yml
