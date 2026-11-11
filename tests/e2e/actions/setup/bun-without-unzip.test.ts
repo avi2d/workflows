@@ -38,37 +38,27 @@ function setup(part: string, args: readonly string[] = [], extraEnv: Record<stri
   return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
 
-test("an image without unzip that is left with npm's placeholder, or without the pinned Bun, where setup-bun looks for one fails", () => {
+function fetchesBunWithoutUnzip(args: readonly string[] = [], extraEnv: Record<string, string> = {}, expected: string) {
   stubBin(scratch.at("bin"), "npm", NPM_LEAVES_A_PLACEHOLDER_THAT_FAILS);
   stubBin(scratch.at("bin"), "node", INSTALL_JS_SWAPS_IN_A_BUN_THAT_PRINTS_ITS_VERSION);
-  expect(setup("bun-without-unzip")).toEqual({ exitCode: 0, stdout: "1.4.3\n" });
+  expect(setup("bun-without-unzip", args, extraEnv)).toEqual({ exitCode: 0, stdout: `${expected}\n` });
   expect(recordedCalls(scratch.at("calls"))).toEqual([
-    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), "bun@1.4.3"],
+    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), `bun@${expected}`],
     [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
   ]);
-  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.3\n");
+  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe(`${expected}\n`);
+}
+
+test("an image without unzip that is left with npm's placeholder, or without the pinned Bun, where setup-bun looks for one fails", () => {
+  fetchesBunWithoutUnzip([], {}, "1.4.3");
 });
 
 test("a version from the argument list that the file on disk replaces fails", () => {
-  stubBin(scratch.at("bin"), "npm", NPM_LEAVES_A_PLACEHOLDER_THAT_FAILS);
-  stubBin(scratch.at("bin"), "node", INSTALL_JS_SWAPS_IN_A_BUN_THAT_PRINTS_ITS_VERSION);
-  expect(setup("bun-without-unzip", ["1.4.4"])).toEqual({ exitCode: 0, stdout: "1.4.4\n" });
-  expect(recordedCalls(scratch.at("calls"))).toEqual([
-    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), "bun@1.4.4"],
-    [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
-  ]);
-  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.4\n");
+  fetchesBunWithoutUnzip(["1.4.4"], {}, "1.4.4");
 });
 
 test("a BUN_VERSION from the caller's environment that replaces the file on disk fails", () => {
-  stubBin(scratch.at("bin"), "npm", NPM_LEAVES_A_PLACEHOLDER_THAT_FAILS);
-  stubBin(scratch.at("bin"), "node", INSTALL_JS_SWAPS_IN_A_BUN_THAT_PRINTS_ITS_VERSION);
-  expect(setup("bun-without-unzip", [], { BUN_VERSION: "1.4.4" })).toEqual({ exitCode: 0, stdout: "1.4.3\n" });
-  expect(recordedCalls(scratch.at("calls"))).toEqual([
-    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), "bun@1.4.3"],
-    [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
-  ]);
-  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.3\n");
+  fetchesBunWithoutUnzip([], { BUN_VERSION: "1.4.4" }, "1.4.3");
 });
 
 test("an image with unzip that fetches Bun through npm in place of setup-bun fails", () => {
