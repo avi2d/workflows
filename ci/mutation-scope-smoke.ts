@@ -1,6 +1,7 @@
 import { Console, Data, Effect } from "effect";
 import { appendFileSync, chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { SkipReason } from "../actions/mutation-scope/mutation-scope.ts";
 import { runMain } from "../lib/run-main.ts";
 
 export const STAND_INS: Readonly<Record<string, string>> = {
@@ -27,6 +28,25 @@ export function scopeFailure(scope: string | undefined, mainMergeBase: string): 
   return scope === mainMergeBase ? undefined : `mutation-scope wrote SCOPE=${scope ?? ""}, not the merge base with origin/main ${mainMergeBase}`;
 }
 
+export function skipFailure(expected: SkipReason, skip: string | undefined): string | undefined {
+  return skip === expected ? undefined : `mutation-scope wrote SKIP=${skip ?? ""} on a ${expected} pull request, not SKIP=${expected}`;
+}
+
+export function expectedSkipFromEnv(env: Readonly<Record<string, string | undefined>>): SkipReason | undefined {
+  const headRef = env["EXPECT_HEAD_REF"];
+  const baseRef = env["EXPECT_BASE_REF"];
+  if (
+    headRef !== undefined && headRef !== "" && baseRef !== undefined && baseRef !== "" &&
+    env["EXPECT_HEAD_REPO"] === env["EXPECT_BASE_REPO"] && headRef === `release/${baseRef}`
+  ) return "release";
+  if (env["EXPECT_USER_TYPE"] === "Bot") return "bot";
+  return undefined;
+}
+
+export function unexpectedSkipFailure(skip: string | undefined): string | undefined {
+  return skip === undefined || skip === "" ? undefined : `mutation-scope wrote SKIP=${skip} on a person's pull request, not no SKIP`;
+}
+
 function required(name: string): Effect.Effect<string, MutationScopeSmokeError> {
   const value = process.env[name];
   return value === undefined || value === "" ? Effect.fail(new MutationScopeSmokeError({ message: `mutation-scope-smoke needs ${name} set` })) : Effect.succeed(value);
@@ -43,6 +63,14 @@ const standIns = Effect.gen(function* () {
 });
 
 const verify = Effect.gen(function* () {
+  const expectedSkip = expectedSkipFromEnv(process.env);
+  if (expectedSkip !== undefined) {
+    const failure = skipFailure(expectedSkip, process.env["SKIP"]);
+    if (failure !== undefined) return yield* new MutationScopeSmokeError({ message: failure });
+    return yield* Console.log(`mutation-scope-smoke: a ${expectedSkip} pull request skips with SKIP=${expectedSkip}`);
+  }
+  const unexpected = unexpectedSkipFailure(process.env["SKIP"]);
+  if (unexpected !== undefined) return yield* new MutationScopeSmokeError({ message: unexpected });
   const mainMergeBase = Bun.spawnSync(["git", "merge-base", "HEAD", "origin/main"]).stdout.toString().trim();
   const failure = scopeFailure(process.env["SCOPE"], mainMergeBase);
   if (failure !== undefined) return yield* new MutationScopeSmokeError({ message: failure });

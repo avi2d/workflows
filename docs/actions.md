@@ -152,9 +152,16 @@ A command with neither fails the step with a message naming both.
 
 ## mutation-scope
 
-Writes the `SCOPE` of a pull request's mutation run to the job's environment.
-It passes the head's merge base with `origin/<base-ref>` to `checks-mutation-scope`, and restores nothing from main.
+Writes the `SCOPE` of a pull request's mutation run to the job's environment, or `SKIP` with the reason the run does not start.
+It reads the pull request from the event first.
+A release pull request, whose head is `release/<base>` in the same repository, writes `SKIP=release`.
+Any other pull request a bot opened writes `SKIP=bot`.
+Neither scopes anything.
+Otherwise it passes the head's merge base with `origin/<base-ref>` to `checks-mutation-scope`, and restores nothing from main.
 An empty `base-ref` scopes against `origin/main`.
+A scope that names no file adds `SKIP=no-source`.
+Each skip prints a notice that names its reason.
+A release run held for approval never reaches this action, and held-runs deletes that held run.
 The caller checks out the whole history and puts `checks-mutation-scope` on the `PATH` first, as [kit-bin](#kit-bin) does.
 
 | Input | Default | What it sets |
