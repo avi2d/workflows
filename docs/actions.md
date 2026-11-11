@@ -59,12 +59,29 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 
 ## docs-only
 
-Tells whether a change touches only documentation, through `checks-docs-only` from the caller's install of the kit.
+Tells whether a change touches only documentation.
+Without `paths` it runs `checks-docs-only` from the caller's install of the kit, or from the kit's own repository as [kit-bin](#kit-bin) finds it.
+
+With `paths` set, it runs no kit command and reads the change itself.
+The change counts as documentation when every path changed since the merge base of `base` and `head` matches one of the patterns.
+A renamed file counts as its old path and its new path.
+A range that changes nothing, or an empty `base`, reports `false`, and a range git cannot read fails the step.
+Matching is case sensitive, so `*.[mM][dD]` matches Markdown in any letter case and `copy.json` matches only that exact name.
+To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller writes:
+
+```yaml
+- id: skip
+  uses: avi2d/workflows/actions/docs-only@v2
+  with:
+    head: ${{ github.event.pull_request.head.sha }}
+    paths: "*.[mM][dD] copy.json"
+```
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `base` | the pull request base | the commit the change starts from, where empty reports `false` |
 | `head` | `HEAD` | the commit the change ends at |
+| `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched against a whole path, where `*` also crosses `/` |
 
 | Output | Value |
 | --- | --- |
@@ -259,10 +276,12 @@ A build that changes nothing makes no commit.
 
 Fails unless every named result is `success`, and names each one that is not.
 A gate job that `needs` other jobs runs it with `if: always()`, so a skipped or cancelled job fails the gate.
+A result that is `skipped` passes only when `skips` holds the same name with `true`, such as a job whose `if:` skips it on a docs-only change.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `results` | required | `name=result` pairs separated by whitespace, such as `e2e=${{ needs.e2e.result }}` |
+| `skips` | empty, no skip passes | `name=true` pairs separated by whitespace, such as `e2e=${{ needs.changes.outputs.e2e-skip }}` |
 
 ### affected-tests
 

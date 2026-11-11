@@ -1,5 +1,5 @@
 name: docs-only
-description: Tell whether the change between two commits touches only documentation, through checks-docs-only from the caller's @avi2dg/checks install.
+description: Tell whether the change between two commits touches only documentation, through checks-docs-only from the caller's @avi2dg/checks install, or through the path patterns the caller names.
 inputs:
   base:
     description: The commit the change starts from. Empty skips the classification and reports false.
@@ -7,6 +7,9 @@ inputs:
   head:
     description: The commit the change ends at.
     default: HEAD
+  paths:
+    description: Bash patterns separated by whitespace, each matched against a whole changed path, where * also crosses /. When set, the change is documentation when every path it changes matches one, in place of checks-docs-only.
+    default: ""
 outputs:
   docs-only:
     description: true when the change touches only documentation, else false.
@@ -14,9 +17,15 @@ outputs:
 runs:
   using: composite
   steps:
+    # The kit's own repository holds no node_modules/.bin/checks-docs-only, where bunx would fetch an unrelated package.
+    - if: inputs.paths == ''
+      uses: avi2d/workflows/actions/kit-bin@27ffb2d6889314b744a193247c07c7c75cbbaff3 # v2.2.0
+      with:
+        commands: checks-docs-only
     - id: classify
       shell: bash
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_REF: ${{ inputs.head }}
+        PATHS: ${{ inputs.paths }}
       run: bash "$GITHUB_ACTION_PATH/main.sh"
