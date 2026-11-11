@@ -3,8 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@effect/platform-bun": "4.0.0",
-    "@stryker-mutator/instrumenter": "10.0.0",
-    "effect": "4.0.0"
+    "@stryker-mutator/instrumenter": "10.0.0"
   }
 }

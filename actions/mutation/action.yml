@@ -21,6 +21,9 @@ runs:
   using: composite
   steps:
     # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the repository dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/../.."
     - name: install the script's own dependencies
       shell: bash
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
