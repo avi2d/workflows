@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Duration, Effect, Exit, Fiber } from "effect";
 import { TestClock } from "effect/testing";
 import { parseAttempts, retryWithGrowingWait } from "../../../lib/retry.ts";
+import { withClock } from "../../lib/clock.ts";
 
 function countedTries(passFrom: number) {
   let tries = 0;
@@ -11,8 +12,6 @@ function countedTries(passFrom: number) {
   });
   return { tryOnce, tries: () => tries };
 }
-
-const withClock = <A>(program: Effect.Effect<A>) => Effect.runPromise(program.pipe(Effect.provide(TestClock.layer())));
 
 describe("retryWithGrowingWait", () => {
   test("a try that keeps failing tried other than 3 times, or reported passed, fails", async () => {

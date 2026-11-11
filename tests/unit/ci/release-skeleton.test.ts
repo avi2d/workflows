@@ -6,11 +6,11 @@ const PICK = "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}";
 const goodPr = {
   jobs: {
     "pull-request": {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       steps: [{ run: "echo plan" }],
     },
     tag: {
-      "runs-on": "ubuntu-latest",
+      "runs-on": PICK,
       if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')",
       steps: [{ run: "echo tag" }],
     },
@@ -170,12 +170,15 @@ describe("release skeleton", () => {
     const pr = structuredClone(goodPr);
     const tag: Record<string, unknown> = pr.jobs.tag;
     delete tag["runs-on"];
-    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the hosted runner"]);
+    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the caller's runner pick"]);
   });
-  test.each([[PICK], ["self-hosted"]])("a release pull request job on %p in place of the hosted runner that passes fails", (runsOn) => {
-    const pr = structuredClone(goodPr);
-    const tag: Record<string, unknown> = pr.jobs.tag;
-    tag["runs-on"] = runsOn;
-    expect(faults(pr, goodRelease)).toEqual(["the tag job runs off the hosted runner"]);
-  });
+  test.each([["ubuntu-latest"], ["self-hosted"], ["${{ inputs.runs-on }}"]])(
+    "a release pull request job on %p in place of the caller's runner pick that passes fails",
+    (runsOn) => {
+      const pr = structuredClone(goodPr);
+      const plan: Record<string, unknown> = pr.jobs["pull-request"];
+      plan["runs-on"] = runsOn;
+      expect(faults(pr, goodRelease)).toEqual(["the pull-request job runs off the caller's runner pick"]);
+    },
+  );
 });

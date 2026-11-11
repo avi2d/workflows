@@ -71,7 +71,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 
 | Setting | How it reaches the shared code |
 | --- | --- |
-| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release publish run read in the caller's context |
+| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release runs read in the caller's context |
 | A token other than the job's own | the `token` input of commitlint-status or head-status, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
