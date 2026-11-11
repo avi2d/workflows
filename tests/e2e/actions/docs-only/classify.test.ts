@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "../../../../actions/docs-only/main.sh");
-const E2E_SKIP_PATHS = "*.md copy.json";
+const E2E_SKIP_PATHS = "*.[mM][dD] copy.json";
 
 let root = "";
 
@@ -80,6 +80,7 @@ test("Markdown at any depth in any case and the root copy.json read as more than
 test.each([
   ["a code file beside Markdown", { "README.md": "a\n", "src/app.ts": "changed\n" }],
   ["a copy.json below the root", { "src/copy.json": "{}\n" }],
+  ["an uppercase root COPY.JSON", { "COPY.JSON": "{}\n" }],
 ])("%s read as documentation fails", (_, files) => {
   const base = changeFrom(files);
   expect(classify(base, "HEAD", E2E_SKIP_PATHS)).toEqual({ exitCode: 0, output: "earlier=kept\ndocs-only=false\n" });

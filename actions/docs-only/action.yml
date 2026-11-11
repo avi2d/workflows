@@ -8,7 +8,7 @@ inputs:
     description: The commit the change ends at.
     default: HEAD
   paths:
-    description: Bash patterns separated by whitespace, each matched without case against a whole changed path, where * also crosses /. When set, the change is documentation when every path it changes matches one, in place of checks-docs-only.
+    description: Bash patterns separated by whitespace, each matched against a whole changed path, where * also crosses /. When set, the change is documentation when every path it changes matches one, in place of checks-docs-only.
     default: ""
 outputs:
   docs-only:

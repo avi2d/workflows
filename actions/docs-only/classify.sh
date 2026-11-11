@@ -16,7 +16,6 @@ paths_verdict() {
   fi
   local -a patterns
   read -rd '' -ra patterns <<< "$PATHS" || true
-  shopt -s nocasematch
   local path pattern matched
   while IFS= read -r path; do
     matched=false

@@ -65,6 +65,7 @@ With `paths` set, it runs no kit command and reads the change itself.
 The change counts as documentation when every path changed since the merge base of `base` and `head` matches one of the patterns.
 A renamed file counts as its old path and its new path.
 A range that changes nothing, or an empty `base`, reports `false`, and a range git cannot read fails the step.
+Matching is case sensitive, so `*.[mM][dD]` matches Markdown in any letter case and `copy.json` matches only that exact name.
 To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller writes:
 
 ```yaml
@@ -72,14 +73,14 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
   uses: avi2d/workflows/actions/docs-only@v2
   with:
     head: ${{ github.event.pull_request.head.sha }}
-    paths: "*.md copy.json"
+    paths: "*.[mM][dD] copy.json"
 ```
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `base` | the pull request base | the commit the change starts from, where empty reports `false` |
 | `head` | `HEAD` | the commit the change ends at |
-| `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched without case against a whole path, where `*` also crosses `/` |
+| `paths` | empty, `checks-docs-only` decides | Bash patterns separated by whitespace, each matched against a whole path, where `*` also crosses `/` |
 
 | Output | Value |
 | --- | --- |
