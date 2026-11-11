@@ -9,6 +9,7 @@ Date: 2026-11-11
 
 Accepted.
 It changes the default of the `mode` input from `baseline` to none.
+It supersedes the clause of 0001 that has a merge to main run the `baseline` mode.
 
 ## Context
 

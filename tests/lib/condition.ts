@@ -34,7 +34,9 @@ export function conditionRuns(condition: unknown, context: Context): boolean {
     }
     if (name === "true") return true;
     if (name === "false") return false;
-    return context[name] ?? "";
+    const value = context[name];
+    if (value === undefined) throw new Error(`cannot read ${condition}`);
+    return value;
   }
   function parseComparison(): string | boolean {
     const left = parseOperand();
@@ -43,7 +45,7 @@ export function conditionRuns(condition: unknown, context: Context): boolean {
       const equal = source.startsWith("==", pos);
       pos += 2;
       const right = parseOperand();
-      return equal ? toText(left) === toText(right) : toText(left) !== toText(right);
+      return equal ? toText(left).toLowerCase() === toText(right).toLowerCase() : toText(left).toLowerCase() !== toText(right).toLowerCase();
     }
     return left;
   }
