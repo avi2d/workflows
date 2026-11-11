@@ -22,10 +22,14 @@ runs:
       uses: avi2d/workflows/actions/kit-bin@27ffb2d6889314b744a193247c07c7c75cbbaff3 # v2.2.0
       with:
         commands: checks-docs-only
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
     - id: classify
       shell: bash
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_REF: ${{ inputs.head }}
         PATHS: ${{ inputs.paths }}
-      run: bash "$GITHUB_ACTION_PATH/main.sh"
+      run: bun "$GITHUB_ACTION_PATH/main.ts"
