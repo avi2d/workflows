@@ -51,7 +51,6 @@ test("a pull request run that restores, reuses or compares against a result from
     { uses: "avi2d/workflows/setup", part: null, run: null },
     { uses: "avi2d/workflows/kit-bin", part: null, run: null },
     { uses: "avi2d/workflows/actions/mutation-scope", part: null, run: null },
-    { uses: null, part: null, run: 'echo "::notice::mutation: no source files changed, so the run does not start"' },
     { uses: "avi2d/workflows/actions/mutation", part: "count-scope", run: null },
     { uses: "avi2d/workflows/actions/mutation", part: "over-cap", run: null },
     { uses: null, part: null, run: 'bunx stryker run --mutate "$SCOPE"' },
@@ -59,6 +58,14 @@ test("a pull request run that restores, reuses or compares against a result from
     { uses: null, part: null, run: 'gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/comment.md"' },
     { uses: "avi2d/workflows/actions/mutation", part: "fork-summary", run: null },
   ]);
+});
+
+test("a skipped pull request that still counts, runs or scores its mutants fails", () => {
+  const gated = new Set(["Count scoped mutants", "Run the scoped head", "Score the changed files"]);
+  const conditions = stepsOf("compare")
+    .filter((step) => gated.has(String(step["name"])))
+    .map((step) => String(step["if"]).startsWith("env.SKIP == ''"));
+  expect(conditions).toEqual([true, true, true]);
 });
 
 test("a mutation action pinned at commits that disagree, or running a part the workflow names that is unknown, fails", () => {
