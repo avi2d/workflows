@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { highestTag, releaseCall } from "../../../../actions/github-release/github-release.ts";
+import { highestTag, releaseCall, type ReleaseCall } from "../../../../actions/github-release/github-release.ts";
 
 test.each([
   ["v1.10.0 ordered as text below v1.9.9", ["v1.2.0", "v1.10.0", "v1.9.9"], "v1.10.0"],
@@ -18,7 +18,7 @@ const released = [
   { id: 12, tag_name: "v1.1.0" },
 ];
 
-const body = (tag: string, latest: "true" | "false") => ({ tag_name: tag, name: tag, body: "notes", draft: false, prerelease: false, make_latest: latest });
+const body = (tag: string, latest: "true" | "false"): ReleaseCall["body"] => ({ tag_name: tag, name: tag, body: "notes", draft: false, prerelease: false, make_latest: latest });
 
 test("a new highest tag that updates a release or is left off latest fails", () => {
   expect(releaseCall(released, "v1.2.0", "notes")).toEqual({ method: "POST", path: "/releases", body: body("v1.2.0", "true") });
