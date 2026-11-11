@@ -8,12 +8,17 @@ Each action is a composite action that runs as steps inside the caller's job on 
 A caller calls it as `avi2d/workflows/actions/<name>@v2`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
 Every action but setup, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
+heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
+`ci/heavy-slot-smoke.sh` stays in shell so its job, which runs no setup, proves heavy-slot needs no Bun.
+`ci/package-hosts-smoke.sh` stays in shell because its listener starts before setup, so a setup that asked an Ubuntu package host fails the job.
+`ci/actionlint.sh` stays in shell because it only runs actionlint's own Bash installer and then actionlint.
 An action whose script imports a package installs this repository's pinned dependencies in its own checkout, apart from the caller's.
 
 ## setup
 
 Checks out the repository, fails when `.bun-version` is missing, installs the Bun version that file names and runs `bun install --frozen-lockfile`.
 `setup-bun` unpacks its download with `unzip`, so in an image without `unzip`, such as the Playwright image, setup fetches that Bun through `npm` first.
+`require-bun-version.sh` and `bun-without-unzip.sh` stay in shell because they run before Bun is on the machine.
 
 When the caller installs the `@avi2dg/checks` kit, it restores `~/.cache/avi2dg-checks/gitleaks` and saves it at the end of the job.
 `checks-secrets` and `checks-pr-text` then find the pinned gitleaks there and download nothing.
