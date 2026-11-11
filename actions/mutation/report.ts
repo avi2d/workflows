@@ -37,52 +37,12 @@ export function scopedFiles(files: Report["files"], scope: string): Report["file
   return Object.fromEntries(Object.entries(files).filter(([file]) => wanted.has(file)));
 }
 
-const UNCOUNTED = new Set(["Ignored", "NoCoverage"]);
-
-// A scoped file the baseline never saw counts as the average of the files it did see.
-export function scopedMutants(report: Report | undefined, scope: string): number {
-  const files = scopeFiles(scope);
-  if (report === undefined) return files.length;
-  const counts = Object.values(scopedFiles(report.files, scope)).map(
-    ({ mutants }) => mutants.filter((mutant) => mutant.static !== true && !UNCOUNTED.has(mutant.status)).length,
-  );
-  const sum = counts.reduce((total, count) => total + count, 0);
-  const average = counts.length === 0 ? 1 : Math.ceil(sum / counts.length);
-  return sum + (files.length - counts.length) * average;
-}
-
 export function overCapNote(scoped: number, cap: number): string {
-  return `## mutation compare\n\n${scoped} scoped mutants pass the ${cap} mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n`;
+  return `## mutation score\n\n${scoped} scoped mutants pass the ${cap} mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n`;
 }
 
-export function withoutStaleTests(state: unknown, stale: string): unknown {
-  if (typeof state !== "object" || state === null || !("testFiles" in state)) return state;
-  const { testFiles } = state;
-  if (typeof testFiles !== "object" || testFiles === null) return state;
-  const drop = new Set(stale.split(","));
-  return { ...state, testFiles: Object.fromEntries(Object.entries(testFiles).filter(([file]) => !drop.has(file))) };
-}
-
-export const COMMENT_LIMIT = 60_000;
-const KEPT_BYTES = 59_000;
-
-function compareComment(score: Score, body: string): string {
-  return `## mutation compare\n\nDetected ${score.detected} of ${score.total} scoped mutants.\n\n\`\`\`\n${body}\`\`\`\n`;
-}
-
-// The cut ends a line early, since the byte limit can split the last line or a character in it.
-function cutText(text: string): string {
-  const kept = new TextDecoder().decode(new TextEncoder().encode(text).slice(0, KEPT_BYTES));
-  const lines = kept.split("\n");
-  if (kept.endsWith("\n")) lines.pop();
-  lines.pop();
-  return lines.map((line) => `${line}\n`).join("");
-}
-
-export function advisoryComment(score: Score, compared: string): string {
-  const whole = compareComment(score, compared);
-  if (new TextEncoder().encode(whole).length <= COMMENT_LIMIT) return whole;
-  return compareComment(score, `${cutText(compared)}Report cut: the full text is in the step log.\n`);
+export function scopeComment(files: Report["files"]): string {
+  return `## mutation score\n\nThe changed files: ${scoreLine(scoreOf(files))}\n`;
 }
 
 export function shardsOf(scopeOutput: string): string | undefined {

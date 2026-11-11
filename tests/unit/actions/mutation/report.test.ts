@@ -1,17 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import {
-  advisoryComment,
-  COMMENT_LIMIT,
   overCapNote,
   type Report,
+  scopeComment,
   scopedFiles,
-  scopedMutants,
   scopeFiles,
   scoreLine,
   scoreOf,
   scoreSummary,
   shardsOf,
-  withoutStaleTests,
 } from "../../../../actions/mutation/report.ts";
 
 const mutants = (...statuses: readonly string[]) => ({ mutants: statuses.map((status) => ({ status })) });
@@ -56,50 +53,17 @@ describe("scopedFiles", () => {
   });
 });
 
-describe("scopedMutants", () => {
-  test("a static, ignored or uncovered mutant counted, or an unseen file counted as nothing, fails", () => {
-    expect(scopedMutants(REPORT, "src/a.ts,src/b.ts")).toBe(6);
-    expect(scopedMutants(REPORT, "src/a.ts,src/b.ts,src/new.ts")).toBe(9);
-  });
-
-  test("a scope of unseen files counted as nothing, or no baseline counted other than one per file, fails", () => {
-    expect(scopedMutants(REPORT, "src/new.ts,src/other.ts")).toBe(2);
-    expect(scopedMutants(undefined, "src/a.ts,src/b.ts,src/c.ts")).toBe(3);
-  });
-});
-
 describe("overCapNote", () => {
   test("a note that drops the count, the cap or the advice to split fails", () => {
     expect(overCapNote(1600, 1500)).toBe(
-      "## mutation compare\n\n1600 scoped mutants pass the 1500 mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n",
+      "## mutation score\n\n1600 scoped mutants pass the 1500 mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n",
     );
   });
 });
 
-describe("withoutStaleTests", () => {
-  test("a stale test kept, another test dropped, or the rest of the state changed, fails", () => {
-    const state = { files: { "src/a.ts": {} }, testFiles: { "tests/a.test.ts": 1, "tests/b.test.ts": 2, "tests/c.test.ts": 3 } };
-    expect(withoutStaleTests(state, "tests/a.test.ts,tests/c.test.ts")).toEqual({ files: { "src/a.ts": {} }, testFiles: { "tests/b.test.ts": 2 } });
-  });
-
-  test("a state without testFiles changed fails", () => {
-    expect(withoutStaleTests({ files: {} }, "tests/a.test.ts")).toEqual({ files: {} });
-  });
-});
-
-describe("advisoryComment", () => {
-  test("a comment that drops the score or the fenced compare text fails", () => {
-    expect(advisoryComment({ detected: 2, total: 3 }, "line one\nline two\n")).toBe(
-      "## mutation compare\n\nDetected 2 of 3 scoped mutants.\n\n```\nline one\nline two\n```\n",
-    );
-  });
-
-  test("a comment over GitHub's body limit, or a cut that keeps a split line, fails", () => {
-    const line = `${"x".repeat(99)}\n`;
-    const comment = advisoryComment({ detected: 0, total: 0 }, line.repeat(1000));
-    expect(new TextEncoder().encode(comment).length).toBeLessThanOrEqual(COMMENT_LIMIT);
-    expect(comment).toContain(`${line.repeat(589)}Report cut: the full text is in the step log.\n${"`".repeat(3)}\n`);
-    expect(comment).not.toContain(line.repeat(590));
+describe("scopeComment", () => {
+  test("a comment that drops the changed files score or adds a per-file line fails", () => {
+    expect(scopeComment(REPORT.files)).toBe("## mutation score\n\nThe changed files: Detected 3 of 7 mutants (43%).\n");
   });
 });
 

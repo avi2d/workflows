@@ -1,5 +1,5 @@
 name: mutation-scope
-description: Write the SCOPE of a mutation compare to GITHUB_ENV, from the head's merge base with the branch the caller names.
+description: Write the SCOPE of a pull request's mutation run to GITHUB_ENV, from the head's merge base with the branch the caller names.
 inputs:
   base-ref:
     description: The branch the head merges into, read from origin. Empty means main.

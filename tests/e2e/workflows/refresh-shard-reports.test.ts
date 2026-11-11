@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { isRecord, workflowSteps } from "../../lib/workflow.ts";
 
 const MUTATION = join(import.meta.dir, "../../../.github/workflows/mutation.yml");
 const JOB_INDEX = "${{ strategy.job-index }}";
@@ -21,16 +22,8 @@ afterEach(() => {
   rmSync(workspace, { recursive: true, force: true });
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function stepsOf(job: string): readonly Record<string, unknown>[] {
-  const document: unknown = Bun.YAML.parse(readFileSync(MUTATION, "utf8"));
-  const jobs = isRecord(document) ? document["jobs"] : undefined;
-  const body = isRecord(jobs) ? jobs[job] : undefined;
-  const steps: unknown[] = isRecord(body) && Array.isArray(body["steps"]) ? body["steps"] : [];
-  return steps.filter(isRecord);
+  return workflowSteps(MUTATION, job);
 }
 
 function inputsOf(job: string, action: string): Record<string, unknown> {

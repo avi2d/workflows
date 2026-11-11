@@ -13,7 +13,7 @@ function compareScopeStep(): Record<string, unknown> {
   const jobs = isRecord(document) ? document["jobs"] : undefined;
   const compare = isRecord(jobs) ? jobs["compare"] : undefined;
   const steps: unknown[] = isRecord(compare) && Array.isArray(compare["steps"]) ? compare["steps"] : [];
-  const step = steps.find((candidate) => isRecord(candidate) && String(candidate["uses"] ?? "").startsWith("avi2d/workflows/mutation-scope@"));
+  const step = steps.find((candidate) => isRecord(candidate) && String(candidate["uses"] ?? "").startsWith("avi2d/workflows/actions/mutation-scope@"));
   if (!isRecord(step)) throw new Error("mutation.yml compare calls no mutation-scope action");
   return step;
 }

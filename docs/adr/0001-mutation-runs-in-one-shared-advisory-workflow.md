@@ -8,6 +8,7 @@ Date: 2026-11-07
 ## Status
 
 Accepted.
+0005 supersedes its `compare` clause.
 
 ## Context
 

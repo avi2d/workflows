@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { runMain } from "../lib/run-main.ts";
 
 export const STAND_INS: Readonly<Record<string, string>> = {
-  "checks-mutation-baseline": "#!/bin/sh\n",
   "checks-mutation-scope": '#!/bin/sh\necho "SCOPE=$1"\n',
 };
 

@@ -152,10 +152,10 @@ A command with neither fails the step with a message naming both.
 
 ## mutation-scope
 
-Writes the `SCOPE` of a mutation compare to the job's environment.
-It restores the full baseline report with `checks-mutation-baseline --full` and passes the head's merge base with `origin/<base-ref>` to `checks-mutation-scope`.
+Writes the `SCOPE` of a pull request's mutation run to the job's environment.
+It passes the head's merge base with `origin/<base-ref>` to `checks-mutation-scope`, and restores nothing from main.
 An empty `base-ref` scopes against `origin/main`.
-The caller checks out the whole history and puts both commands on the `PATH` first, as [kit-bin](#kit-bin) does.
+The caller checks out the whole history and puts `checks-mutation-scope` on the `PATH` first, as [kit-bin](#kit-bin) does.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
@@ -164,15 +164,14 @@ The caller checks out the whole history and puts both commands on the `PATH` fir
 ## mutation
 
 Runs one part of [the mutation runs](mutation.md) on the reports in the caller's workspace and `$RUNNER_TEMP`.
-The `compare` and `shards` parts call `checks-mutation-compare` and `checks-mutation-scope`, which the caller puts on the `PATH` first, as [kit-bin](#kit-bin) does.
+The `shards` part calls `checks-mutation-scope`, which the caller puts on the `PATH` first, as [kit-bin](#kit-bin) does.
 
 | Part | What it does |
 | --- | --- |
 | `score` | writes the detected share of `reports/mutation/mutation.json` to the step summary |
-| `count-scope` | estimates the mutants in `SCOPE` from the full baseline report and writes `SCOPED_MUTANTS`, and `OVER_CAP=true` past the cap |
+| `count-scope` | counts the mutants in the head's `SCOPE` files with Stryker's instrumenter and its default mutators, and writes `SCOPED_MUTANTS`, and `OVER_CAP=true` past the cap |
 | `over-cap` | writes the over-cap note to `$RUNNER_TEMP/comment.md` |
-| `drop-stale-tests` | drops the `STALE_TESTS` files from the restored incremental state |
-| `compare` | writes the advisory comparison to `$RUNNER_TEMP/comment.md`, cut under GitHub's comment limit |
+| `scope-score` | writes the score of the `SCOPE` files in `reports/mutation/mutation.json`, to `$RUNNER_TEMP/comment.md` |
 | `shards` | writes the shard list as the `shards` output |
 | `fork-summary` | copies `$RUNNER_TEMP/comment.md` to the step summary |
 

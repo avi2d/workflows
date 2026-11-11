@@ -20,7 +20,7 @@ function standIn(name: string, body: string): void {
   chmodSync(join(root, "bin", name), 0o755);
 }
 
-function scopeRun(baseRef: string, failBaseline = false): { readonly exitCode: number; readonly githubEnv: string; readonly calls: string } {
+function scopeRun(baseRef: string): { readonly exitCode: number; readonly githubEnv: string; readonly calls: string } {
   const githubEnv = join(root, "github-env");
   const calls = join(root, "calls");
   writeFileSync(githubEnv, "");
@@ -33,7 +33,6 @@ function scopeRun(baseRef: string, failBaseline = false): { readonly exitCode: n
       RUNNER_TEMP: root,
       GITHUB_ENV: githubEnv,
       BASE_REF: baseRef,
-      FAIL_BASELINE: failBaseline ? "1" : "",
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -45,7 +44,7 @@ beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "mutation-scope-"));
   Bun.spawnSync(["git", "clone", "--quiet", "--branch", "pr-head", HISTORY, "head"], { cwd: root });
   mkdirSync(join(root, "bin"));
-  standIn("checks-mutation-baseline", 'echo "baseline $*" >> "$RUNNER_TEMP/calls"; [ -z "$FAIL_BASELINE" ]');
+  standIn("checks-mutation-baseline", 'echo "baseline $*" >> "$RUNNER_TEMP/calls"');
   standIn("checks-mutation-scope", 'echo "scope $*" >> "$RUNNER_TEMP/calls"; echo "SCOPE=$1"');
 });
 
@@ -61,15 +60,9 @@ test("a run with no pull request that scopes from anything but origin/main fails
   expect(scopeRun("").githubEnv).toBe(`SCOPE=${git(["rev-list", "--max-parents=0", "HEAD"])}\n`);
 });
 
-test("a scope read from anything but the full baseline report the step just restored fails", () => {
-  const report = join(root, "baseline-full", "mutation.json");
+test("a scope that restores a report from main or reads one fails", () => {
   const base = git(["rev-parse", "origin/release"]);
-  expect(scopeRun("release").calls).toBe(`baseline --full ${report}\nscope ${base} ${report}\n`);
-});
-
-test("a failed baseline restore that still writes a scope and passes fails", () => {
-  const run = scopeRun("release", true);
-  expect([run.exitCode, run.githubEnv]).toEqual([1, ""]);
+  expect(scopeRun("release").calls).toBe(`scope ${base}\n`);
 });
 
 test("a base branch missing from origin that passes fails", () => {
