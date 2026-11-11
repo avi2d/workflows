@@ -10,9 +10,27 @@ inputs:
 runs:
   using: composite
   steps:
+    # A gate job may run this before setup, or without it.
+    - id: bun
+      name: tell whether the job already holds Bun
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../setup/main.sh" bun-held
+    - if: steps.bun.outputs.held == 'false'
+      name: fetch Bun through npm where the image holds no unzip
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      run: bash actions/setup/main.sh bun-without-unzip
+    - if: steps.bun.outputs.held == 'false'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version-file: ${{ github.action_path }}/../../.bun-version
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
     - name: require every result to be success
       shell: bash
       env:
         RESULTS: ${{ inputs.results }}
         SKIPS: ${{ inputs.skips }}
-      run: bash "$GITHUB_ACTION_PATH/main.sh"
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

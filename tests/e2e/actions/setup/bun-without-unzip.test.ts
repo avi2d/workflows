@@ -67,6 +67,6 @@ test("an image with neither unzip nor npm that passes fails", () => {
 test("a part main.sh does not know that passes fails", () => {
   expect(setup("install-node")).toEqual({
     exitCode: 1,
-    stdout: "::error::setup's main.sh takes require-bun-version or bun-without-unzip, not 'install-node'\n",
+    stdout: "::error::setup's main.sh takes require-bun-version, bun-without-unzip or bun-held, not 'install-node'\n",
   });
 });
