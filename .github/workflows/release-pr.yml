@@ -46,9 +46,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ${{ inputs.plan-command }}
-      # The pin names the commit that adds the action, since a ./ path resolves in the caller's checkout.
+      # A ./ path resolves in the caller’s checkout.
       - name: delete the runs held for approval on the release pull request
-        uses: avi2d/workflows/actions/held-runs@12bf9a1788da9284702a7298b2cc9d4613e82a43
+        uses: avi2d/workflows/actions/held-runs@6cda430d5e0d2d10eaf1f6838a788cd7a2252945
   tag:
     if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')"
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
