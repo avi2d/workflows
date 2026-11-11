@@ -59,7 +59,7 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'` on 
 | `pull-request` | empty | the pull request number whose head the status lands on when `head-sha` is empty, such as `${{ github.event.issue.number }}` |
 | `description` | empty, none | the status description |
 | `token` | the job's token | the token that writes the status |
-| `attempts` | `1` | how many times to try, waiting 10 seconds longer after each failure |
+| `attempts` | `1` | how many times to try the head read and the status call, waiting 10 seconds longer after each failure |
 
 ## docs-only
 
@@ -176,14 +176,13 @@ The caller pins it to the commit the release tag points at, found as [Install](.
 ```
 
 An empty pack fails the step and writes nothing.
-With `if-missing: skip`, an empty pack instead writes `skip-notice` as a notice and a step summary line, exports nothing and reports `configured` as `false`.
+With `if-missing: skip`, an empty pack instead writes a notice and a step summary line, exports nothing and reports `configured` as `false`.
 A later step then guards on `steps.<id>.outputs.configured == 'true'`.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
 | `if-missing` | `fail` | what an empty pack does, `fail` or `skip` |
-| `skip-notice` | a line saying no pack is configured | the notice and summary line a skipped pack writes |
 
 | Output | Value |
 | --- | --- |

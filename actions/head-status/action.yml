@@ -20,7 +20,7 @@ inputs:
     description: The token that writes the status. It needs statuses write.
     default: ${{ github.token }}
   attempts:
-    description: How many times to try the status call, waiting 10 seconds longer after each failure.
+    description: How many times to try the head read and the status call, waiting 10 seconds longer after each failure.
     default: "1"
 runs:
   using: composite

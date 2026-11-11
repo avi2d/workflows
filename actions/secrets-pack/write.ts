@@ -20,11 +20,13 @@ export const writePack = Effect.fn("writePack")(function* ({ pack, runnerTemp, g
   yield* fs.writeFileString(githubEnv, `${PACK_VARIABLE}=${file}\n`, { flag: "a" });
 });
 
-export type Skip = { readonly notice: string; readonly stepSummary: string };
+const SKIP_NOTICE = "no private pack is configured, so the steps that read CHECKS_SECRETS_PACK skip";
 
-export const skipPack = Effect.fn("skipPack")(function* ({ notice, stepSummary }: Skip) {
-  yield* Console.log(`::notice::${notice}`);
-  yield* (yield* FileSystem.FileSystem).writeFileString(stepSummary, `${notice}\n`, { flag: "a" });
+export type Skip = { readonly stepSummary: string };
+
+export const skipPack = Effect.fn("skipPack")(function* ({ stepSummary }: Skip) {
+  yield* Console.log(`::notice::${SKIP_NOTICE}`);
+  yield* (yield* FileSystem.FileSystem).writeFileString(stepSummary, `${SKIP_NOTICE}\n`, { flag: "a" });
   yield* writeOutputs({ configured: "false" });
 });
 
@@ -38,7 +40,7 @@ export const main = Effect.gen(function* () {
   });
   const ifMissing = yield* Config.schema(IfMissing, "IF_MISSING").pipe(Config.withDefault("fail" as const));
   if (target.pack === "" && ifMissing === "skip") {
-    yield* skipPack(yield* Config.all({ notice: Config.String("SKIP_NOTICE"), stepSummary: Config.String("GITHUB_STEP_SUMMARY") }));
+    yield* skipPack(yield* Config.all({ stepSummary: Config.String("GITHUB_STEP_SUMMARY") }));
     return true;
   }
   yield* writePack(target);

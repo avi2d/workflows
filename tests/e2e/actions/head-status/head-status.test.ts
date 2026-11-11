@@ -61,3 +61,13 @@ test.each([
   expect(exitCode).toBe(1);
   expect(calls.some((call) => call.includes("/statuses/"))).toBe(false);
 });
+
+test("a head read that fails once and posts no status without a retry fails", () => {
+  const marker = scratch.at("flaked");
+  scratch.write("bin/gh", `#!/bin/sh\necho "$*" >> "${scratch.at("calls")}"\ncase "$2" in */pulls/*) if [ ! -f "${marker}" ]; then touch "${marker}"; echo "boom"; exit 1; fi; echo "${HEAD}" ;; esac\n`);
+  chmodSync(scratch.at("bin/gh"), 0o755);
+  expect(report({ PULL_REQUEST: "7", ATTEMPTS: "2" })).toEqual({
+    exitCode: 0,
+    calls: ["api repos/owner/repo/pulls/7 --jq .head.sha", "api repos/owner/repo/pulls/7 --jq .head.sha", status(HEAD)],
+  });
+}, 30000);

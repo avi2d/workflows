@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { useScratch } from "../../lib/scratch.ts";
 
 const MAIN = join(import.meta.dir, "../../../../actions/secrets-pack/main.ts");
-const NOTICE = "pr-text scan skipped: no private pack is configured";
+const NOTICE = "no private pack is configured, so the steps that read CHECKS_SECRETS_PACK skip";
 const scratch = useScratch("secrets-pack");
 
 function writePack(pack: string, ifMissing: string) {
@@ -14,7 +14,6 @@ function writePack(pack: string, ifMissing: string) {
       PATH: process.env["PATH"] ?? "",
       PACK: pack,
       IF_MISSING: ifMissing,
-      SKIP_NOTICE: NOTICE,
       RUNNER_TEMP: scratch.at(),
       GITHUB_ENV: scratch.at("env"),
       GITHUB_OUTPUT: scratch.at("output"),
