@@ -2,8 +2,9 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { bashPatternMatches } from "../../../../actions/docs-only/docs-only.ts";
 
-const SCRIPT = join(import.meta.dir, "../../../../actions/docs-only/main.sh");
+const MAIN = join(import.meta.dir, "../../../../actions/docs-only/main.ts");
 const E2E_SKIP_PATHS = "*.[mM][dD] copy.json";
 
 let root = "";
@@ -44,7 +45,7 @@ function commit(): string {
 }
 
 function classify(base: string, head: string, paths = "") {
-  const result = Bun.spawnSync(["bash", SCRIPT], {
+  const result = Bun.spawnSync([process.execPath, MAIN], {
     cwd: join(root, "repo"),
     env: {
       PATH: `${join(root, "bin")}:${process.env["PATH"] ?? ""}`,
@@ -103,4 +104,33 @@ test("a range that changes no file, or an empty base, read as documentation fail
 
 test("a base git cannot read that still writes a verdict passes", () => {
   expect(classify("0000000000000000000000000000000000000000", "HEAD", E2E_SKIP_PATHS)).toEqual({ exitCode: 1, output: "earlier=kept\n" });
+});
+
+const PATTERN_CASES: readonly (readonly [string, string])[] = [
+  ["*.md", "docs/guide/a.md"],
+  ["*.md", "a.mdx"],
+  ["docs/*", "docs/a/b.ts"],
+  ["?.ts", "a.ts"],
+  ["?.ts", "ab.ts"],
+  ["*.[mM][dD]", "NOTES.Md"],
+  ["[!a]*", "a.ts"],
+  ["[!a]*", "b.ts"],
+  ["[^a]*", "b.ts"],
+  ["[]x]", "]"],
+  ["[a-c].ts", "b.ts"],
+  ["[a-c].ts", "d.ts"],
+  ["[a-].ts", "-.ts"],
+  ["[[:digit:]]*", "1.md"],
+  ["[[:upper:]]*", "readme"],
+  ["\\*.md", "*.md"],
+  ["\\*.md", "a.md"],
+  ["[ab", "[ab"],
+  ["a.b", "axb"],
+  ["(x)|y+", "(x)|y+"],
+  ["copy.json", "src/copy.json"],
+];
+
+test.each(PATTERN_CASES)("the pattern %p read against %p other than as Bash's [[ == ]] reads it fails", (pattern, path) => {
+  const bash = Bun.spawnSync(["bash", "-c", '[[ $2 == $1 ]]', "bash", pattern, path]);
+  expect(bashPatternMatches(pattern, path)).toBe(bash.exitCode === 0);
 });
