@@ -161,6 +161,7 @@ Otherwise it passes the head's merge base with `origin/<base-ref>` to `checks-mu
 An empty `base-ref` scopes against `origin/main`.
 A scope that names no file adds `SKIP=no-source`.
 Each skip prints a notice that names its reason.
+A run held for approval never reaches this action, and held-runs deletes that held run.
 The caller checks out the whole history and puts `checks-mutation-scope` on the `PATH` first, as [kit-bin](#kit-bin) does.
 
 | Input | Default | What it sets |

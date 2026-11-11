@@ -258,7 +258,13 @@ jobs:
       - uses: ./actions/mutation-scope
         with:
           base-ref: ${{ github.event.pull_request.base.ref }}
-      - name: a scope taken from anything but the merge base with main, or a release or bot pull request that is scoped, fails
+      - name: a scope taken from anything but the merge base with main, a release or bot pull request that is scoped, or a person's pull request that skips, fails
+        env:
+          EXPECT_HEAD_REF: ${{ github.head_ref }}
+          EXPECT_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          EXPECT_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          EXPECT_BASE_REPO: ${{ github.repository }}
+          EXPECT_USER_TYPE: ${{ github.event.pull_request.user.type }}
         run: bun ci/mutation-scope-smoke.ts verify
   secrets-pack:
     runs-on: ubuntu-latest
