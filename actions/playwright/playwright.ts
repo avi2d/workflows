@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
 import { Config, Console, Data, Duration, Effect, FileSystem } from "effect";
-import { join } from "node:path";
 import { retryWithGrowingWait } from "../../lib/retry.ts";
-import { commandOutput, commandPasses } from "../../lib/run.ts";
+import { commandOutput, commandPassesWithin } from "../../lib/run.ts";
 
 const ATTEMPTS = 3;
 const WAIT = Duration.seconds(10);
-const ATTEMPT_SCRIPT = join(import.meta.dir, "attempt.sh");
+const ATTEMPT_LIMIT = Duration.seconds(180);
 const NOTHING_MISSING = "All system dependencies are installed.";
 
 class PlaywrightInputError extends Data.TaggedError("PlaywrightInputError")<{ readonly message: string }> {}
@@ -28,13 +27,13 @@ export function holdsSystemPackages(dryRun: { readonly stdout: string; readonly 
 }
 
 const installBrowsers = Effect.fn("installBrowsers")(function* (subcommand: Subcommand, browsers: readonly string[]) {
-  const passed = yield* retryWithGrowingWait(commandPasses("bash", [ATTEMPT_SCRIPT, "playwright-core", subcommand, ...browsers]), {
+  const passed = yield* retryWithGrowingWait(commandPassesWithin("bunx", ["playwright-core", subcommand, ...browsers], ATTEMPT_LIMIT), {
     attempts: ATTEMPTS,
     wait: WAIT,
     onRetry: (attempt) => Console.log(`playwright-core ${subcommand} attempt ${attempt} failed or stalled, retrying`),
   });
   if (!passed) {
-    yield* Console.log(`::error::playwright-core ${subcommand} failed or stalled on all ${ATTEMPTS} attempts, each stopped at 180 seconds`);
+    yield* Console.log(`::error::playwright-core ${subcommand} failed or stalled on all ${ATTEMPTS} attempts, each stopped at ${Duration.format(ATTEMPT_LIMIT)}`);
   }
   return passed;
 });
