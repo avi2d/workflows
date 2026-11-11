@@ -129,6 +129,32 @@ A fork pull request runs with a read-only token, which cannot start the run, so 
 This repository sets no `CI_RUNS_ON`, so the run stands for a caller that sets none.
 The `release-guard` CI job fails when the planning job of that run runs anywhere but `ubuntu-latest`.
 
+## How this repository releases
+
+This repository releases through its own two release runs, called by local path, like any caller.
+The shared copies hold the names `release-pr.yml` and `release.yml`, so its trigger files are `.github/workflows/own-release-pr.yml` and `.github/workflows/own-release.yml`.
+Each calls the shared copy from the same commit, so a release runs the release workflows it ships.
+
+1. A manual run of `own-release-pr` opens or refreshes the release pull request through `checks-release-pr ci.yml`, after `checks-release-preflight own-release.yml` passes.
+   It bumps `package.json` from the last release tag by the kit's rule, runs `bun run build`, and dispatches `ci.yml` on the release branch.
+2. The release pull request merges on explicit word only.
+3. The push of its `chore: release <version>` commit to `main` runs the `tag` job, which tags the commit through `checks-release-tag own-release.yml` and dispatches `own-release` on the tag.
+4. `own-release` verifies the tag, then its `publish` job runs `bun release/major-tag.ts` and creates the release page from the version's `CHANGELOG.md` section.
+
+`bun run build` runs `release/changelog.ts`, which writes the section of the version `package.json` holds from the conventional commits since the last release tag.
+It groups them the way `checks-release-pr` reads them to pick the version, so the notes list the commits that chose it.
+It leaves every other section as it stands, so the sections written by hand before `package.json` held a version stay.
+It writes nothing once the version's own tag is the last release tag, so the build on the tag leaves the tree clean.
+On the landed release commit it writes the section again, so a release pull request merged behind `main` rewrites the changelog and `checks-release-tag` refuses to tag it.
+It refuses a version not past the last release tag and a version with no listed change since it.
+
+`release/major-tag.ts` points the major tag, such as `v2`, at the commit the release tag names, through the GitHub API with the publish job's token.
+It creates the major tag on the first release of a major.
+It leaves the major tag alone when a newer release of that major already exists, so a publish run again on an older tag never moves it back.
+`own-release` starts only on a `v<major>.<minor>.<patch>` tag, so the moving major tag starts no run.
+
+GitHub refuses the release pull request until the repository turns on **Allow GitHub Actions to create and approve pull requests**, under its Actions settings.
+
 ## Related topics
 
 - [The shared actions](actions.md)

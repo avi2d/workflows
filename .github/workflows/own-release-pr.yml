@@ -1,0 +1,19 @@
+name: own-release-pr
+# The shared copy holds the name release-pr.yml in this same directory.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  release-pr:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    uses: ./.github/workflows/release-pr.yml
+    with:
+      preflight-command: bunx checks-release-preflight own-release.yml
+      plan-command: bunx checks-release-pr ci.yml
+      tag-command: bunx checks-release-tag own-release.yml

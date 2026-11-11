@@ -1,6 +1,7 @@
 # Changelog
 
 Every release of `workflows`, newest first.
+The release pull request writes each new section from the conventional commits since the last release tag.
 
 ## 2.4.0
 

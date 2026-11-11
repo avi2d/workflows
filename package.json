@@ -1,11 +1,13 @@
 {
   "name": "workflows",
+  "version": "2.3.1",
   "private": true,
   "license": "MIT",
   "author": "avi2d <avi2dg@gmail.com>",
   "repository": "https://github.com/avi2d/workflows",
   "type": "module",
   "scripts": {
+    "build": "bun release/changelog.ts",
     "install:instrumenter": "bun install --frozen-lockfile --cwd actions/mutation/instrumenter",
     "lint": "checks-lint",
     "test": "checks-test",
