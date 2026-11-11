@@ -2,6 +2,18 @@
 
 Every release of `workflows`, newest first.
 
+## 2.3.0
+
+Released 2026-11-11.
+
+### Features
+
+- **actions:** add held-runs, which deletes the runs GitHub holds for approval on a release pull request, and run it from `release-pr.yml`.
+- **mutation:** run the pull request mutation run without main, and end the compare run green on a skipped pull request.
+- **actions:** make docs-only match the caller's paths, let require-success allow skipped jobs, and skip empty secrets-pack and head-status on the PR head.
+
+Every path a `v2.2.0` caller names still resolves, with no new required input. The `v2` tag moves to this release.
+
 ## 2.2.0
 
 Released 2026-11-11.
