@@ -103,7 +103,7 @@ The publish run takes these inputs.
 | `test-command` | empty, skip the step | the test suite the tag runs |
 | `node-version` | empty, skip the setup | the Node release set up with the npm registry |
 | `publish-command` | empty, skip the step | the command that publishes the tag |
-| `github-release` | `false` | whether to create the GitHub release for the tag after the publish command, with its `CHANGELOG.md` section as the notes, written before the publish command |
+| `github-release` | `false` | whether to create the GitHub release for the tag, with its `CHANGELOG.md` section as the notes written before the publish command and the release created after it |
 
 ## What the caller supplies
 
