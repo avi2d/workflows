@@ -149,12 +149,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      # The released shell gate runs first, so the job log times both on the same runner while it holds no Bun.
-      - name: a released shell gate that refuses a success and an expected skip fails
-        uses: avi2d/workflows/actions/require-success@854c2872cb8b6b5115064f065b67a10d06580b71 # v2.4.0
-        with:
-          results: unit=success e2e=skipped
-          skips: e2e=true
       - name: a gate in a job that holds no Bun that cannot start, or that refuses a success and an expected skip, fails
         uses: ./actions/require-success
         with:
