@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isRecord, workflowSteps } from "../../../lib/workflow.ts";
 
 const REPOSITORY = join(import.meta.dir, "../../../..");
 const SCRIPT = join(REPOSITORY, "actions/mutation/main.ts");
@@ -36,18 +37,13 @@ function part(env: Readonly<Record<string, string>>): { readonly exitCode: numbe
 }
 
 function workflowParts(): string[] {
-  const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
   const found = new Set<string>();
-  const parsed: unknown = Bun.YAML.parse(readFileSync(WORKFLOW, "utf8"));
-  if (!record(parsed) || !record(parsed.jobs)) throw new Error("mutation.yml holds no jobs");
   for (const name of ["baseline", "compare", "refresh-plan", "refresh-merge"]) {
-    const body: unknown = parsed.jobs[name];
-    if (!record(body) || !Array.isArray(body.steps)) throw new Error(`mutation.yml holds no ${name} steps`);
-    for (const step of body.steps) {
-      if (!record(step) || typeof step.uses !== "string") continue;
-      if (!step.uses.startsWith("avi2d/workflows/actions/mutation@")) continue;
-      if (!record(step.with) || typeof step.with.part !== "string") continue;
-      found.add(step.with.part);
+    for (const step of workflowSteps(WORKFLOW, name)) {
+      if (typeof step["uses"] !== "string") continue;
+      if (!step["uses"].startsWith("avi2d/workflows/actions/mutation@")) continue;
+      if (!isRecord(step["with"]) || typeof step["with"]["part"] !== "string") continue;
+      found.add(step["with"]["part"]);
     }
   }
   return [...found].toSorted();

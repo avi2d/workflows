@@ -1,19 +1,11 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isRecord, workflowSteps } from "../../lib/workflow.ts";
 
-const REPOSITORY = join(import.meta.dir, "../../..");
+const WORKFLOW = join(import.meta.dir, "../../../.github/workflows/mutation.yml");
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function workflowSteps(job: string): readonly Record<string, unknown>[] {
-  const document: unknown = Bun.YAML.parse(readFileSync(join(REPOSITORY, ".github/workflows/mutation.yml"), "utf8"));
-  const jobs = isRecord(document) ? document["jobs"] : undefined;
-  const body = isRecord(jobs) ? jobs[job] : undefined;
-  const steps: unknown[] = isRecord(body) && Array.isArray(body["steps"]) ? body["steps"] : [];
-  return steps.filter(isRecord);
+function stepsOf(job: string): readonly Record<string, unknown>[] {
+  return workflowSteps(WORKFLOW, job);
 }
 
 function usesBase(uses: unknown): string | null {
@@ -37,7 +29,7 @@ function mutationPinsAndParts(): { readonly pins: readonly string[]; readonly pa
   const pins: string[] = [];
   const partSet = new Set<string>();
   for (const job of jobs) {
-    for (const step of workflowSteps(job)) {
+    for (const step of stepsOf(job)) {
       const uses = typeof step["uses"] === "string" ? step["uses"] : "";
       const mutationPrefix = "avi2d/workflows/actions/mutation@";
       const scopePrefix = "avi2d/workflows/actions/mutation-scope@";
@@ -54,7 +46,7 @@ function mutationPinsAndParts(): { readonly pins: readonly string[]; readonly pa
 }
 
 test("a pull request run that restores, reuses or compares against a result from main fails", () => {
-  const actual = workflowSteps("compare").map((step) => ({ uses: usesBase(step["uses"]), part: stepPart(step), run: stepRun(step) }));
+  const actual = stepsOf("compare").map((step) => ({ uses: usesBase(step["uses"]), part: stepPart(step), run: stepRun(step) }));
   expect(actual).toEqual([
     { uses: "avi2d/workflows/setup", part: null, run: null },
     { uses: "avi2d/workflows/kit-bin", part: null, run: null },
