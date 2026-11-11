@@ -71,7 +71,8 @@ A fork's held run, a held run on any other head and a run that has jobs stay.
 It prints one line per deleted run with the workflow name, the run id and the head.
 
 It reads every 5 seconds for 30 seconds and deletes what each read finds.
-It stops at the first empty read after a delete, or once 30 seconds pass with nothing found, which it says in one line and passes.
+It stops at the first empty read after a delete.
+Once 30 seconds pass with nothing found, it says so in one line and passes.
 It deletes with the job's token.
 A delete GitHub refuses fails the step with GitHub's answer.
 
