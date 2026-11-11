@@ -137,9 +137,15 @@ const PATTERN_CASES: readonly (readonly [string, string])[] = [
   ["[[:word:]]*", "a.md"],
   ["[z-a]*", "a.md"],
   ["?", "\u{1F600}"],
+  ["\u{1F600}", "\u{1F600}"],
+  ["docs/\u{1F4D8}*.md", "docs/\u{1F4D8}guide.md"],
+  ["\\\u{1F600}", "\u{1F600}"],
+  ["@(\u{1F600}|x)", "\u{1F600}"],
 ];
 
 test.each(PATTERN_CASES)("the pattern %p read against %p other than as Bash's [[ == ]] reads it fails", (pattern, path) => {
-  const bash = Bun.spawnSync(["bash", "-c", '[[ $2 == $1 ]]', "bash", pattern, path]);
+  const bash = Bun.spawnSync(["bash", "-c", '[[ $2 == $1 ]]', "bash", pattern, path], {
+    env: { PATH: process.env["PATH"] ?? "", LC_ALL: "C.UTF-8" },
+  });
   expect(bashPatternMatches(pattern, path)).toBe(bash.exitCode === 0);
 });

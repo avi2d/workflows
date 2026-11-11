@@ -23,28 +23,28 @@ const POSIX_CLASSES: Readonly<Record<string, string>> = {
 
 const escapeLiteral = (char: string) => char.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
 
-function bracketAt(pattern: string, open: number): { readonly source: string; readonly end: number } | undefined {
+function bracketAt(symbols: readonly string[], open: number): { readonly source: string; readonly end: number } | undefined {
   let at = open + 1;
-  const negated = pattern[at] === "!" || pattern[at] === "^";
+  const negated = symbols[at] === "!" || symbols[at] === "^";
   if (negated) at += 1;
   let body = "";
-  for (let first = true; at < pattern.length; first = false) {
-    const char = pattern[at] ?? "";
+  for (let first = true; at < symbols.length; first = false) {
+    const char = symbols[at] ?? "";
     if (char === "]" && !first) return { source: `[${negated ? "^" : ""}${body}]`, end: at };
-    const posix = /^\[:([a-z]+):\]/.exec(pattern.slice(at));
+    const posix = /^\[:([a-z]+):\]/.exec(symbols.slice(at).join(""));
     if (posix !== null) {
       const members = POSIX_CLASSES[posix[1] ?? ""];
       if (members === undefined) return undefined;
       body += members;
-      at += posix[0].length;
+      at += Array.from(posix[0]).length;
       continue;
     }
-    if (char === "\\" && at + 1 < pattern.length) {
-      body += escapeLiteral(pattern[at + 1] ?? "");
+    if (char === "\\" && at + 1 < symbols.length) {
+      body += escapeLiteral(symbols[at + 1] ?? "");
       at += 2;
       continue;
     }
-    body += char === "-" && !first && pattern[at + 1] !== "]" ? "-" : escapeLiteral(char);
+    body += char === "-" && !first && symbols[at + 1] !== "]" ? "-" : escapeLiteral(char);
     at += 1;
   }
   return undefined;
@@ -74,32 +74,32 @@ type PatternNode =
   | { readonly kind: "extglob"; readonly op: string; readonly arms: readonly (readonly PatternNode[])[] };
 
 function parsePattern(pattern: string): readonly PatternNode[] {
-  return parseSequence(pattern, 0, false).nodes;
+  return parseSequence(Array.from(pattern), pattern, 0, false).nodes;
 }
 
-function parseSequence(pattern: string, at: number, nested: boolean): { readonly nodes: readonly PatternNode[]; readonly end: number; readonly stop: string | undefined } {
+function parseSequence(symbols: readonly string[], pattern: string, at: number, nested: boolean): { readonly nodes: readonly PatternNode[]; readonly end: number; readonly stop: string | undefined } {
   const nodes: PatternNode[] = [];
   let cursor = at;
-  while (cursor < pattern.length) {
-    const char = pattern[cursor] ?? "";
+  while (cursor < symbols.length) {
+    const char = symbols[cursor] ?? "";
     if ((char === "|" || char === ")") && nested) return { nodes, end: cursor, stop: char };
-    const extglob = parseExtglob(pattern, cursor);
+    const extglob = parseExtglob(symbols, pattern, cursor);
     if (extglob !== undefined) {
       nodes.push(extglob.node);
       cursor = extglob.end;
       continue;
     }
-    if (char === "*" && (pattern[cursor + 1] ?? "") !== "(") {
+    if (char === "*" && (symbols[cursor + 1] ?? "") !== "(") {
       nodes.push({ kind: "star" });
       cursor += 1;
-    } else if (char === "?" && (pattern[cursor + 1] ?? "") !== "(") {
+    } else if (char === "?" && (symbols[cursor + 1] ?? "") !== "(") {
       nodes.push({ kind: "any" });
       cursor += 1;
-    } else if (char === "\\" && cursor + 1 < pattern.length) {
-      nodes.push({ kind: "literal", char: pattern[cursor + 1] ?? "" });
+    } else if (char === "\\" && cursor + 1 < symbols.length) {
+      nodes.push({ kind: "literal", char: symbols[cursor + 1] ?? "" });
       cursor += 2;
     } else if (char === "[") {
-      const bracket = bracketAt(pattern, cursor);
+      const bracket = bracketAt(symbols, cursor);
       if (bracket === undefined) {
         nodes.push({ kind: "literal", char: "[" });
         cursor += 1;
@@ -115,14 +115,14 @@ function parseSequence(pattern: string, at: number, nested: boolean): { readonly
   return { nodes, end: cursor, stop: undefined };
 }
 
-function parseExtglob(pattern: string, at: number): { readonly node: PatternNode; readonly end: number } | undefined {
-  const op = pattern[at] ?? "";
+function parseExtglob(symbols: readonly string[], pattern: string, at: number): { readonly node: PatternNode; readonly end: number } | undefined {
+  const op = symbols[at] ?? "";
   if (op !== "*" && op !== "?" && op !== "+" && op !== "@" && op !== "!") return undefined;
-  if ((pattern[at + 1] ?? "") !== "(") return undefined;
+  if ((symbols[at + 1] ?? "") !== "(") return undefined;
   const arms: PatternNode[][] = [];
   let cursor = at + 2;
   while (true) {
-    const parsed = parseSequence(pattern, cursor, true);
+    const parsed = parseSequence(symbols, pattern, cursor, true);
     if (parsed.stop === "|") {
       arms.push([...parsed.nodes]);
       cursor = parsed.end + 1;
