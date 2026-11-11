@@ -128,6 +128,13 @@ const PATTERN_CASES: readonly (readonly [string, string])[] = [
   ["a.b", "axb"],
   ["(x)|y+", "(x)|y+"],
   ["copy.json", "src/copy.json"],
+  ["@(docs|guides)/*", "docs/a.md"],
+  ["!(src)/*", "docs/a.md"],
+  ["+(a).md", "aa.md"],
+  ["?(a)b", "b"],
+  ["?(a)b", "x(a)b"],
+  ["*(x)", ""],
+  ["[[:word:]]*", "a.md"],
 ];
 
 test.each(PATTERN_CASES)("the pattern %p read against %p other than as Bash's [[ == ]] reads it fails", (pattern, path) => {
