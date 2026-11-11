@@ -1,17 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
-  advisoryComment,
   COMMENT_LIMIT,
+  fileScores,
   overCapNote,
   type Report,
+  scopeComment,
   scopedFiles,
-  scopedMutants,
   scopeFiles,
   scoreLine,
   scoreOf,
   scoreSummary,
   shardsOf,
-  withoutStaleTests,
 } from "../../../../actions/mutation/report.ts";
 
 const mutants = (...statuses: readonly string[]) => ({ mutants: statuses.map((status) => ({ status })) });
@@ -56,50 +55,39 @@ describe("scopedFiles", () => {
   });
 });
 
-describe("scopedMutants", () => {
-  test("a static, ignored or uncovered mutant counted, or an unseen file counted as nothing, fails", () => {
-    expect(scopedMutants(REPORT, "src/a.ts,src/b.ts")).toBe(6);
-    expect(scopedMutants(REPORT, "src/a.ts,src/b.ts,src/new.ts")).toBe(9);
-  });
-
-  test("a scope of unseen files counted as nothing, or no baseline counted other than one per file, fails", () => {
-    expect(scopedMutants(REPORT, "src/new.ts,src/other.ts")).toBe(2);
-    expect(scopedMutants(undefined, "src/a.ts,src/b.ts,src/c.ts")).toBe(3);
-  });
-});
-
 describe("overCapNote", () => {
   test("a note that drops the count, the cap or the advice to split fails", () => {
     expect(overCapNote(1600, 1500)).toBe(
-      "## mutation compare\n\n1600 scoped mutants pass the 1500 mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n",
+      "## mutation score\n\n1600 scoped mutants pass the 1500 mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n",
     );
   });
 });
 
-describe("withoutStaleTests", () => {
-  test("a stale test kept, another test dropped, or the rest of the state changed, fails", () => {
-    const state = { files: { "src/a.ts": {} }, testFiles: { "tests/a.test.ts": 1, "tests/b.test.ts": 2, "tests/c.test.ts": 3 } };
-    expect(withoutStaleTests(state, "tests/a.test.ts,tests/c.test.ts")).toEqual({ files: { "src/a.ts": {} }, testFiles: { "tests/b.test.ts": 2 } });
-  });
-
-  test("a state without testFiles changed fails", () => {
-    expect(withoutStaleTests({ files: {} }, "tests/a.test.ts")).toEqual({ files: {} });
+describe("fileScores", () => {
+  test("a file scored with another file's mutants, or files listed out of path order, fails", () => {
+    expect(fileScores({ "src/b.ts": REPORT.files["src/b.ts"] ?? { mutants: [] }, "src/a.ts": REPORT.files["src/a.ts"] ?? { mutants: [] } })).toBe(
+      "- `src/a.ts`: Detected 2 of 4 mutants (50%).\n- `src/b.ts`: Detected 1 of 3 mutants (33%).\n",
+    );
   });
 });
 
-describe("advisoryComment", () => {
-  test("a comment that drops the score or the fenced compare text fails", () => {
-    expect(advisoryComment({ detected: 2, total: 3 }, "line one\nline two\n")).toBe(
-      "## mutation compare\n\nDetected 2 of 3 scoped mutants.\n\n```\nline one\nline two\n```\n",
+describe("scopeComment", () => {
+  test("a comment that drops the changed files' score or a file's own line fails", () => {
+    expect(scopeComment(REPORT.files)).toBe(
+      "## mutation score\n\nThe changed files: Detected 3 of 7 mutants (43%).\n\n- `src/a.ts`: Detected 2 of 4 mutants (50%).\n- `src/b.ts`: Detected 1 of 3 mutants (33%).\n",
     );
   });
 
-  test("a comment over GitHub's body limit, or a cut that keeps a split line, fails", () => {
-    const line = `${"x".repeat(99)}\n`;
-    const comment = advisoryComment({ detected: 0, total: 0 }, line.repeat(1000));
+  test("a comment over GitHub's body limit, a cut that keeps a split line, or a total over the kept files only, fails", () => {
+    const files = Object.fromEntries(Array.from({ length: 2000 }, (_, index) => [`src/${"d".repeat(40)}/f${String(index).padStart(4, "0")}.ts`, mutants("Killed")]));
+    const comment = scopeComment(files);
+    const [head = "", list = ""] = comment.split("\n\n- ");
+    const lines = `- ${list}`.split("\n");
     expect(new TextEncoder().encode(comment).length).toBeLessThanOrEqual(COMMENT_LIMIT);
-    expect(comment).toContain(`${line.repeat(589)}Report cut: the full text is in the step log.\n${"`".repeat(3)}\n`);
-    expect(comment).not.toContain(line.repeat(590));
+    expect(head).toBe("## mutation score\n\nThe changed files: Detected 2000 of 2000 mutants (100%).");
+    expect(lines.slice(-2)).toEqual(["List cut: every file's score is in the step log.", ""]);
+    expect(lines.slice(0, -2).every((line) => /^- `src\/d{40}\/f\d{4}\.ts`: Detected 1 of 1 mutants \(100%\)\.$/.test(line))).toBe(true);
+    expect(lines.length).toBeGreaterThan(500);
   });
 });
 

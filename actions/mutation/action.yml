@@ -2,7 +2,7 @@ name: mutation
 description: Run one part of the shared mutation workflow on the report files in the caller's workspace.
 inputs:
   part:
-    description: The part to run, one of score, count-scope, over-cap, drop-stale-tests, compare, shards or fork-summary.
+    description: The part to run, one of score, count-scope, over-cap, scope-score, shards or fork-summary.
     required: true
   mode:
     description: The run the score part names in its summary heading, baseline or refresh.

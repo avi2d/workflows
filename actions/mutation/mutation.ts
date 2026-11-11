@@ -1,24 +1,13 @@
 import { Config, Console, Data, Effect, FileSystem, Path, Schema } from "effect";
 import { commandOutput } from "../../lib/run.ts";
-import {
-  advisoryComment,
-  overCapNote,
-  Report,
-  scopedFiles,
-  scopedMutants,
-  scoreOf,
-  scoreSummary,
-  shardsOf,
-  withoutStaleTests,
-} from "./report.ts";
+import { mutantCount } from "./count.ts";
+import { overCapNote, Report, scopeComment, scopedFiles, scopeFiles, scoreSummary, shardsOf } from "./report.ts";
 
 class MutationStepError extends Data.TaggedError("MutationStepError")<{ readonly message: string }> {}
 
 const HEAD_REPORT = "reports/mutation/mutation.json";
-const INCREMENTAL_STATE = "reports/stryker-incremental.json";
 
 const decodeReport = Schema.decodeUnknownEffect(Schema.fromJsonString(Report));
-const decodeJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
 
 const readReport = Effect.fn("readReport")(function* (file: string) {
   const fs = yield* FileSystem.FileSystem;
@@ -58,7 +47,10 @@ const score = Effect.gen(function* () {
 const countScope = Effect.gen(function* () {
   const scope = yield* Config.String("SCOPE");
   const cap = yield* Config.Int("MUTANT_CAP");
-  const scoped = scopedMutants(yield* readReport(yield* inRunnerTemp("baseline-full", "mutation.json")), scope);
+  const fs = yield* FileSystem.FileSystem;
+  const atHead = yield* Effect.filter(scopeFiles(scope), (name) => fs.exists(name));
+  const files = yield* Effect.forEach(atHead, (name) => fs.readFileString(name).pipe(Effect.map((content) => ({ name, content }))));
+  const scoped = yield* mutantCount(files);
   yield* appendTo("GITHUB_ENV", `SCOPED_MUTANTS=${scoped}\n${scoped > cap ? "OVER_CAP=true\n" : ""}`);
 });
 
@@ -69,27 +61,12 @@ const overCap = Effect.gen(function* () {
   yield* writeComment(overCapNote(scoped, cap));
 });
 
-const dropStaleTests = Effect.gen(function* () {
-  const fs = yield* FileSystem.FileSystem;
-  const stale = yield* Config.String("STALE_TESTS");
-  if (!(yield* fs.exists(INCREMENTAL_STATE))) return;
-  const state = yield* decodeJson(yield* fs.readFileString(INCREMENTAL_STATE)).pipe(
-    Effect.mapError(() => new MutationStepError({ message: `${INCREMENTAL_STATE} is not JSON` })),
-  );
-  yield* fs.writeFileString(INCREMENTAL_STATE, `${JSON.stringify(withoutStaleTests(state, stale), null, 2)}\n`);
-});
-
-const compare = Effect.gen(function* () {
-  const baseline = yield* inRunnerTemp("baseline", "mutation.json");
-  if (!(yield* (yield* FileSystem.FileSystem).exists(baseline))) {
-    yield* Console.log("::notice::mutation: no baseline report restores, so the comparison stops here");
-    return;
-  }
-  const compared = yield* kitCommand("checks-mutation-compare", ["--advisory", baseline, HEAD_REPORT]);
-  yield* Console.log(compared.replace(/\n$/, ""));
+const scopeScore = Effect.gen(function* () {
   const head = yield* readReport(HEAD_REPORT);
   if (head === undefined) return yield* new MutationStepError({ message: `${HEAD_REPORT} was not written` });
-  yield* writeComment(advisoryComment(scoreOf(scopedFiles(head.files, yield* Config.String("SCOPE"))), compared));
+  const comment = scopeComment(scopedFiles(head.files, yield* Config.String("SCOPE")));
+  yield* Console.log(comment.replace(/\n$/, ""));
+  yield* writeComment(comment);
 });
 
 const shards = Effect.gen(function* () {
@@ -110,8 +87,7 @@ const PARTS = {
   score,
   "count-scope": countScope,
   "over-cap": overCap,
-  "drop-stale-tests": dropStaleTests,
-  compare,
+  "scope-score": scopeScore,
   shards,
   "fork-summary": forkSummary,
 };

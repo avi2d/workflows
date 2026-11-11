@@ -1,6 +1,5 @@
 import { Data, Effect } from "effect";
 import { appendFileSync } from "node:fs";
-import { join } from "node:path";
 
 export class MutationScopeError extends Data.TaggedError("MutationScopeError")<{ readonly message: string }> {}
 
@@ -8,9 +7,9 @@ export function baseBranchOf(baseRef: string | undefined): string {
   return `origin/${baseRef === undefined || baseRef === "" ? "main" : baseRef}`;
 }
 
-function run(argv: readonly string[], stdout: "pipe" | "inherit"): Effect.Effect<string, MutationScopeError> {
+function run(argv: readonly string[]): Effect.Effect<string, MutationScopeError> {
   return Effect.try({
-    try: () => Bun.spawnSync([...argv], { stdout, stderr: "inherit" }),
+    try: () => Bun.spawnSync([...argv], { stdout: "pipe", stderr: "inherit" }),
     catch: (cause) => new MutationScopeError({ message: `mutation-scope cannot start ${argv[0] ?? ""}: ${String(cause)}` }),
   }).pipe(
     Effect.flatMap((result) =>
@@ -27,11 +26,9 @@ function required(name: string): Effect.Effect<string, MutationScopeError> {
 }
 
 export const main = Effect.gen(function* () {
-  const report = join(yield* required("RUNNER_TEMP"), "baseline-full", "mutation.json");
   const githubEnv = yield* required("GITHUB_ENV");
-  const base = (yield* run(["git", "merge-base", "HEAD", baseBranchOf(process.env["BASE_REF"])], "pipe")).trim();
-  yield* run(["checks-mutation-baseline", "--full", report], "inherit");
-  const scope = yield* run(["checks-mutation-scope", base, report], "pipe");
+  const base = (yield* run(["git", "merge-base", "HEAD", baseBranchOf(process.env["BASE_REF"])])).trim();
+  const scope = yield* run(["checks-mutation-scope", base]);
   yield* Effect.try({
     try: () => appendFileSync(githubEnv, scope),
     catch: (cause) => new MutationScopeError({ message: `mutation-scope cannot write GITHUB_ENV: ${String(cause)}` }),

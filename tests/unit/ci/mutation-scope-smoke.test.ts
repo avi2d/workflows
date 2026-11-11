@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Effect } from "effect";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scopeFailure, writeStandIns } from "../../../ci/mutation-scope-smoke.ts";
@@ -20,7 +20,11 @@ describe("writeStandIns", () => {
     Effect.runSync(writeStandIns(join(root, "bin")));
     expect(readFileSync(join(root, "bin", "checks-mutation-scope"), "utf8")).toBe('#!/bin/sh\necho "SCOPE=$1"\n');
     expect(statSync(join(root, "bin", "checks-mutation-scope")).mode & 0o111).toBe(0o111);
-    expect(statSync(join(root, "bin", "checks-mutation-baseline")).mode & 0o111).toBe(0o111);
+  });
+
+  test("a stand-in restore command, which would let a scope that restores from main pass, fails", () => {
+    Effect.runSync(writeStandIns(join(root, "bin")));
+    expect(existsSync(join(root, "bin", "checks-mutation-baseline"))).toBe(false);
   });
 });
 
