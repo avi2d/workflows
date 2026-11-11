@@ -10,14 +10,16 @@ const scratch = useScratch("bun-held");
 
 beforeEach(() => {
   mkdirSync(scratch.at("bin"));
+  mkdirSync(scratch.at("caller"));
   const bash = Bun.which("bash");
   if (bash === null) throw new Error("the test machine has no bash");
   symlinkSync(bash, scratch.at("bin", "bash"));
   scratch.write("output", "");
+  scratch.write("caller/.bun-version", "0.0.1\n");
 });
 
 function bunHeld() {
-  const result = Bun.spawnSync([scratch.at("bin", "bash"), SCRIPT, "bun-held"], { env: { PATH: scratch.at("bin"), GITHUB_OUTPUT: scratch.at("output") } });
+  const result = Bun.spawnSync([scratch.at("bin", "bash"), SCRIPT, "bun-held"], { cwd: scratch.at("caller"), env: { PATH: scratch.at("bin"), GITHUB_OUTPUT: scratch.at("output") } });
   return { exitCode: result.exitCode, output: readFileSync(scratch.at("output"), "utf8") };
 }
 
@@ -28,4 +30,8 @@ test("a job holding Bun that is told to install another over it fails", () => {
 
 test("a job without Bun that is told it holds one fails", () => {
   expect(bunHeld()).toEqual({ exitCode: 0, output: `held=false\nversion=${PINNED}\n` });
+});
+
+test("a pin read from the caller's working directory in place of this repository's fails", () => {
+  expect(bunHeld().output).toBe(`held=false\nversion=${PINNED}\n`);
 });
