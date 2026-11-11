@@ -26,7 +26,7 @@ It saves the merged report a second time under the name of the incremental state
 A `baseline` with no saved state of its own starts from that state.
 No job's time limit rises above 60 minutes.
 No merge to main starts a full run, and a pull request run waits on none.
-The workflow starts on `workflow_call` only, so a caller starts a full run by hand from a trigger of its own.
+The workflow starts on `workflow_call` only, so a caller starts a full run by hand from a trigger in its own `mutation.yml` on `main`.
 
 ## Consequences
 
@@ -34,4 +34,5 @@ A full run from nothing finishes, and on the kit's tree its longest shard leaves
 A refresh's longest shard on that tree takes 28 minutes 32 seconds where it took 6 minutes 40 seconds.
 Shards balance by the mutants that are not static, so the static ones spread unevenly, from 754 to 1,802 a shard on that tree.
 A tree whose shard nears the limit takes a higher `shards` input.
-The kit drops a refresh report from before the current 28-day refresh window, so a `baseline` then starts from nothing until a refresh runs.
+The kit drops a refresh report from before the current 28 day refresh window.
+The kit also drops it when the lockfile, the Bun version or a Stryker config changed since the refresh, so a `baseline` then starts from nothing until a refresh runs.

@@ -16,7 +16,8 @@ Only the kit's own repository holds those files, which its `package.json` maps f
 A caller with neither fails the job with a message naming both.
 The `baseline` mode restores the last incremental state, runs Stryker incremental and uploads the reports.
 With no state of its own it starts from the last refresh report, which Stryker reads as an incremental state.
-The kit drops a refresh report from before the current 28-day refresh window, so a refresh runs first then.
+The kit drops a refresh report from before the current 28 day refresh window.
+The kit also drops it when the lockfile, the Bun version or a Stryker config changed since the refresh, so a refresh runs first then.
 The `compare` mode scopes the head against its merge base with the pull request's base branch.
 A run with no pull request scopes against the `main` branch.
 The [mutation-scope](actions.md#mutation-scope) action selects that scope.
@@ -31,7 +32,7 @@ It runs one shard per job, static mutants included, and merges the shard reports
 It needs no earlier run, so it is the full run a repository with nothing saved starts with.
 With no last full report every file weighs the same, so the shards balance by file count.
 Each job stops at 60 minutes, so a tree whose shard runs longer takes a higher shard count.
-The workflow starts on a call only, so a caller starts a run by hand through a `workflow_dispatch` trigger of its own.
+The workflow starts on a call only, so a caller starts a run by hand through a `workflow_dispatch` trigger in its own `mutation.yml` on `main`.
 `bunx stryker` runs the mutation engine itself and stays as it is in every caller.
 
 ## What the caller supplies
