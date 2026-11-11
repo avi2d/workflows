@@ -118,11 +118,33 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
 
 ## playwright
 
-Restores the Playwright browser cache, installs the named browsers through `playwright-core`, and installs their system packages on a GitHub-hosted runner only.
+Restores the Playwright browser cache, installs the named browsers through `playwright-core`, and on a GitHub-hosted runner installs the system packages the machine does not hold.
 The caller's dependencies hold `playwright-core`.
 Each `install` and `install-deps` call gets 3 minutes per attempt and 3 attempts.
 An attempt that runs out of time has its processes stopped before the next one.
 The step fails with an error line when every attempt stalls or fails.
+
+Before it installs system packages, the action asks `playwright-core install-deps --dry-run` whether any is missing.
+When that prints `All system dependencies are installed.`, `apt-get` does not run.
+A `playwright-core` whose dry run only prints the `apt-get` command, as 1.58 does, still runs `apt-get`.
+On a bare GitHub-hosted runner webkit misses packages, so `apt-get` fetches them from `archive.ubuntu.com`, `azure.archive.ubuntu.com` and `security.ubuntu.com`.
+The job fails when those hosts stall or do not resolve.
+A job that runs in the Playwright image of the caller's `playwright-core` version reaches none of them, because the image holds those packages:
+
+```yaml
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v<playwright-core version>-noble
+    steps:
+      - uses: avi2d/workflows/actions/setup@v2
+      - uses: avi2d/workflows/actions/playwright@v2
+        with:
+          cache: "false"
+```
+
+The image sets `PLAYWRIGHT_BROWSERS_PATH` to `/ms-playwright`, so `~/.cache/ms-playwright` stays empty and `cache` has nothing to save.
+An image whose version differs from the caller's `playwright-core` holds other browser builds, and the action then downloads the caller's.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
