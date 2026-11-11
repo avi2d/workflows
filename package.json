@@ -16,11 +16,11 @@
   "devDependencies": {
     "@avi2dg/checks": "0.92.0",
     "@types/bun": "1.4.4",
-    "playwright-core": "1.63.0"
+    "playwright-core": "1.63.0",
+    "@stryker-mutator/instrumenter": "10.0.0"
   },
   "dependencies": {
     "@effect/platform-bun": "4.0.0",
-    "@stryker-mutator/instrumenter": "10.0.0",
     "effect": "4.0.0"
   }
 }

@@ -41,38 +41,8 @@ export function overCapNote(scoped: number, cap: number): string {
   return `## mutation score\n\n${scoped} scoped mutants pass the ${cap} mutant cap, so the run stops here.\nSplit the pull request and push again for a scoped run.\n`;
 }
 
-export const COMMENT_LIMIT = 60_000;
-const KEPT_BYTES = 59_000;
-
-const byteLength = (text: string): number => new TextEncoder().encode(text).length;
-
-const byPath = ([left]: readonly [string, unknown], [right]: readonly [string, unknown]): number => (left < right ? -1 : left > right ? 1 : 0);
-
-export function fileScores(files: Report["files"]): string {
-  return Object.entries(files)
-    .toSorted(byPath)
-    .map(([file, scored]) => `- \`${file}\`: ${scoreLine(scoreOf({ [file]: scored }))}\n`)
-    .join("");
-}
-
-function scopeCommentOf(score: Score, lines: string): string {
-  return `## mutation score\n\nThe changed files: ${scoreLine(score)}\n\n${lines}`;
-}
-
-// The cut ends a line early, since the byte limit can split the last line or a character in it.
-function cutText(text: string): string {
-  const kept = new TextDecoder().decode(new TextEncoder().encode(text).slice(0, KEPT_BYTES));
-  const lines = kept.split("\n");
-  if (kept.endsWith("\n")) lines.pop();
-  lines.pop();
-  return lines.map((line) => `${line}\n`).join("");
-}
-
 export function scopeComment(files: Report["files"]): string {
-  const lines = fileScores(files);
-  const whole = scopeCommentOf(scoreOf(files), lines);
-  if (byteLength(whole) <= COMMENT_LIMIT) return whole;
-  return scopeCommentOf(scoreOf(files), `${cutText(lines)}List cut: every file's score is in the step log.\n`);
+  return `## mutation score\n\nThe changed files: ${scoreLine(scoreOf(files))}\n`;
 }
 
 export function shardsOf(scopeOutput: string): string | undefined {

@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  COMMENT_LIMIT,
-  fileScores,
   overCapNote,
   type Report,
   scopeComment,
@@ -63,31 +61,9 @@ describe("overCapNote", () => {
   });
 });
 
-describe("fileScores", () => {
-  test("a file scored with another file's mutants, or files listed out of path order, fails", () => {
-    expect(fileScores({ "src/b.ts": REPORT.files["src/b.ts"] ?? { mutants: [] }, "src/a.ts": REPORT.files["src/a.ts"] ?? { mutants: [] } })).toBe(
-      "- `src/a.ts`: Detected 2 of 4 mutants (50%).\n- `src/b.ts`: Detected 1 of 3 mutants (33%).\n",
-    );
-  });
-});
-
 describe("scopeComment", () => {
-  test("a comment that drops the changed files' score or a file's own line fails", () => {
-    expect(scopeComment(REPORT.files)).toBe(
-      "## mutation score\n\nThe changed files: Detected 3 of 7 mutants (43%).\n\n- `src/a.ts`: Detected 2 of 4 mutants (50%).\n- `src/b.ts`: Detected 1 of 3 mutants (33%).\n",
-    );
-  });
-
-  test("a comment over GitHub's body limit, a cut that keeps a split line, or a total over the kept files only, fails", () => {
-    const files = Object.fromEntries(Array.from({ length: 2000 }, (_, index) => [`src/${"d".repeat(40)}/f${String(index).padStart(4, "0")}.ts`, mutants("Killed")]));
-    const comment = scopeComment(files);
-    const [head = "", list = ""] = comment.split("\n\n- ");
-    const lines = `- ${list}`.split("\n");
-    expect(new TextEncoder().encode(comment).length).toBeLessThanOrEqual(COMMENT_LIMIT);
-    expect(head).toBe("## mutation score\n\nThe changed files: Detected 2000 of 2000 mutants (100%).");
-    expect(lines.slice(-2)).toEqual(["List cut: every file's score is in the step log.", ""]);
-    expect(lines.slice(0, -2).every((line) => /^- `src\/d{40}\/f\d{4}\.ts`: Detected 1 of 1 mutants \(100%\)\.$/.test(line))).toBe(true);
-    expect(lines.length).toBeGreaterThan(500);
+  test("a comment that drops the changed files score or adds a per-file line fails", () => {
+    expect(scopeComment(REPORT.files)).toBe("## mutation score\n\nThe changed files: Detected 3 of 7 mutants (43%).\n");
   });
 });
 

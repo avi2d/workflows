@@ -126,7 +126,7 @@ The `shards` part calls `checks-mutation-scope`, which the caller puts on the `P
 | `score` | writes the detected share of `reports/mutation/mutation.json` to the step summary |
 | `count-scope` | counts the mutants in the head's `SCOPE` files with Stryker's instrumenter and its default mutators, and writes `SCOPED_MUTANTS`, and `OVER_CAP=true` past the cap |
 | `over-cap` | writes the over-cap note to `$RUNNER_TEMP/comment.md` |
-| `scope-score` | writes the score of the `SCOPE` files in `reports/mutation/mutation.json`, in all and per file, to `$RUNNER_TEMP/comment.md`, cut under GitHub's comment limit |
+| `scope-score` | writes the score of the `SCOPE` files in `reports/mutation/mutation.json`, to `$RUNNER_TEMP/comment.md` |
 | `shards` | writes the shard list as the `shards` output |
 | `fork-summary` | copies `$RUNNER_TEMP/comment.md` to the step summary |
 

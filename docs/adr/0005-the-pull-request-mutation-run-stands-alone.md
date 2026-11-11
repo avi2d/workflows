@@ -21,7 +21,7 @@ Stryker reads an incremental file only under `--incremental`, and `stryker run -
 
 The `compare` mode mutates the changed files on the head with `stryker run --mutate`, and restores, reuses and compares nothing from main.
 It counts the scoped mutants with Stryker's instrumenter on the head's files and skips the run past the cap, 1500 by default.
-Its comment gives the changed files' score, in all and per file.
+Its comment gives the changed files' score.
 The `baseline` and `refresh` modes stay as they are, for the full run started by hand.
 
 ## Consequences

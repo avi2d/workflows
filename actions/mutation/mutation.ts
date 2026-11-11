@@ -65,7 +65,6 @@ const scopeScore = Effect.gen(function* () {
   const head = yield* readReport(HEAD_REPORT);
   if (head === undefined) return yield* new MutationStepError({ message: `${HEAD_REPORT} was not written` });
   const comment = scopeComment(scopedFiles(head.files, yield* Config.String("SCOPE")));
-  yield* Console.log(comment.replace(/\n$/, ""));
   yield* writeComment(comment);
 });
 

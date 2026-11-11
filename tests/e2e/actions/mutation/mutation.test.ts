@@ -61,7 +61,7 @@ test("a comment that scores files outside the scope, or none at all, fails", () 
   const run = part({ PART: "scope-score", SCOPE: "src/a.ts" });
   expect(run).toEqual({ exitCode: 0, githubEnv: "COMMENT=true\n" });
   expect(readFileSync(join(root, "temp", "comment.md"), "utf8")).toBe(
-    "## mutation score\n\nThe changed files: Detected 1 of 2 mutants (50%).\n\n- `src/a.ts`: Detected 1 of 2 mutants (50%).\n",
+    "## mutation score\n\nThe changed files: Detected 1 of 2 mutants (50%).\n",
   );
 });
 
