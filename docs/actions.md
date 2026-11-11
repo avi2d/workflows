@@ -72,8 +72,8 @@ It prints one line per deleted run with the workflow name, the run id and the he
 
 It reads every 5 seconds for 30 seconds and deletes what each read finds.
 It stops at the first empty read after a delete, or once 30 seconds pass with nothing found, which it says in one line and passes.
-It deletes with the job’s token.
-A delete GitHub refuses fails the step with GitHub’s answer.
+It deletes with the job's token.
+A delete GitHub refuses fails the step with GitHub's answer.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
