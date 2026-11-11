@@ -87,7 +87,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | --- | --- |
 | `actions/<name>/` | the composite actions, one flat directory each, holding `action.yml`, the `main.ts` or `main.sh` its steps run, and the TypeScript and shell files that entry calls |
 | `lib/` | the code more than one action shares |
-| `ci/` | the TypeScript the CI smoke jobs run, in place of code inside `ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
+| `ci/` | the smoke scripts the CI jobs run, in place of code inside `ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
 | `release/` | the TypeScript this repository's own release runs: the changelog build and the major tag move |
 | `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/`, `release/` and `workflows/` for the code they test |
 | `.github/workflows/runner.yml` | the reusable runner pick |
