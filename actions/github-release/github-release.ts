@@ -57,6 +57,11 @@ export const main = Effect.gen(function* () {
   const repository = yield* repositoryFromEnv(ACTION);
   const tag = yield* optionalInput("TAG");
   if (tag === "") return yield* new InputMissing({ message: `${ACTION} needs the tag the run started on, and it is empty` });
+  const refType = yield* optionalInput("REF_TYPE");
+  if (refType !== "tag") {
+    yield* Console.log(`::error::${ACTION} runs only on a tag, and ref_type is ${refType === "" ? "empty" : refType}`);
+    return false;
+  }
   const notesFile = yield* requiredInput(ACTION, "notes-file", "NOTES_FILE");
   const notes = yield* (yield* FileSystem.FileSystem)
     .readFileString(notesFile)

@@ -234,7 +234,8 @@ The release publish run calls it on the tag before anything publishes.
 
 ## github-release
 
-Creates the GitHub release for a tag with the notes a file holds, or updates the release that tag already has.
+Creates the GitHub release for the tag the run started on with the notes a file holds, or updates the release that tag already has.
+Call it from a run that started on a tag push.
 It reads every page of the repository's releases.
 It marks the release latest only when its tag is the highest `v`-version among those releases and the tag.
 A release on an older line leaves latest where it is.

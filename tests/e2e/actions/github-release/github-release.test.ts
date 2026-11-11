@@ -25,9 +25,9 @@ afterEach(async () => {
   await stub.stop();
 });
 
-function release(tag: string, notesFile = scratch.at("notes.md")) {
+function release(tag: string, notesFile = scratch.at("notes.md"), refType = "tag") {
   scratch.write("notes.md", "## Fixed\n\n- a thing\n");
-  return runAction(MAIN, [], { ...apiEnv(stub, scratch.at("output")), TAG: tag, NOTES_FILE: notesFile });
+  return runAction(MAIN, [], { ...apiEnv(stub, scratch.at("output")), TAG: tag, REF_TYPE: refType, NOTES_FILE: notesFile });
 }
 
 const writes = () => stub.requests.filter(({ method }) => method !== "GET");
@@ -52,6 +52,13 @@ test("a new tag below the highest release posted as latest fails", async () => {
   expect(writes().map(({ method, path, body }) => [method, path, body])).toEqual([
     ["POST", "/gh/repos/owner/site/releases", { tag_name: "v1.3.1", name: "v1.3.1", body: "## Fixed\n\n- a thing\n", draft: false, prerelease: false, make_latest: "false" }],
   ]);
+});
+
+test("a branch run that releases the branch name fails", async () => {
+  const ran = await release("main", scratch.at("notes.md"), "branch");
+  expect(ran.exitCode).toBe(1);
+  expect(ran.stdout).toContain("::error::github-release runs only on a tag");
+  expect(writes()).toEqual([]);
 });
 
 test("missing notes that still write a release pass", async () => {
