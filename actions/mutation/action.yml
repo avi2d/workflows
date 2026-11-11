@@ -26,7 +26,7 @@ runs:
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/../.."
     - name: install the script's own dependencies
       shell: bash
-      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/instrumenter"
     - id: part
       name: run the mutation part
       shell: bash

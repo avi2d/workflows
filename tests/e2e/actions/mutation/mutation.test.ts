@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const REPOSITORY = join(import.meta.dir, "../../../..");
 const SCRIPT = join(REPOSITORY, "actions/mutation/main.ts");
-const CLAMP = join(REPOSITORY, "tests/fixtures/mutation-count/clamp.ts");
+const CLAMP = join(REPOSITORY, "tests/fixtures/mutation-count/clamp.ts.txt");
 
 let root = "";
 

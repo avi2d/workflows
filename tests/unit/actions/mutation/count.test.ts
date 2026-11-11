@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { mutantCount } from "../../../../actions/mutation/count.ts";
 
-const CLAMP = { name: "src/clamp.ts", content: readFileSync(join(import.meta.dir, "../../../fixtures/mutation-count/clamp.ts"), "utf8") };
+const CLAMP = { name: "src/clamp.ts", content: readFileSync(join(import.meta.dir, "../../../fixtures/mutation-count/clamp.ts.txt"), "utf8") };
 
 test("a count other than the 14 mutants Stryker instruments in the clamp source fails", async () => {
   expect(await Effect.runPromise(mutantCount([CLAMP]))).toBe(14);

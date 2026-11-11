@@ -1,5 +1,5 @@
 {
-  "name": "mutation",
+  "name": "mutation-instrumenter",
   "private": true,
   "type": "module",
   "dependencies": {

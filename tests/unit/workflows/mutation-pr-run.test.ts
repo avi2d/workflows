@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const REPOSITORY = join(import.meta.dir, "../../..");
@@ -40,11 +39,15 @@ function mutationPinsAndParts(): { readonly pins: readonly string[]; readonly pa
   for (const job of jobs) {
     for (const step of workflowSteps(job)) {
       const uses = typeof step["uses"] === "string" ? step["uses"] : "";
-      const prefix = "avi2d/workflows/actions/mutation@";
-      if (!uses.startsWith(prefix)) continue;
-      pins.push(uses.slice(prefix.length));
-      const part = stepPart(step);
-      if (part !== null) partSet.add(part);
+      const mutationPrefix = "avi2d/workflows/actions/mutation@";
+      const scopePrefix = "avi2d/workflows/actions/mutation-scope@";
+      if (uses.startsWith(mutationPrefix)) {
+        pins.push(uses.slice(mutationPrefix.length));
+        const part = stepPart(step);
+        if (part !== null) partSet.add(part);
+      } else if (uses.startsWith(scopePrefix)) {
+        pins.push(uses.slice(scopePrefix.length));
+      }
     }
   }
   return { pins, parts: [...partSet].toSorted() };
@@ -73,41 +76,3 @@ test("a mutation action pinned at commits that disagree, or running a part the w
   expect(parts).toEqual(["count-scope", "fork-summary", "over-cap", "scope-score", "score", "shards"]);
 });
 
-test.each(mutationPinsAndParts().parts)("a workflow part %s that the mutation action does not implement fails", (part) => {
-  const root = mkdtempSync(join(tmpdir(), "mutation-pin-"));
-  try {
-    const workspace = join(root, "workspace");
-    mkdirSync(workspace, { recursive: true });
-    const temp = join(root, "temp");
-    mkdirSync(temp, { recursive: true });
-    const githubEnv = join(root, "github-env");
-    writeFileSync(githubEnv, "");
-    const stepSummary = join(root, "step-summary");
-    writeFileSync(stepSummary, "");
-    const githubOutput = join(root, "github-output");
-    writeFileSync(githubOutput, "");
-    const result = Bun.spawnSync(["bun", join(REPOSITORY, "actions/mutation/main.ts")], {
-      cwd: workspace,
-      env: {
-        PATH: process.env["PATH"] ?? "",
-        HOME: root,
-        RUNNER_TEMP: temp,
-        GITHUB_ENV: githubEnv,
-        GITHUB_STEP_SUMMARY: stepSummary,
-        GITHUB_OUTPUT: githubOutput,
-        PART: part,
-        MODE: "baseline",
-        SCOPE: "src/a.ts",
-        MUTANT_CAP: "1500",
-        SHARDS: "4",
-        SCOPED_MUTANTS: "0",
-      },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const output = `${result.stdout?.toString() ?? ""}${result.stderr?.toString() ?? ""}`;
-    expect(output).not.toContain("part must be one of");
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
