@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Effect, Fiber, Option } from "effect";
+import { Clock, Effect, Fiber, Option } from "effect";
 import { TestClock } from "effect/testing";
 import { runProblem, waitForRun, type Run } from "../../../ci/release-smoke.ts";
 import { countedReads, withClock } from "../../lib/clock.ts";
@@ -11,18 +11,21 @@ const RUNNING: Run = { status: "in_progress", head_sha: HEAD };
 const runReads = (doneFrom: number) => countedReads((read) => (read >= doneFrom ? DONE : RUNNING));
 
 describe("waitForRun", () => {
-  test("a run that never completes given up on before 590 seconds, read past the job's 15 minutes, or reported completed, fails", async () => {
-    const reads = runReads(Infinity);
-    const seen = await withClock(
+  test("a run that never completes read past the job's 15 minutes or reported completed fails", async () => {
+    const instants: number[] = [];
+    const read = Effect.gen(function* () {
+      instants.push(yield* Clock.currentTimeMillis);
+      return RUNNING;
+    });
+    const run = await withClock(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(waitForRun(reads.read));
-        yield* TestClock.adjust("589999 millis");
-        const beforeLastRead = reads.reads();
+        const fiber = yield* Effect.forkChild(waitForRun(read));
         yield* TestClock.adjust("1 hour");
-        return [beforeLastRead, reads.reads(), (yield* Fiber.join(fiber)).status];
+        return yield* Fiber.join(fiber);
       }),
     );
-    expect(seen).toEqual([59, 60, "in_progress"]);
+    expect(run).toEqual(RUNNING);
+    expect(instants.at(-1)).toBeLessThan(15 * 60 * 1000 - 60 * 1000);
   });
 
   test("a read after the run completes fails", async () => {

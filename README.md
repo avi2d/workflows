@@ -92,6 +92,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
 | `.github/workflows/release-pr.yml` | the reusable release pull request, plan on dispatch and tag on merge |
+| `.github/workflows/release-smoke.yml` | the release pull request smoke, manual and push on edit |
 | `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command and the opt-in GitHub release |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
