@@ -6,6 +6,16 @@ Every release of `workflows`, newest first.
 
 A caller that sends no mode now runs compare on the changed files on a pull request, refresh in parts on a manual start, and nothing on a push to main, instead of a baseline on every event.
 
+## 2.3.1
+
+Released 2026-11-11.
+
+### Fixes
+
+- **mutation:** test static mutants in the refresh shards so a full run finishes, save the merged refresh report as the state a baseline starts from, seed an empty state from the last refresh, and drop the `workflow_dispatch` trigger from the shared workflow.
+
+Every path a `v2.2.0` caller names still resolves, with no new required input. The `v2` tag moves to this release.
+
 ## 2.3.0
 
 Released 2026-11-11.
@@ -15,10 +25,6 @@ Released 2026-11-11.
 - **actions:** add held-runs, which deletes the runs GitHub holds for approval on a release pull request, and run it from `release-pr.yml`.
 - **mutation:** run the pull request mutation run without main, and end the compare run green on a skipped pull request.
 - **actions:** make docs-only match the caller's paths, let require-success allow skipped jobs, and skip empty secrets-pack and head-status on the PR head.
-
-### Fixes
-
-- **mutation:** test static mutants in the refresh shards so a full run finishes, seed an empty baseline from the last refresh, and drop the `workflow_dispatch` trigger from the shared workflow.
 
 Every path a `v2.2.0` caller names still resolves, with no new required input. The `v2` tag moves to this release.
 

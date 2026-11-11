@@ -6,6 +6,7 @@
   "repository": "https://github.com/avi2d/workflows",
   "type": "module",
   "scripts": {
+    "install:instrumenter": "bun install --frozen-lockfile --cwd actions/mutation/instrumenter",
     "lint": "checks-lint",
     "test": "checks-test",
     "test:fast": "checks-test --changed",
