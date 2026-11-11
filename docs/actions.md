@@ -45,6 +45,7 @@ Call it with `if: always()` so a failed title lint still reports.
 ## head-status
 
 Reports a job's result as a commit status on `GITHUB_SHA`, or on the commit `head-sha` names, since GitHub keeps a dispatched run's check off the pull request.
+With `pull-request` set and `head-sha` empty, it reads that pull request's head through `gh api` and posts there, and fails without posting when the answer is no full commit SHA.
 Only the status `success` reports success.
 Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 
@@ -53,6 +54,7 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'`.
 | `job-status` | required | the job's status, as `${{ job.status }}` |
 | `context` | the job id | the status name, which a required check of that name counts |
 | `head-sha` | empty, `GITHUB_SHA` | the commit the status lands on, such as the pull request head on an `issue_comment` run, where `GITHUB_SHA` is the default branch |
+| `pull-request` | empty | the pull request number whose head the status lands on when `head-sha` is empty, such as `${{ github.event.issue.number }}` |
 | `description` | empty, none | the status description |
 | `token` | the job's token | the token that writes the status |
 | `attempts` | `1` | how many times to try, waiting 10 seconds longer after each failure |
@@ -172,11 +174,18 @@ The caller pins it to the commit the release tag points at, found as [Install](.
 ```
 
 An empty pack fails the step and writes nothing.
-A caller whose secret may be unset guards the call with an `if:`.
+With `if-missing: skip`, an empty pack instead writes `skip-notice` as a notice and a step summary line, exports nothing and reports `configured` as `false`.
+A later step then guards on `steps.<id>.outputs.configured == 'true'`.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `pack` | required | the pack's JSON, as `${{ secrets.CHECKS_SECRETS_PACK }}` |
+| `if-missing` | `fail` | what an empty pack does, `fail` or `skip` |
+| `skip-notice` | a line saying no pack is configured | the notice and summary line a skipped pack writes |
+
+| Output | Value |
+| --- | --- |
+| `configured` | `true` when the pack was written, `false` when an empty pack was skipped |
 
 ## release-version
 
@@ -274,8 +283,8 @@ A build that changes nothing makes no commit.
 
 ### require-success
 
-Fails unless every named result is `success`, and names each one that is not.
-A gate job that `needs` other jobs runs it with `if: always()`, so a skipped or cancelled job fails the gate.
+Fails unless every named result is `success` or an expected skip, and names each one that is not.
+A gate job that `needs` other jobs runs it with `if: always()`, so a cancelled job or an unexpected skip fails the gate.
 A result that is `skipped` passes only when `skips` holds the same name with `true`, such as a job whose `if:` skips it on a docs-only change.
 
 | Input | Default | What it sets |

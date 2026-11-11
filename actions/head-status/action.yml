@@ -8,7 +8,10 @@ inputs:
     description: The status name, which a required check of the same name counts.
     default: ${{ github.job }}
   head-sha:
-    description: The commit the status lands on. Empty falls back to GITHUB_SHA.
+    description: The commit the status lands on. Empty falls back to the head of pull-request, then to GITHUB_SHA.
+    default: ""
+  pull-request:
+    description: The number of the pull request whose head the status lands on when head-sha is empty, such as on an issue_comment run.
     default: ""
   description:
     description: The status description. Empty writes none.
@@ -33,6 +36,7 @@ runs:
         JOB_STATUS: ${{ inputs.job-status }}
         CONTEXT: ${{ inputs.context }}
         HEAD_SHA: ${{ inputs.head-sha }}
+        PULL_REQUEST: ${{ inputs.pull-request }}
         DESCRIPTION: ${{ inputs.description }}
         ATTEMPTS: ${{ inputs.attempts }}
       run: bun "$GITHUB_ACTION_PATH/main.ts"
