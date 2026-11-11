@@ -49,8 +49,9 @@ const BRACKET_FORMS = { ":": "class", ".": "collating", "=": "equivalence" } as 
 function bracketElementAt(symbols: readonly string[], at: number): { readonly element: BracketElement; readonly next: number } {
   const char = symbols[at] ?? "";
   const delimiter = symbols[at + 1] ?? "";
-  if (char === "[" && (delimiter === ":" || delimiter === "." || delimiter === "=") && !((delimiter === ":" || delimiter === "=") && symbols[at + 2] === "]")) {
+  if (char === "[" && (delimiter === ":" || delimiter === "." || delimiter === "=")) {
     for (let close = at + 2; close + 1 < symbols.length; close += 1) {
+      if (symbols[close] === "]" && delimiter !== ".") break;
       if (symbols[close] !== delimiter || symbols[close + 1] !== "]") continue;
       const name = symbols.slice(at + 2, close);
       const next = close + 2;

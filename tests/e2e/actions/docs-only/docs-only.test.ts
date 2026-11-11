@@ -182,6 +182,15 @@ const PATTERN_CASES: readonly (readonly [string, string])[] = [
   ["[[.a]", "["],
   ["[[:alpha:]", "a"],
   ["[!z-ab]", "c"],
+  ["[x[=a]=]]", "x=]]"],
+  ["[[=a]b=]x", "=b=]x"],
+  ["[[:a]b:]]", "[b:]]"],
+  ["[x[:a]:]]", "x:]]"],
+  ["[[:al]pha:]]", "apha:]]"],
+  ["[[=?-]a=]*", "-a=]x"],
+  ["[c[:.]-x:]]", "[-x:]]"],
+  ["docs/[[=a]=]*.md", "docs/a=]x.md"],
+  ["[[.a]b.]]", "a]b.]"],
 ];
 
 const CLASS_NAMES = ["alnum", "alpha", "blank", "cntrl", "digit", "graph", "lower", "print", "punct", "space", "upper", "word", "xdigit"];
