@@ -258,7 +258,7 @@ jobs:
       - uses: ./actions/mutation-scope
         with:
           base-ref: ${{ github.event.pull_request.base.ref }}
-      - name: a scope taken from anything but the merge base with main fails
+      - name: a scope taken from anything but the merge base with main, or a release or bot pull request that is scoped, fails
         run: bun ci/mutation-scope-smoke.ts verify
   secrets-pack:
     runs-on: ubuntu-latest

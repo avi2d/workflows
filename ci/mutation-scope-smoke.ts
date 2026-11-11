@@ -1,6 +1,7 @@
 import { Console, Data, Effect } from "effect";
 import { appendFileSync, chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pullRequestOfEvent, pullRequestSkip, type SkipReason } from "../actions/mutation-scope/mutation-scope.ts";
 import { runMain } from "../lib/run-main.ts";
 
 export const STAND_INS: Readonly<Record<string, string>> = {
@@ -27,6 +28,10 @@ export function scopeFailure(scope: string | undefined, mainMergeBase: string): 
   return scope === mainMergeBase ? undefined : `mutation-scope wrote SCOPE=${scope ?? ""}, not the merge base with origin/main ${mainMergeBase}`;
 }
 
+export function skipFailure(expected: SkipReason, skip: string | undefined): string | undefined {
+  return skip === expected ? undefined : `mutation-scope wrote SKIP=${skip ?? ""} on a ${expected} pull request, not SKIP=${expected}`;
+}
+
 function required(name: string): Effect.Effect<string, MutationScopeSmokeError> {
   const value = process.env[name];
   return value === undefined || value === "" ? Effect.fail(new MutationScopeSmokeError({ message: `mutation-scope-smoke needs ${name} set` })) : Effect.succeed(value);
@@ -43,6 +48,12 @@ const standIns = Effect.gen(function* () {
 });
 
 const verify = Effect.gen(function* () {
+  const expectedSkip = pullRequestSkip(yield* pullRequestOfEvent);
+  if (expectedSkip !== undefined) {
+    const failure = skipFailure(expectedSkip, process.env["SKIP"]);
+    if (failure !== undefined) return yield* new MutationScopeSmokeError({ message: failure });
+    return yield* Console.log(`mutation-scope-smoke: a ${expectedSkip} pull request skips with SKIP=${expectedSkip}`);
+  }
   const mainMergeBase = Bun.spawnSync(["git", "merge-base", "HEAD", "origin/main"]).stdout.toString().trim();
   const failure = scopeFailure(process.env["SCOPE"], mainMergeBase);
   if (failure !== undefined) return yield* new MutationScopeSmokeError({ message: failure });

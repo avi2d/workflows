@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scopeFailure, writeStandIns } from "../../../ci/mutation-scope-smoke.ts";
+import { scopeFailure, skipFailure, writeStandIns } from "../../../ci/mutation-scope-smoke.ts";
 
 let root = "";
 
@@ -25,6 +25,16 @@ describe("writeStandIns", () => {
   test("a stand-in restore command, which would let a scope that restores from main pass, fails", () => {
     Effect.runSync(writeStandIns(join(root, "bin")));
     expect(existsSync(join(root, "bin", "checks-mutation-baseline"))).toBe(false);
+  });
+});
+
+describe("skipFailure", () => {
+  test("a release pull request whose SKIP is release read as a failure fails", () => {
+    expect(skipFailure("release", "release")).toBeUndefined();
+  });
+
+  test.each([["bot"], [undefined], [""]])("a release pull request with SKIP %p that passes fails", (skip) => {
+    expect(skipFailure("release", skip)).toBeString();
   });
 });
 
