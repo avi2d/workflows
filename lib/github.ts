@@ -1,5 +1,5 @@
 import { Config, Effect, Schema } from "effect";
-import { callApiFor, type Method } from "./api.ts";
+import { callApi, callApiFor, type Method } from "./api.ts";
 import { requiredInput } from "./inputs.ts";
 
 export type Repository = { readonly apiBase: string; readonly name: string; readonly token: string };
@@ -12,10 +12,15 @@ export const repositoryFromEnv = Effect.fn("repositoryFromEnv")(function* (actio
   } satisfies Repository;
 });
 
+const baseOf = (repository: Repository) => `${repository.apiBase}/repos/${repository.name}`;
+
 export const github = <S extends Schema.Top & { readonly DecodingServices: never }>(
   repository: Repository,
   schema: S,
   method: Method,
   path: string,
   body?: unknown,
-) => callApiFor(schema, { base: `${repository.apiBase}/repos/${repository.name}`, path, method, token: repository.token, body });
+) => callApiFor(schema, { base: baseOf(repository), path, method, token: repository.token, body });
+
+export const githubDelete = (repository: Repository, path: string) =>
+  callApi({ base: baseOf(repository), path, method: "DELETE", token: repository.token, body: undefined }).pipe(Effect.asVoid);

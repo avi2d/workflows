@@ -1,0 +1,26 @@
+name: held-runs
+description: Delete the pull request runs GitHub holds for approval on a branch's tip, such as the ones a release pull request opened with the workflow token gets, so none expires as a failure with no job.
+inputs:
+  branch:
+    description: The branch whose tip the held runs are on.
+    default: release/${{ github.ref_name }}
+  wait-seconds:
+    description: How long to keep reading, every 5 seconds, while no held run shows up.
+    default: "30"
+  token:
+    description: The token that deletes the runs. It needs actions write and contents read.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: delete the runs held for approval on the branch tip
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        BRANCH: ${{ inputs.branch }}
+        WAIT_SECONDS: ${{ inputs.wait-seconds }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"
