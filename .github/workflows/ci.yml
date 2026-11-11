@@ -317,22 +317,12 @@ jobs:
         env:
           MISMATCH: ${{ steps.mismatch.outcome }}
         run: test "$MISMATCH" = failure
-  release-pr:
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-    uses: ./.github/workflows/release-pr.yml
-    with:
-      plan-command: echo smoke-plan
-      tag-command: echo smoke-tag
   release-guard:
-    needs: release-pr
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       contents: read
-      actions: read
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -340,16 +330,24 @@ jobs:
       - uses: ./actions/setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # A call of release-pr.yml from this workflow would put its jobs in a fork pull request's reach, where the kit refuses their runner pick.
+      - id: smoke
+        name: a release smoke that cannot start on the head branch, that runs another commit or that never finishes fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.head_ref || github.ref_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bun ci/release-smoke.ts
       - name: a release pull request that never plans, that tags here, or that leaves ubuntu-latest with no CI_RUNS_ON set fails
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.run_id }}
+          RUN_ID: ${{ steps.smoke.outputs.run-id }}
         run: bun ci/release-jobs.ts
       - name: a release whose tag, verify or publish guard drifts, or whose job leaves the caller's runner pick, fails
         run: bun ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-version, release-pr, release-guard]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-version, release-guard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

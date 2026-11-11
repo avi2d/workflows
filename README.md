@@ -71,7 +71,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 
 | Setting | How it reaches the shared code |
 | --- | --- |
-| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release publish run read in the caller's context |
+| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release runs read in the caller's context |
 | A token other than the job's own | the `token` input of commitlint-status or head-status, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
@@ -92,6 +92,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
 | `.github/workflows/release-pr.yml` | the reusable release pull request, plan on dispatch and tag on merge |
+| `.github/workflows/release-smoke.yml` | the release pull request smoke, manual and push on edit |
 | `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command and the opt-in GitHub release |
 | `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |

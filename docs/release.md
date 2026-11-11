@@ -112,9 +112,8 @@ The publish run takes these inputs.
 - A tree guard command once the caller adopts one, which only checks carries today.
 - A calling job that grants `contents: write`, `pull-requests: write` and `actions: write` to the release pull request call.
 - A calling job that grants `contents: write` and `id-token: write` to the publish call.
-- Its `CI_RUNS_ON` repository variable when its release publish runs on its own runner.
-  Every job in `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
-  Every job in `release-pr.yml` runs on `ubuntu-latest`.
+- Its `CI_RUNS_ON` repository variable when its release runs on its own runner.
+  Every job in `release-pr.yml` and `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
   A caller that sets no `CI_RUNS_ON` runs every release job on `ubuntu-latest`.
 
 ## Runners and fork pull requests
@@ -122,9 +121,12 @@ The publish run takes these inputs.
 A fork pull request never starts these jobs in a caller.
 The caller's trigger files run them only on a manual run, a push to `main` and a tag push.
 Each of those needs write access to the caller, which a fork author does not hold.
-This repository's own CI calls `release-pr.yml` on every pull request, fork pull requests included.
-This repository sets no `CI_RUNS_ON`, so those runs stay on `ubuntu-latest`.
-The `release-guard` CI job fails when the planning job of that call runs anywhere but `ubuntu-latest`.
+This repository keeps them out of a fork pull request's reach too.
+Its `release-smoke.yml` calls `release-pr.yml` only on a manual run and on a push that edits `release-smoke.yml`.
+The `release-guard` CI job starts that manual run on the head branch and waits for it.
+A fork pull request runs with a read-only token, which cannot start the run, so `release-guard` fails there.
+This repository sets no `CI_RUNS_ON`, so the run stands for a caller that sets none.
+The `release-guard` CI job fails when the planning job of that run runs anywhere but `ubuntu-latest`.
 
 ## Related topics
 

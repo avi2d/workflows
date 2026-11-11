@@ -2,6 +2,7 @@
 import { Config, Console, Duration, Effect, Option, Schema } from "effect";
 import { stateOf } from "../lib/commit-status.ts";
 import { commandOutput, runCheck } from "../lib/run.ts";
+import { readUntil } from "../lib/wait.ts";
 
 export const READ_TRIES = 6;
 export const READ_WAIT = Duration.seconds(5);
@@ -27,13 +28,7 @@ export function newestStatus(statuses: typeof Statuses.Type, context: string): O
 
 // The statuses list can lag the write, so an empty read waits and reads again.
 export const waitForStatus = <E, R>(read: Effect.Effect<Option.Option<Status>, E, R>, tries: number, wait: Duration.Duration) =>
-  Effect.gen(function* () {
-    for (let attempt = 1; ; attempt += 1) {
-      const found = yield* read;
-      if (Option.isSome(found) || attempt >= tries) return found;
-      yield* Effect.sleep(wait);
-    }
-  });
+  readUntil(read, Option.isSome, tries, wait);
 
 export function statusProblem(found: Option.Option<Status>, state: string, description: Option.Option<string>): Option.Option<string> {
   if (Option.isNone(found)) return Option.some(`no status, where ${state} was wanted`);

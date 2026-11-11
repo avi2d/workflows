@@ -9,6 +9,7 @@ Date: 2026-11-10
 
 Accepted.
 It supersedes the runner clause of 0002, which put every shared release job on `ubuntu-latest`.
+0004 supersedes its `release-pr.yml` clause.
 
 ## Context
 
