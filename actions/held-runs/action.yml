@@ -4,12 +4,7 @@ inputs:
   branch:
     description: The branch whose tip the held runs are on.
     default: release/${{ github.ref_name }}
-  wait-seconds:
-    description: How long to keep reading, every 5 seconds, while no held run shows up.
-    default: "30"
-  token:
-    description: The token that deletes the runs. It needs actions write and contents read.
-    default: ${{ github.token }}
+
 runs:
   using: composite
   steps:
@@ -20,7 +15,6 @@ runs:
     - name: delete the runs held for approval on the branch tip
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.token }}
+        GH_TOKEN: ${{ github.token }}
         BRANCH: ${{ inputs.branch }}
-        WAIT_SECONDS: ${{ inputs.wait-seconds }}
       run: bun "$GITHUB_ACTION_PATH/main.ts"

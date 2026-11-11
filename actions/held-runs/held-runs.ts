@@ -1,9 +1,10 @@
-import { Console, Data, Duration, Effect, Option, Schema } from "effect";
+import { Console, Duration, Effect, Option, Schema } from "effect";
 import { github, githubDelete, repositoryFromEnv, type Repository } from "../../lib/github.ts";
-import { optionalInput, requiredInput } from "../../lib/inputs.ts";
+import { requiredInput } from "../../lib/inputs.ts";
 
 const ACTION = "held-runs";
 const READ_EVERY_SECONDS = 5;
+const WAIT_SECONDS = 30;
 
 const Ref = Schema.Struct({ object: Schema.Struct({ sha: Schema.String }) });
 
@@ -35,14 +36,6 @@ export function heldOn(runs: readonly Run[], head: Head): Run[] {
   );
 }
 
-export class WaitInvalid extends Data.TaggedError("WaitInvalid")<{ readonly message: string }> {}
-
-export function parseWaitSeconds(text: string): Effect.Effect<number, WaitInvalid> {
-  return /^[0-9]+$/.test(text)
-    ? Effect.succeed(Number(text))
-    : Effect.fail(new WaitInvalid({ message: `${ACTION} needs wait-seconds as a whole number of seconds, not '${text}'` }));
-}
-
 // deleteFound answers how many runs that read deleted.
 export const sweep = <E, R>(deleteFound: Effect.Effect<number, E, R>, waitSeconds: number) =>
   Effect.gen(function* () {
@@ -67,7 +60,6 @@ const readTip = (repository: Repository, branch: string) =>
 export const main = Effect.gen(function* () {
   const repository = yield* repositoryFromEnv(ACTION);
   const branch = yield* requiredInput(ACTION, "branch", "BRANCH");
-  const waitSeconds = yield* parseWaitSeconds(yield* optionalInput("WAIT_SECONDS"));
   const tip = yield* readTip(repository, branch);
   if (Option.isNone(tip)) {
     yield* Console.log(`${branch} does not exist, so no run is held on it`);
@@ -87,7 +79,7 @@ export const main = Effect.gen(function* () {
     }
     return held.length;
   });
-  const deleted = yield* sweep(deleteFound, waitSeconds);
-  if (deleted === 0) yield* Console.log(`found no held pull request run on ${branch} at ${sha} within ${waitSeconds} seconds`);
+  const deleted = yield* sweep(deleteFound, WAIT_SECONDS);
+  if (deleted === 0) yield* Console.log(`found no held pull request run on ${branch} at ${sha} within ${WAIT_SECONDS} seconds`);
   return true;
 });

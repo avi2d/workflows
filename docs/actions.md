@@ -70,15 +70,14 @@ Its head must also be that tip, on that branch, in this repository.
 A fork's held run, a held run on any other head and a run that has jobs stay.
 It prints one line per deleted run with the workflow name, the run id and the head.
 
-It reads every 5 seconds and deletes what each read finds.
-It stops at the first empty read after a delete, or once `wait-seconds` pass with nothing found, which it says in one line and passes.
-A delete GitHub refuses fails the step with GitHub's answer.
+It reads every 5 seconds for 30 seconds and deletes what each read finds.
+It stops at the first empty read after a delete, or once 30 seconds pass with nothing found, which it says in one line and passes.
+It deletes with the job’s token.
+A delete GitHub refuses fails the step with GitHub’s answer.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `branch` | `release/` and the branch the run is on | the branch whose tip the held runs are on |
-| `wait-seconds` | `30` | how long to keep reading while no held run shows up |
-| `token` | the job's token | the token that deletes the runs |
 
 ## docs-only
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Effect, Exit, Fiber } from "effect";
+import { Effect, Fiber } from "effect";
 import { TestClock } from "effect/testing";
-import { heldOn, parseWaitSeconds, sweep, type Run } from "../../../../actions/held-runs/held-runs.ts";
+import { heldOn, sweep, type Run } from "../../../../actions/held-runs/held-runs.ts";
 import { countedReads, withClock } from "../../../lib/clock.ts";
 
 const TIP = "0123456789abcdef0123456789abcdef01234567";
@@ -50,21 +50,11 @@ async function sweepOver(foundAt: (read: number) => number) {
 }
 
 describe("sweep", () => {
-  test("held-runs that fails when nothing is held, or stops reading before wait-seconds pass, fails", async () => {
+  test("held-runs that fails when nothing is held, or stops reading before 30 seconds pass, fails", async () => {
     expect(await sweepOver(() => 0)).toEqual([0, 7]);
   });
 
   test("held-runs that stops before the read after a delete, or reads on past an empty one, fails", async () => {
     expect(await sweepOver((read) => (read === 2 ? 2 : read === 4 ? 1 : 0))).toEqual([2, 3]);
-  });
-});
-
-describe("parseWaitSeconds", () => {
-  test.each(["", "-1", "1.5", "half", " 30"])("wait-seconds of %p that passes fails", (text) => {
-    expect(Exit.isFailure(Effect.runSyncExit(parseWaitSeconds(text)))).toBe(true);
-  });
-
-  test.each([["0", 0], ["30", 30]] as const)("wait-seconds of %p read as other than %p fails", (text, seconds) => {
-    expect(Effect.runSync(parseWaitSeconds(text))).toBe(seconds);
   });
 });

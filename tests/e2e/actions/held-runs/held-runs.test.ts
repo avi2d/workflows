@@ -24,12 +24,12 @@ afterEach(async () => {
   await stub?.stop();
 });
 
-function sweep(route: Route, waitSeconds: string) {
+function sweep(route: Route) {
   const started = startStubApi((method, path, body) =>
     method === "GET" && path === `${REPO}/git/ref/heads/release/main` ? { status: 200, body: { object: { sha: TIP } } } : route(method, path, body),
   );
   stub = started;
-  return runAction(MAIN, [], { ...apiEnv(started, scratch.at("output")), BRANCH: "release/main", WAIT_SECONDS: waitSeconds });
+  return runAction(MAIN, [], { ...apiEnv(started, scratch.at("output")), BRANCH: "release/main" });
 }
 
 const deletes = () => (stub?.requests ?? []).filter(({ method }) => method === "DELETE").map(({ path }) => path);
@@ -43,19 +43,14 @@ test("held-runs that leaves the release head's held run, or deletes a fork's, fa
       return { status: 204, body: undefined };
     }
     return undefined;
-  }, "30");
+  });
   expect(ran).toMatchObject({ exitCode: 0, stdout: `deleted the held ci run 11 on release/main at ${TIP}\n` });
   expect(deletes()).toEqual([`${REPO}/actions/runs/11`]);
 }, 15_000);
 
-test("held-runs that fails when nothing is held fails", async () => {
-  const ran = await sweep((method, path) => (method === "GET" && path === LIST ? { status: 200, body: { workflow_runs: [] } } : undefined), "0");
-  expect(ran).toMatchObject({ exitCode: 0, stdout: `found no held pull request run on release/main at ${TIP} within 0 seconds\n` });
-});
-
 test("held-runs that fails when the branch is missing fails", async () => {
   stub = startStubApi(() => undefined);
-  const ran = await runAction(MAIN, [], { ...apiEnv(stub, scratch.at("output")), BRANCH: "release/main", WAIT_SECONDS: "30" });
+  const ran = await runAction(MAIN, [], { ...apiEnv(stub, scratch.at("output")), BRANCH: "release/main" });
   expect(ran).toMatchObject({ exitCode: 0, stdout: "release/main does not exist, so no run is held on it\n" });
   expect(stub.requests.map(({ path }) => path)).toEqual([`${REPO}/git/ref/heads/release/main`]);
 });
@@ -65,7 +60,7 @@ test("held-runs that passes when GitHub refuses the delete fails", async () => {
     if (method === "GET" && path === LIST) return { status: 200, body: { workflow_runs: [run(11, "owner")] } };
     if (method === "DELETE") return { status: 403, body: { message: "Resource not accessible by integration" } };
     return undefined;
-  }, "30");
+  });
   expect(ran).toMatchObject({
     exitCode: 1,
     stdout: "::error::DELETE /actions/runs/11 answered HTTP 403: Resource not accessible by integration\n",
