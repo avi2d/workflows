@@ -25,7 +25,7 @@ test("a newline-separated failure that passes fails", () => {
 });
 
 test("a failure message that does not name each job that did not succeed fails", () => {
-  expect(gate("e2e=failure pixel=skipped runner=success").stdout).toBe("::error::e2e=failure pixel=skipped, where each result must be success\n");
+  expect(gate("e2e=failure pixel=skipped runner=success").stdout).toBe("::error::e2e=failure pixel=skipped, where each result must be success, or skipped where skips names it true\n");
 });
 
 test("no results, which would require nothing, that passes fails", () => {

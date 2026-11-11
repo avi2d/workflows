@@ -22,7 +22,7 @@ for pair in "${results[@]}"; do
   fi
 done
 if [ "${#failed[@]}" -gt 0 ]; then
-  echo "::error::${failed[*]}, where each result must be success"
+  echo "::error::${failed[*]}, where each result must be success, or skipped where skips names it true"
   exit 1
 fi
 echo "${results[*]}"
