@@ -20,7 +20,7 @@ A run with no pull request scopes against the `main` branch.
 The [mutation-scope](actions.md#mutation-scope) action selects that scope.
 It needs nothing from main: it restores no report or state and compares with no earlier run.
 It counts the scoped mutants on the head and stops with a note past the mutant cap.
-Otherwise it mutates the changed files on the head and files one advisory comment on the pull request.
+Otherwise it mutates the changed files on the head and files one score comment on the pull request.
 The comment gives the score of the changed files.
 On a fork pull request the run skips the comment and writes the note to the job summary instead.
 The job token is read-only on a fork, so filing a comment would fail.
