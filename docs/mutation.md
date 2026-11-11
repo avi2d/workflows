@@ -31,7 +31,7 @@ The `refresh` mode splits the tree into shards from the last full report.
 It runs one shard per job, static mutants included, and merges the shard reports into a new full report.
 It needs no earlier run, so it is the full run a repository with nothing saved starts with.
 With no last full report every file weighs the same, so the shards balance by file count.
-Each job stops at 60 minutes, so a tree whose shard runs longer takes a higher shard count.
+Each shard job stops at 60 minutes, so a tree whose shard runs longer takes a higher shard count.
 The workflow starts on a call only, so a caller starts a run by hand through a `workflow_dispatch` trigger in its own `mutation.yml` on `main`.
 `bunx stryker` runs the mutation engine itself and stays as it is in every caller.
 
