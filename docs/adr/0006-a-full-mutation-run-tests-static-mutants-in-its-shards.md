@@ -35,4 +35,4 @@ A refresh's longest shard on that tree takes 28 minutes 32 seconds where it took
 Shards balance by the mutants that are not static, so the static ones spread unevenly, from 754 to 1,802 a shard on that tree.
 A tree whose shard nears the limit takes a higher `shards` input.
 The kit drops a refresh report from before the current 28 day refresh window.
-The kit also drops it when the lockfile, the Bun version or a Stryker config changed since the refresh, so a `baseline` then starts from nothing until a refresh runs.
+The kit also drops it when the lockfile, the Bun version, a Stryker config, a test preload or a file a preload imports changed since the refresh, so a `baseline` then starts from nothing until a refresh runs.

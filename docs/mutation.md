@@ -17,7 +17,7 @@ A caller with neither fails the job with a message naming both.
 The `baseline` mode restores the last incremental state, runs Stryker incremental and uploads the reports.
 With no state of its own it starts from the last refresh report, which Stryker reads as an incremental state.
 The kit drops a refresh report from before the current 28 day refresh window.
-The kit also drops it when the lockfile, the Bun version or a Stryker config changed since the refresh, so a refresh runs first then.
+The kit also drops it when the lockfile, the Bun version, a Stryker config, a test preload or a file a preload imports changed since the refresh, so a refresh runs first then.
 The `compare` mode scopes the head against its merge base with the pull request's base branch.
 A run with no pull request scopes against the `main` branch.
 The [mutation-scope](actions.md#mutation-scope) action selects that scope.
