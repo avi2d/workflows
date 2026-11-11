@@ -1,10 +1,6 @@
 name: own-release
 # The shared copy holds the name release.yml in this same directory.
 on:
-  push:
-    # The moving major tag v2 is no release, so it starts no run.
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
-  # checks-release-tag pushes the tag with the workflow token, which starts no push run, so it dispatches this workflow on the tag.
   workflow_dispatch:
 permissions:
   contents: read

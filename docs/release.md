@@ -151,8 +151,8 @@ It refuses a version not past the last release tag and a version with no listed 
 
 `release/major-tag.ts` points the major tag, such as `v2`, at the commit the release tag names, through the GitHub API with the publish job's token.
 It creates the major tag on the first release of a major.
-It leaves the major tag alone when a newer release of that major already exists, so a publish run again on an older tag never moves it back.
-`own-release` starts only on a `v<major>.<minor>.<patch>` tag, so the moving major tag starts no run.
+It never moves the major tag back to an older tag once a newer release holds it.
+The tag step dispatches `own-release` on the tag, so no pushed tag starts it.
 
 GitHub refuses the release pull request until the repository turns on **Allow GitHub Actions to create and approve pull requests**, under its Actions settings.
 
