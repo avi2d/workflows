@@ -1,7 +1,7 @@
 ---
 governs: [actions/playwright/action.yml, .github/workflows/ci.yml]
 ---
-# 0006. The playwright job runs in the Playwright image
+# 0007. The playwright job runs in the Playwright image
 
 Date: 2026-11-11
 

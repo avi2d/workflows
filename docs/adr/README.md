@@ -9,6 +9,7 @@
 | [0003](0003-release-jobs-run-on-the-caller-runner-pick.md) | Release jobs run on the caller runner pick | Accepted | `.github/workflows/release-pr.yml`, `.github/workflows/release.yml` |
 | [0004](0004-release-pull-request-jobs-run-on-the-caller-runner-pick.md) | Release pull request jobs run on the caller runner pick | Accepted | `.github/workflows/release-pr.yml`, `.github/workflows/release-smoke.yml` |
 | [0005](0005-the-pull-request-mutation-run-stands-alone.md) | The pull request mutation run stands alone | Accepted | `.github/workflows/mutation.yml` |
-| [0006](0006-the-playwright-job-runs-in-the-playwright-image.md) | The playwright job runs in the Playwright image | Accepted | `actions/playwright/action.yml`, `.github/workflows/ci.yml` |
+| [0006](0006-a-full-mutation-run-tests-static-mutants-in-its-shards.md) | A full mutation run tests static mutants in its shards | Accepted | `.github/workflows/mutation.yml` |
+| [0007](0007-the-playwright-job-runs-in-the-playwright-image.md) | The playwright job runs in the Playwright image | Accepted | `actions/playwright/action.yml`, `.github/workflows/ci.yml` |
 
 <!-- end generated adr-index -->
