@@ -49,7 +49,7 @@ const BRACKET_FORMS = { ":": "class", ".": "collating", "=": "equivalence" } as 
 function bracketElementAt(symbols: readonly string[], at: number): { readonly element: BracketElement; readonly next: number } {
   const char = symbols[at] ?? "";
   const delimiter = symbols[at + 1] ?? "";
-  if (char === "[" && (delimiter === ":" || delimiter === "." || delimiter === "=")) {
+  if (char === "[" && (delimiter === ":" || delimiter === "." || delimiter === "=") && !((delimiter === ":" || delimiter === "=") && symbols[at + 2] === "]")) {
     for (let close = at + 2; close + 1 < symbols.length; close += 1) {
       if (symbols[close] !== delimiter || symbols[close + 1] !== "]") continue;
       const name = symbols.slice(at + 2, close);
@@ -84,14 +84,11 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
   const negated = symbols[at] === "!" || symbols[at] === "^";
   if (negated) at += 1;
   const members: CharTest[] = [];
-  let hasCloseEquivalence = false;
   for (let first = true; at < symbols.length; first = false) {
     if (symbols[at] === "]" && !first) {
-      if (hasCloseEquivalence) return { test: never, end: at };
       return { test: (char) => negated !== members.some((member) => member(char)), end: at };
     }
     const { element, next } = bracketElementAt(symbols, at);
-    if (element.kind === "equivalence" && element.char === "]") hasCloseEquivalence = true;
     at = next;
     const low = "char" in element ? element.char : undefined;
     const startsRange = (element.kind === "char" || element.kind === "collating") && symbols[at] === "-" && at + 1 < symbols.length && symbols[at + 1] !== "]";
@@ -105,7 +102,6 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
       continue;
     }
     const high = bracketElementAt(symbols, at + 1);
-    if (high.element.kind === "equivalence" && high.element.char === "]") hasCloseEquivalence = true;
     at = high.next;
     members.push(rangeTest(low, "char" in high.element ? high.element.char : undefined));
   }
