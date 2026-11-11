@@ -236,7 +236,8 @@ The release publish run calls it on the tag before anything publishes.
 
 Creates the GitHub release for a tag with the notes a file holds, or updates the release that tag already has.
 It reads every page of the repository's releases.
-It marks the release latest only when its tag is the highest `v`-version among those releases and the tag, so a release of an older line leaves latest where it is.
+It marks the release latest only when its tag is the highest `v`-version among those releases and the tag.
+A release on an older line leaves latest where it is.
 The release is never a draft or a prerelease.
 The token needs `contents: write`.
 A caller writes the notes first, such as with `checks-release-notes` through [kit-bin](#kit-bin).
