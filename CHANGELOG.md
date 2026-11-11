@@ -12,6 +12,10 @@ Released 2026-11-11.
 - **mutation:** run the pull request mutation run without main, and end the compare run green on a skipped pull request.
 - **actions:** make docs-only match the caller's paths, let require-success allow skipped jobs, and skip empty secrets-pack and head-status on the PR head.
 
+### Fixes
+
+- **mutation:** test static mutants in the refresh shards so a full run finishes, seed an empty baseline from the last refresh, and drop the `workflow_dispatch` trigger from the shared workflow.
+
 Every path a `v2.2.0` caller names still resolves, with no new required input. The `v2` tag moves to this release.
 
 ## 2.2.0
