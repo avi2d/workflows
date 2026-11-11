@@ -156,6 +156,7 @@ const PATTERN_CASES: readonly (readonly [string, string])[] = [
   ["[[=a=]]", "a"],
   ["[[=a=]]", "b"],
   ["[[.].]]", "]"],
+  ["[[=]=]x]", "x"],
   ["[[.a.]-c]", "b"],
   ["[[.a.]-c]", "-"],
   ["[a-[.c.]]", "b"],

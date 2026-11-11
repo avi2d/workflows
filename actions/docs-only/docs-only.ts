@@ -84,11 +84,14 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
   const negated = symbols[at] === "!" || symbols[at] === "^";
   if (negated) at += 1;
   const members: CharTest[] = [];
+  let hasCloseEquivalence = false;
   for (let first = true; at < symbols.length; first = false) {
     if (symbols[at] === "]" && !first) {
+      if (hasCloseEquivalence) return { test: never, end: at };
       return { test: (char) => negated !== members.some((member) => member(char)), end: at };
     }
     const { element, next } = bracketElementAt(symbols, at);
+    if (element.kind === "equivalence" && element.char === "]") hasCloseEquivalence = true;
     at = next;
     const low = "char" in element ? element.char : undefined;
     const startsRange = (element.kind === "char" || element.kind === "collating") && symbols[at] === "-" && at + 1 < symbols.length && symbols[at + 1] !== "]";
@@ -102,6 +105,7 @@ function bracketAt(symbols: readonly string[], open: number): { readonly test: C
       continue;
     }
     const high = bracketElementAt(symbols, at + 1);
+    if (high.element.kind === "equivalence" && high.element.char === "]") hasCloseEquivalence = true;
     at = high.next;
     members.push(rangeTest(low, "char" in high.element ? high.element.char : undefined));
   }
