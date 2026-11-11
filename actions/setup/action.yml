@@ -1,5 +1,5 @@
 name: setup
-description: Check out the repository, install the Bun version its .bun-version names, install the locked dependencies and cache the gitleaks the kit pins.
+description: Check out the repository, install the Bun version its .bun-version names, through npm where the image holds no unzip, install the locked dependencies and cache the gitleaks the kit pins.
 inputs:
   fetch-depth:
     description: How many commits to fetch, 0 for the whole history.
@@ -24,6 +24,9 @@ runs:
     - name: require .bun-version
       shell: bash
       run: bash "$GITHUB_ACTION_PATH/main.sh"
+    - name: fetch Bun through npm where the image holds no unzip
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/main.sh" bun-without-unzip
     - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version-file: .bun-version
