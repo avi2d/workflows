@@ -9,6 +9,7 @@ Date: 2026-11-07
 
 Accepted.
 0005 supersedes its `compare` clause.
+0006 supersedes its clause on a merge to main.
 
 ## Context
 

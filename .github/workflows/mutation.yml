@@ -1,21 +1,5 @@
 name: mutation
 on:
-  # Firstmate starts the refresh by hand from here every 28 days, since a schedule is not allowed.
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: Which run to do, one of baseline, compare or refresh.
-        type: choice
-        options: [baseline, compare, refresh]
-        default: baseline
-      shards:
-        description: How many shard jobs a refresh splits the full run into.
-        type: number
-        default: 4
-      mutant-cap:
-        description: How many mutants in the changed files a compare tests before it skips with a note.
-        type: number
-        default: 1500
   workflow_call:
     inputs:
       mode:
@@ -60,6 +44,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: checks-mutation-baseline reports/stryker-incremental.json
+      # A run from nothing outlasts the job's time limit.
+      - name: Seed an empty state from the last refresh
+        if: hashFiles('reports/stryker-incremental.json') == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json" reports/stryker-incremental.json
       - name: Run the incremental baseline
         run: bunx stryker run --incremental
       - name: Score the baseline
@@ -163,8 +153,6 @@ jobs:
       - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
       - name: Run one shard
         env:
-          # The preset skips static mutants and their timing run only in a refresh.
-          CHECKS_MUTATION_MODE: refresh
           SHARD: ${{ matrix.shard }}
         run: bunx stryker run --mutate "$SHARD"
       # A lone shard's artifact downloads with no folder of its own, so only the file's name can tell the reports apart.
@@ -205,6 +193,8 @@ jobs:
           mode: refresh
       - name: Slim the merged report
         run: checks-mutation-baseline --slim reports/mutation/mutation.json "$RUNNER_TEMP/full/mutation.json"
+      - name: Save the merged report as the state a baseline starts from
+        run: cp "$RUNNER_TEMP/full/mutation.json" "$RUNNER_TEMP/full/stryker-incremental.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-baseline-full
