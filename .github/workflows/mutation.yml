@@ -3,9 +3,9 @@ on:
   workflow_call:
     inputs:
       mode:
-        description: Which run to do, one of baseline, compare or refresh.
+        description: Which run to do, one of baseline, compare or refresh. Empty picks the run from the event that started the caller.
         type: string
-        default: baseline
+        default: ''
       shards:
         description: How many shard jobs a refresh splits the full run into.
         type: number
@@ -22,7 +22,7 @@ permissions:
 
 # One job per push, and a newer push cancels the run it supersedes.
 concurrency:
-  group: mutation-${{ inputs.mode }}-${{ github.event.pull_request.number || 'main' }}
+  group: mutation-${{ inputs.mode || (github.event_name == 'pull_request' && 'compare') || (github.event_name == 'workflow_dispatch' && 'refresh') || 'none' }}-${{ github.event.pull_request.number || 'main' }}
   cancel-in-progress: true
 
 # Mutation jobs never read the CI_RUNS_ON override, so the environment names the hosted runner outright.
@@ -69,7 +69,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: checks-mutation-baseline --prune
   compare:
-    if: inputs.mode == 'compare'
+    if: inputs.mode == 'compare' || (inputs.mode == '' && github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -118,7 +118,7 @@ jobs:
         with:
           part: fork-summary
   refresh-plan:
-    if: inputs.mode == 'refresh'
+    if: inputs.mode == 'refresh' || (inputs.mode == '' && github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -141,7 +141,6 @@ jobs:
           shards: ${{ inputs.shards }}
 
   refresh-shard:
-    if: inputs.mode == 'refresh'
     needs: refresh-plan
     strategy:
       matrix:
@@ -168,7 +167,6 @@ jobs:
           if-no-files-found: error
 
   refresh-merge:
-    if: inputs.mode == 'refresh'
     needs: [refresh-plan, refresh-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -9,7 +9,8 @@ It runs the `checks-mutation-*` commands from the caller's install of the `@avi2
 
 ## What it does
 
-It checks out the commit the caller's run names through the setup action, installs the locked dependencies and runs the mode the caller names.
+It checks out the commit the caller's run names through the setup action, installs the locked dependencies.
+Then it runs the mode the caller names or the one its event picks.
 It puts the commands each mode runs on the `PATH` through the [kit-bin](actions.md#kit-bin) action.
 A caller with no `node_modules/.bin/checks-mutation-*` runs the source files with `bun` in their place.
 Only the kit's own repository holds those files, which its `package.json` maps from the command names.
@@ -42,7 +43,10 @@ The workflow starts on a call only, so a caller starts a run by hand through a `
 
 ## What the caller supplies
 
-- A mode, one of `baseline`, `compare` or `refresh`.
+- A mode, one of `baseline`, `compare` or `refresh`, or none.
+  With none, a pull request runs `compare` and a manual start through `workflow_dispatch` runs `refresh`.
+  Any other event runs no mutation job, so a push to main runs none.
+  Only a named `baseline` runs a baseline.
 - A calling job that grants `contents: read`, `actions: write` and `pull-requests: write`, the three the runs ask for.
 - A shard count and a mutant cap when the defaults, 4 shards and 1500 scoped mutants, do not fit.
 
