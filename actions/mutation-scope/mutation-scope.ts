@@ -62,7 +62,7 @@ function required(name: string): Effect.Effect<string, MutationScopeError> {
   return value === undefined || value === "" ? Effect.fail(new MutationScopeError({ message: `mutation-scope needs ${name} set` })) : Effect.succeed(value);
 }
 
-export const pullRequestOfEvent = Effect.gen(function* () {
+const pullRequestOfEvent = Effect.gen(function* () {
   const eventPath = process.env["GITHUB_EVENT_PATH"];
   if (eventPath === undefined || eventPath === "") return undefined;
   const text = yield* Effect.try({
