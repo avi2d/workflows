@@ -70,16 +70,26 @@ const descendantsOf = (pid: string): Effect.Effect<readonly string[], never, Chi
   });
 
 // A process group kill misses a descendant sudo started in its own session, and one owned by root needs sudo to stop.
+const killEach = (tree: readonly string[]) =>
+  Effect.sync(() => {
+    for (const pid of tree) {
+      try {
+        process.kill(Number(pid), "SIGKILL");
+      } catch {
+        void 0;
+      }
+    }
+  });
+
 const stopTree = Effect.fn("stopTree")(function* (pid: string) {
   const tree = [...(yield* descendantsOf(pid)), pid];
-  if (!(yield* quietlyPasses("sudo", ["-n", "kill", "-KILL", ...tree]))) yield* quietlyPasses("kill", ["-KILL", ...tree]);
+  if (!(yield* quietlyPasses("sudo", ["-n", "kill", "-KILL", ...tree]))) yield* killEach(tree);
 });
 
-// Past the limit the whole process tree is stopped and the command counts as failed.
 export const commandPassesWithin = Effect.fn("commandPassesWithin")(
   function* (program: string, args: readonly string[], limit: Duration.Duration) {
     const handle = yield* spawnForwarded(program, args, {});
-    const passed = yield* passedWhenDone(handle).pipe(Effect.timeoutOption(limit));
+    const passed = yield* passedWhenDone(handle).pipe(Effect.orElseSucceed(() => false), Effect.timeoutOption(limit));
     if (Option.isSome(passed)) return passed.value;
     yield* Console.log(`${program} still ran after ${Duration.format(limit)}, so its whole process tree is stopped`);
     yield* stopTree(String(handle.pid));
