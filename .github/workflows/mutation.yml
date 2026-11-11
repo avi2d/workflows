@@ -13,7 +13,7 @@ on:
         type: number
         default: 4
       mutant-cap:
-        description: How many scoped mutants a compare runs before it skips with a note.
+        description: How many mutants in the changed files a compare tests before it skips with a note.
         type: number
         default: 1500
   workflow_call:
@@ -27,7 +27,7 @@ on:
         type: number
         default: 4
       mutant-cap:
-        description: How many scoped mutants a compare runs before it skips with a note.
+        description: How many mutants in the changed files a compare tests before it skips with a note.
         type: number
         default: 1500
 
@@ -64,7 +64,7 @@ jobs:
         run: bunx stryker run --incremental
       - name: Score the baseline
         if: always()
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: score
           mode: baseline
@@ -90,49 +90,36 @@ jobs:
           fetch-depth: 0
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
         with:
-          commands: checks-mutation-baseline checks-mutation-scope checks-mutation-compare
+          commands: checks-mutation-scope
       - name: Select mutation scope
-        uses: avi2d/workflows/mutation-scope@2c01573c59ebb0d94e1f6e29cd51b1400ca325e4
-        env:
-          GH_TOKEN: ${{ github.token }}
+        uses: avi2d/workflows/actions/mutation-scope@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           base-ref: ${{ github.event.pull_request.base.ref }}
       - name: Report empty scope
         if: env.SCOPE == ''
-        run: 'echo "::notice::mutation: no source files changed, so neither the run nor the comparison starts"'
+        run: 'echo "::notice::mutation: no source files changed, so the run does not start"'
       - name: Count scoped mutants
         if: env.SCOPE != ''
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: count-scope
           mutant-cap: ${{ inputs['mutant-cap'] }}
       - name: Note a scope over the cap
         if: env.OVER_CAP == 'true'
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: over-cap
           mutant-cap: ${{ inputs['mutant-cap'] }}
-      - name: Restore the baseline state and report
-        if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: checks-mutation-baseline reports/stryker-incremental.json "$RUNNER_TEMP/baseline/mutation.json"
-      # A test that reads a changed file counts as changed, so its stored results go before the run.
-      - name: Drop stale tests from the restored state
-        if: env.SCOPE != '' && env.OVER_CAP != 'true' && env.STALE_TESTS != ''
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
-        with:
-          part: drop-stale-tests
       - name: Run the scoped head
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        run: bunx stryker run --incremental --mutate "$SCOPE"
-      - name: Compare the head against the baseline
+        run: bunx stryker run --mutate "$SCOPE"
+      - name: Score the changed files
         if: env.SCOPE != '' && env.OVER_CAP != 'true'
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
-          part: compare
+          part: scope-score
       # A fork pull request runs with a read-only token, so filing a comment fails and the note goes to the summary instead.
-      - name: File the advisory comment
+      - name: File the score comment
         if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
@@ -140,7 +127,7 @@ jobs:
         run: gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/comment.md"
       - name: Write the note to the summary on a fork
         if: env.COMMENT == 'true' && github.event.pull_request.head.repo.full_name != github.repository
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: fork-summary
   refresh-plan:
@@ -161,7 +148,7 @@ jobs:
         run: checks-mutation-baseline --full "$RUNNER_TEMP/last-full/mutation.json"
       - id: shards
         name: Split the tree into shards
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: shards
           shards: ${{ inputs.shards }}
@@ -215,7 +202,7 @@ jobs:
         run: checks-mutation-merge reports/mutation/mutation.json shards/shard-*.json
       - name: Score the refresh
         if: always()
-        uses: avi2d/workflows/actions/mutation@50854ae1917e84d6d1a03d59e7f4e0805e77295f
+        uses: avi2d/workflows/actions/mutation@5965021fa8deacb384180a86684cf58ed96b99ee
         with:
           part: score
           mode: refresh

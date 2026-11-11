@@ -15,11 +15,13 @@ A caller with no `node_modules/.bin/checks-mutation-*` runs the source files wit
 Only the kit's own repository holds those files, which its `package.json` maps from the command names.
 A caller with neither fails the job with a message naming both.
 The `baseline` mode restores the last incremental state, runs Stryker incremental and uploads the reports.
-The `compare` mode scopes the head against its merge base with the pull request's base branch and restores the baseline state.
+The `compare` mode scopes the head against its merge base with the pull request's base branch.
 A run with no pull request scopes against the `main` branch.
 The [mutation-scope](actions.md#mutation-scope) action selects that scope.
-It runs the scoped head and files one advisory comment on the pull request.
-The advisory comment counts only the mutants in the scoped files.
+It needs nothing from main: it restores no report or state and compares with no earlier run.
+It counts the scoped mutants on the head and stops with a note past the mutant cap.
+Otherwise it mutates the changed files on the head and files one advisory comment on the pull request.
+The comment gives the score of the changed files, in all and per file.
 On a fork pull request the run skips the comment and writes the note to the job summary instead.
 The job token is read-only on a fork, so filing a comment would fail.
 The `refresh` mode splits the tree into shards from the last full report.
