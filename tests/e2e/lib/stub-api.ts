@@ -21,7 +21,7 @@ export function startStubApi(route: Route): StubApi {
       const body: unknown = text === "" ? undefined : JSON.parse(text);
       requests.push({ method: request.method, path, authorization: request.headers.get("authorization") ?? "", body });
       const answer = route(request.method, path, body) ?? NOT_FOUND;
-      return Response.json(answer.body, { status: answer.status });
+      return answer.status === 204 ? new Response(null, { status: 204 }) : Response.json(answer.body, { status: answer.status });
     },
   });
   return { base: `http://127.0.0.1:${server.port}`, requests, stop: () => server.stop(true) };

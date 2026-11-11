@@ -46,6 +46,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ${{ inputs.plan-command }}
+      # A ./ path resolves in the caller's checkout.
+      - name: delete the runs held for approval on the release pull request
+        uses: avi2d/workflows/actions/held-runs@6cda430d5e0d2d10eaf1f6838a788cd7a2252945
   tag:
     if: "github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release ')"
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}

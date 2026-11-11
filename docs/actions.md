@@ -62,6 +62,29 @@ Call it last with `if: always() && github.event_name == 'workflow_dispatch'` on 
 | `token` | the job's token | the token that writes the status |
 | `attempts` | `1` | how many times to try the head read and the status call, waiting 10 seconds longer after each failure |
 
+## held-runs
+
+Deletes the pull request runs GitHub holds for approval on the tip of a branch, the release branch by default.
+A pull request opened with the workflow token gets its `pull_request` runs held for approval.
+GitHub expires each held run at merge as a failure with no job.
+Call it right after the step that opens or refreshes the pull request, in a job with `actions: write` and `contents: read`.
+
+It reads the tip of the branch, and a branch that does not exist ends the step with nothing to do.
+It deletes a run only when its event is `pull_request` and its conclusion is `action_required`.
+Its head must also be that tip, on that branch, in this repository.
+A fork's held run, a held run on any other head and a run that has jobs stay.
+It prints one line per deleted run with the workflow name, the run id and the head.
+
+It reads every 5 seconds for 30 seconds and deletes what each read finds.
+It stops at the first empty read after a delete.
+Once 30 seconds pass with nothing found, it says so in one line and passes.
+It deletes with the job's token.
+A delete GitHub refuses fails the step with GitHub's answer.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `branch` | `release/` and the branch the run is on | the branch whose tip the held runs are on |
+
 ## docs-only
 
 Tells whether a change touches only documentation.

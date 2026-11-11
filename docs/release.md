@@ -57,6 +57,7 @@ Each trigger file stays in the caller, beside the publish command only that call
 It runs a `tag` job on every push to main whose head commit starts with `chore: release `.
 The `pull-request` job checks out the branch tip with the whole history.
 It runs the caller preflight when one is set, then the caller plan command with `GH_TOKEN` set.
+It then deletes the runs GitHub holds for approval on the release pull request through the [held-runs](actions.md#held-runs) action.
 The planning checkout names the branch tip, so a rerun after main moves plans the current tree rather than the stale dispatched commit.
 The `tag` job checks out the landed commit with the whole history.
 It runs the caller tree guard when one is set, then the caller tag command with `GH_TOKEN` set.
