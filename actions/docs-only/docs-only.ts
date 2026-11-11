@@ -50,9 +50,20 @@ function bracketAt(pattern: string, open: number): { readonly source: string; re
   return undefined;
 }
 
+function bracketTest(source: string, pattern: string): (char: string) => boolean {
+  try {
+    const expression = new RegExp(`^${source}$`, "su");
+    return (value) => expression.test(value);
+  } catch (error) {
+    if (error instanceof SyntaxError && /out of order/i.test(error.message)) return () => false;
+    throw new DocsOnlyError({ message: `docs-only: cannot read ${pattern}` });
+  }
+}
+
 // Matches as Bash's [[ path == pattern ]] does, where * also crosses /.
 export function bashPatternMatches(pattern: string, path: string): boolean {
-  return matchNodes(parsePattern(pattern), path, new Set([0])).has(path.length);
+  const chars = Array.from(path);
+  return matchNodes(parsePattern(pattern), chars, new Set([0])).has(chars.length);
 }
 
 type PatternNode =
@@ -93,8 +104,7 @@ function parseSequence(pattern: string, at: number, nested: boolean): { readonly
         nodes.push({ kind: "literal", char: "[" });
         cursor += 1;
       } else {
-        const expression = new RegExp(`^${bracket.source}$`, "s");
-        nodes.push({ kind: "bracket", test: (value) => expression.test(value) });
+        nodes.push({ kind: "bracket", test: bracketTest(bracket.source, pattern) });
         cursor = bracket.end + 1;
       }
     } else {
@@ -123,46 +133,46 @@ function parseExtglob(pattern: string, at: number): { readonly node: PatternNode
   }
 }
 
-function matchNodes(nodes: readonly PatternNode[], path: string, starts: ReadonlySet<number>): Set<number> {
+function matchNodes(nodes: readonly PatternNode[], chars: readonly string[], starts: ReadonlySet<number>): Set<number> {
   let current = new Set(starts);
   for (const node of nodes) {
     const next = new Set<number>();
-    for (const pos of current) for (const end of matchOne(node, path, pos)) next.add(end);
+    for (const pos of current) for (const end of matchOne(node, chars, pos)) next.add(end);
     current = next;
     if (current.size === 0) break;
   }
   return current;
 }
 
-function matchOne(node: PatternNode, path: string, pos: number): Set<number> {
+function matchOne(node: PatternNode, chars: readonly string[], pos: number): Set<number> {
   switch (node.kind) {
     case "literal":
-      return path[pos] === node.char ? new Set([pos + 1]) : new Set();
+      return chars[pos] === node.char ? new Set([pos + 1]) : new Set();
     case "any":
-      return pos < path.length ? new Set([pos + 1]) : new Set();
+      return pos < chars.length ? new Set([pos + 1]) : new Set();
     case "star": {
       const ends = new Set<number>();
-      for (let end = pos; end <= path.length; end += 1) ends.add(end);
+      for (let end = pos; end <= chars.length; end += 1) ends.add(end);
       return ends;
     }
     case "bracket":
-      return pos < path.length && node.test(path[pos] ?? "") ? new Set([pos + 1]) : new Set();
+      return pos < chars.length && node.test(chars[pos] ?? "") ? new Set([pos + 1]) : new Set();
     case "extglob":
-      return matchExtglob(node.op, node.arms, path, pos);
+      return matchExtglob(node.op, node.arms, chars, pos);
   }
 }
 
-function matchExtglob(op: string, arms: readonly (readonly PatternNode[])[], path: string, pos: number): Set<number> {
+function matchExtglob(op: string, arms: readonly (readonly PatternNode[])[], chars: readonly string[], pos: number): Set<number> {
   if (op === "!") {
     const ends = new Set<number>();
-    for (let end = pos; end <= path.length; end += 1) {
-      const taken = path.slice(pos, end);
+    for (let end = pos; end <= chars.length; end += 1) {
+      const taken = chars.slice(pos, end);
       if (!arms.some((arm) => matchNodes(arm, taken, new Set([0])).has(taken.length))) ends.add(end);
     }
     return ends;
   }
   const once = new Set<number>();
-  for (const arm of arms) for (const end of matchNodes(arm, path, new Set([pos]))) once.add(end);
+  for (const arm of arms) for (const end of matchNodes(arm, chars, new Set([pos]))) once.add(end);
   if (op === "@") return once;
   if (op === "?") {
     once.add(pos);
@@ -174,7 +184,7 @@ function matchExtglob(op: string, arms: readonly (readonly PatternNode[])[], pat
     const step = new Set<number>();
     for (const start of frontier)
       for (const arm of arms)
-        for (const end of matchNodes(arm, path, new Set([start])))
+        for (const end of matchNodes(arm, chars, new Set([start])))
           if (!ends.has(end)) {
             ends.add(end);
             step.add(end);
@@ -199,7 +209,12 @@ const pathsVerdict = Effect.fn("pathsVerdict")(function* (base: string, head: st
   const changed = (yield* git("-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", mergeBase, head)).split("\n").filter((path) => path !== "");
   if (changed.length === 0) return false;
   const patterns = wordsOf(paths);
-  const unmatched = changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path)));
+  let unmatched: string | undefined;
+  try {
+    unmatched = changed.find((path) => !patterns.some((pattern) => bashPatternMatches(pattern, path)));
+  } catch (cause) {
+    return yield* (cause instanceof DocsOnlyError ? cause : new DocsOnlyError({ message: `docs-only: ${String(cause)}` }));
+  }
   if (unmatched === undefined) return true;
   yield* Console.error(`docs-only: ${unmatched} matches none of ${paths}`);
   return false;
