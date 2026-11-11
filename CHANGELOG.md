@@ -2,6 +2,26 @@
 
 Every release of `workflows`, newest first.
 
+## 2.4.0
+
+Released 2026-11-11.
+
+### Features
+
+- **actions:** add github-release, which creates or updates the GitHub release for a tag with its notes file, and marks the highest version as latest.
+- **mutation:** pick the run from the caller's event when no mode is named. A caller that sends no mode now gets compare on a pull request, refresh on a manual start through `workflow_dispatch`, and no mutation job on a push to main. It no longer gets a baseline; only a named `baseline` runs one. A caller that sends a mode runs the same jobs as before.
+
+### Fixes
+
+- **playwright:** run the Playwright job in the Playwright image at the pinned playwright-core version, and fail the job if it reaches the Ubuntu package hosts. Setup fetches Bun through npm where the image holds no unzip, and apt-get runs only when a system package is missing.
+- **ci:** install the mutation instrumenter before the no-mistakes lint, through the `install:instrumenter` script.
+
+### Changes
+
+- **playwright:** run the stalled browser install in TypeScript, and remove `attempt.sh`. Inputs and outputs are unchanged.
+
+Every path a `v2.3.1` caller names still resolves, with no new required input. The `v2` tag moves to this release.
+
 ## 2.3.1
 
 Released 2026-11-11.
