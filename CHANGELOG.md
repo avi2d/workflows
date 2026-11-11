@@ -15,6 +15,8 @@ Released 2026-11-11.
 
 - **playwright:** run the Playwright job in the Playwright image at the pinned playwright-core version, and fail the job if it reaches the Ubuntu package hosts. Setup fetches Bun through npm where the image holds no unzip, and apt-get runs only when a system package is missing.
 - **ci:** install the mutation instrumenter before the no-mistakes lint, through the `install:instrumenter` script.
+- **playwright:** run the stalled browser install in TypeScript, and remove `attempt.sh`. Inputs and outputs are unchanged.
+- **docs-only:** classify the change in TypeScript instead of shell. Inputs and outputs are unchanged.
 
 Every path a `v2.3.1` caller names still resolves, with no new required input. The `v2` tag moves to this release.
 
