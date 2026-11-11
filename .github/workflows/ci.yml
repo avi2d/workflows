@@ -170,19 +170,26 @@ jobs:
         run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
     runs-on: ubuntu-latest
+    # A bare runner fetches webkit's system packages from the Ubuntu package hosts, and the image holds them.
+    container: mcr.microsoft.com/playwright:v1.63.0-resolute@sha256:b022639ae9197f864040f92eef7b57c6d4b47db2190f77c909d8a5d902dd4b7e
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: answer for the Ubuntu package hosts with a listener that records each request
+        run: bash ci/package-hosts-smoke.sh listen
       - uses: ./actions/setup
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./actions/playwright
         with:
           browsers: webkit
+          cache: "false"
       - name: a webkit that cannot open a page fails
         run: bun ci/playwright-smoke.ts
+      - name: a job that asked an Ubuntu package host for anything fails
+        run: bash ci/package-hosts-smoke.sh verify
   heavy-slot:
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -1,5 +1,5 @@
 name: playwright
-description: Restore the Playwright browser cache, install the named browsers, and install their system packages on a GitHub-hosted runner only.
+description: Restore the Playwright browser cache, install the named browsers, and on a GitHub-hosted runner install the system packages the machine does not hold.
 inputs:
   browsers:
     description: The browsers to install, separated by spaces.
@@ -31,7 +31,7 @@ runs:
         BROWSERS: ${{ inputs.browsers }}
       run: bun "$GITHUB_ACTION_PATH/main.ts" install
     # Self-hosted runners already hold system packages, and installing them there needs root.
-    - name: install the browsers' system packages
+    - name: install the system packages the machine does not hold
       if: runner.environment == 'github-hosted'
       shell: bash
       env:
