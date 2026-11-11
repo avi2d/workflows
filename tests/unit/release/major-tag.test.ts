@@ -8,7 +8,6 @@ const tags = [
   { name: "v2", sha: OLD },
   { name: "v2.3.1", sha: OLD },
   { name: "v2.3.0", sha: "3333333333333333333333333333333333333333" },
-  { name: "v20.0.0", sha: "4444444444444444444444444444444444444444" },
 ];
 
 test("a newest release that leaves the major tag behind fails", () => {
@@ -25,7 +24,8 @@ test("an older release published again that moves the major tag back fails", () 
 });
 
 test("a tag of another major, such as v20, counted as a newer v2 release fails", () => {
-  expect(majorMove([...tags, { name: "v2.4.0", sha: NEW }], "v2.4.0", NEW, "v2").kind).toBe("update");
+  const listed = [...tags, { name: "v2.4.0", sha: NEW }, { name: "v20.0.0", sha: "4444444444444444444444444444444444444444" }];
+  expect(majorMove(listed, "v2.4.0", NEW, "v2")).toEqual({ kind: "update", major: "v2", from: OLD });
 });
 
 test("a major tag already on the release that is written again fails", () => {
