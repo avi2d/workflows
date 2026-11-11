@@ -6,6 +6,7 @@ import { join } from "node:path";
 const REPOSITORY = join(import.meta.dir, "../../../..");
 const SCRIPT = join(REPOSITORY, "actions/mutation/main.ts");
 const CLAMP = join(REPOSITORY, "tests/fixtures/mutation-count/clamp.ts.txt");
+const WORKFLOW = join(REPOSITORY, ".github/workflows/mutation.yml");
 
 let root = "";
 
@@ -20,14 +21,60 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+function baseEnv(): Record<string, string> {
+  return { PATH: process.env["PATH"] ?? "", HOME: root, RUNNER_TEMP: join(root, "temp"), GITHUB_ENV: join(root, "github-env") };
+}
+
 function part(env: Readonly<Record<string, string>>): { readonly exitCode: number; readonly githubEnv: string } {
   const result = Bun.spawnSync(["bun", SCRIPT], {
     cwd: join(root, "workspace"),
-    env: { PATH: process.env["PATH"] ?? "", HOME: root, RUNNER_TEMP: join(root, "temp"), GITHUB_ENV: join(root, "github-env"), ...env },
+    env: { ...baseEnv(), ...env },
     stdout: "pipe",
     stderr: "pipe",
   });
   return { exitCode: result.exitCode, githubEnv: readFileSync(join(root, "github-env"), "utf8") };
+}
+
+function workflowParts(): string[] {
+  const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+  const found = new Set<string>();
+  const parsed: unknown = Bun.YAML.parse(readFileSync(WORKFLOW, "utf8"));
+  if (!record(parsed) || !record(parsed.jobs)) throw new Error("mutation.yml holds no jobs");
+  for (const name of ["baseline", "compare", "refresh-plan", "refresh-merge"]) {
+    const body: unknown = parsed.jobs[name];
+    if (!record(body) || !Array.isArray(body.steps)) throw new Error(`mutation.yml holds no ${name} steps`);
+    for (const step of body.steps) {
+      if (!record(step) || typeof step.uses !== "string") continue;
+      if (!step.uses.startsWith("avi2d/workflows/actions/mutation@")) continue;
+      if (!record(step.with) || typeof step.with.part !== "string") continue;
+      found.add(step.with.part);
+    }
+  }
+  return [...found].toSorted();
+}
+
+function runOutput(partName: string): { readonly exitCode: number; readonly output: string } {
+  const summary = join(root, "step-summary");
+  writeFileSync(summary, "");
+  const output = join(root, "github-output");
+  writeFileSync(output, "");
+  const result = Bun.spawnSync(["bun", SCRIPT], {
+    cwd: join(root, "workspace"),
+    env: {
+      ...baseEnv(),
+      GITHUB_STEP_SUMMARY: summary,
+      GITHUB_OUTPUT: output,
+      PART: partName,
+      MODE: "baseline",
+      SCOPE: "src/a.ts",
+      MUTANT_CAP: "1500",
+      SHARDS: "4",
+      SCOPED_MUTANTS: "0",
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return { exitCode: result.exitCode, output: `${result.stdout?.toString() ?? ""}${result.stderr?.toString() ?? ""}` };
 }
 
 function headReport(files: Readonly<Record<string, readonly string[]>>): void {
@@ -67,6 +114,16 @@ test("a comment that scores files outside the scope, or none at all, fails", () 
 
 test("a scored run whose head wrote no report that passes fails", () => {
   expect(part({ PART: "scope-score", SCOPE: "src/a.ts" }).exitCode).not.toBe(0);
+});
+
+test.each(workflowParts())("a workflow part %s the mutation action rejects as unknown fails", (partName) => {
+  expect(runOutput(partName).output).not.toContain("part must be one of");
+});
+
+test("an unknown part the mutation action accepts fails", () => {
+  const run = runOutput("no-such-part");
+  expect(run.exitCode).not.toBe(0);
+  expect(run.output).toContain("part must be one of");
 });
 
 test.each(["compare", "drop-stale-tests"])("the %s part, which reads state from main, still running fails", (removed) => {
