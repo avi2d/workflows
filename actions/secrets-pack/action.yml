@@ -2,8 +2,15 @@ name: secrets-pack
 description: Write the private secrets pack to RUNNER_TEMP and export its path as CHECKS_SECRETS_PACK, so the kit's secret scans in later steps read it.
 inputs:
   pack:
-    description: The private pack's JSON, which the caller passes from its CHECKS_SECRETS_PACK secret. Empty fails the step.
+    description: The private pack's JSON, which the caller passes from its CHECKS_SECRETS_PACK secret. Empty fails the step, unless if-missing is skip.
     required: true
+  if-missing:
+    description: What an empty pack does, fail to fail the step or skip to write a notice and report configured false.
+    default: fail
+outputs:
+  configured:
+    description: true when the pack was written, false when an empty pack was skipped.
+    value: ${{ steps.write.outputs.configured }}
 runs:
   using: composite
   steps:
@@ -11,8 +18,10 @@ runs:
     - name: install the action's dependencies
       shell: bash
       run: bun install --frozen-lockfile --production --cwd "$GITHUB_ACTION_PATH"
-    - name: write the pack
+    - id: write
+      name: write the pack
       shell: bash
       env:
         PACK: ${{ inputs.pack }}
+        IF_MISSING: ${{ inputs.if-missing }}
       run: bun "$GITHUB_ACTION_PATH/main.ts"

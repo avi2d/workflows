@@ -40,7 +40,7 @@ export type StatusRequest = {
   readonly attempts: string;
 };
 
-const STATUS_WAIT = Duration.seconds(10);
+export const STATUS_WAIT = Duration.seconds(10);
 
 export const reportStatus = Effect.fn("reportStatus")(function* ({ outcome, context, headSha, description, attempts }: StatusRequest) {
   const tries = yield* parseAttempts(attempts);
