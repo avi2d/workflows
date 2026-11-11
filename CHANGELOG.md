@@ -2,6 +2,21 @@
 
 Every release of `workflows`, newest first.
 
+## 2.2.0
+
+Released 2026-11-11.
+
+### Features
+
+- **release:** run the release pull request and publish jobs on the caller's runner pick, and add the opt-in GitHub release with its `CHANGELOG.md` section as the release notes.
+- **actions:** colocate each action's logic and tests with the action, so `actions/<name>` holds `action.yml` with the `main.ts` or `main.sh` its steps run.
+
+### Fixes
+
+- **release:** write the GitHub release notes before the publish command runs.
+
+Every path a `v2.1.0` caller names still resolves, with no new required input. The `v2` tag moves to this release.
+
 ## 2.1.0
 
 Released 2026-11-10.
