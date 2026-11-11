@@ -23,7 +23,11 @@ const decodeDispatched = Schema.decodeUnknownEffect(Schema.fromJsonString(Dispat
 
 const decodeRun = Schema.decodeUnknownEffect(Schema.fromJsonString(Run));
 
-export const waitForRun = <E, R>(read: Effect.Effect<Run, E, R>) => readUntil(read, (run) => run.status === "completed", POLL_TRIES, POLL_WAIT);
+const PENDING: Run = { status: null, head_sha: "" };
+
+// The dispatched run reads 404 until GitHub materializes it, so a failed read waits for the next poll.
+export const waitForRun = <E, R>(read: Effect.Effect<Run, E, R>) =>
+  readUntil(Effect.orElseSucceed(read, (): Run => PENDING), (run) => run.status === "completed", POLL_TRIES, POLL_WAIT);
 
 export function runProblem(run: Run, headSha: string): Option.Option<string> {
   if (run.status !== "completed") {
