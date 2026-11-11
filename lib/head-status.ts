@@ -12,7 +12,7 @@ const optional = (name: string) => Config.String(name).pipe(Config.withDefault("
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
-export const pullRequestHead = Effect.fn("pullRequestHead")(function* (pullRequest: string, attempts: number) {
+const pullRequestHead = Effect.fn("pullRequestHead")(function* (pullRequest: string, attempts: number) {
   if (!/^[1-9][0-9]*$/.test(pullRequest)) return yield* new HeadUnread({ message: `head-status takes a pull request number, not '${pullRequest}'` });
   const repository = yield* Config.String("GITHUB_REPOSITORY");
   let sha = "";

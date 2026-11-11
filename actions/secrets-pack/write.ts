@@ -24,7 +24,7 @@ const SKIP_NOTICE = "no private pack is configured, so the steps that read CHECK
 
 export type Skip = { readonly stepSummary: string };
 
-export const skipPack = Effect.fn("skipPack")(function* ({ stepSummary }: Skip) {
+const skipPack = Effect.fn("skipPack")(function* ({ stepSummary }: Skip) {
   yield* Console.log(`::notice::${SKIP_NOTICE}`);
   yield* (yield* FileSystem.FileSystem).writeFileString(stepSummary, `${SKIP_NOTICE}\n`, { flag: "a" });
   yield* writeOutputs({ configured: "false" });

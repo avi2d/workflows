@@ -45,7 +45,8 @@ Call it with `if: always()` so a failed title lint still reports.
 ## head-status
 
 Reports a job's result as a commit status on `GITHUB_SHA`, or on the commit `head-sha` names, since GitHub keeps a dispatched run's check off the pull request.
-With `pull-request` set and `head-sha` empty, it reads that pull request head through `gh api` and posts there, and fails without posting when the answer is no full commit SHA.
+With `pull-request` set and `head-sha` empty, it reads that pull request head through `gh api` and posts there.
+It fails without posting when the answer is no full commit SHA.
 Use `pull-request` only for a check of the pull request itself.
 The head is read when the status posts, so a job that checks code at a commit passes that commit as `head-sha`.
 Only the status `success` reports success.
