@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit && effect-tsgo diagnostics --project tsconfig.json --format text --strict"
   },
   "devDependencies": {
-    "@avi2dg/checks": "0.92.0",
+    "@avi2dg/checks": "0.95.0",
     "@types/bun": "1.4.4",
     "playwright-core": "1.63.0"
   },
