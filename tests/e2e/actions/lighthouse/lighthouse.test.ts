@@ -49,7 +49,6 @@ test("a site whose pages are not each audited the asked number of times through 
   expect(portFlags).toHaveLength(4);
   expect(scratch.read("summary")).toContain("| `/faults/` | 97 (97, 97) | 39 (39, 39) | 100 (100, 100) | 69 (69, 69) |");
   expect(readdirSync(scratch.at("reports")).toSorted()).toEqual(["01-index-run-1.json", "01-index-run-2.json", "02-faults-run-1.json", "02-faults-run-2.json"]);
-  expect(scratch.read("output")).toBe(`reports=${scratch.at("reports")}\n`);
 });
 
 test("a pages input that still audits the pages it does not name fails", async () => {

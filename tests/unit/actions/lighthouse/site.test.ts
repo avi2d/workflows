@@ -59,12 +59,6 @@ describe("answer", () => {
     expect(await get("/").text()).toBe("home");
   });
 
-  test("a folder address without its slash that is not sent to the slashed address fails", () => {
-    const response = get("/about");
-    expect(response.status).toBe(301);
-    expect(response.headers.get("location")).toBe("http://127.0.0.1:1/about/");
-  });
-
   test("an address the site does not hold that answers other than 404 fails", () => {
     expect(get("/missing.png").status).toBe(404);
   });

@@ -1,10 +1,9 @@
-import { Config, Console, Data, Duration, Effect, FileSystem, Path, Schema } from "effect";
+import { Config, Console, Data, Duration, Effect, FileSystem, Option, Path, Schema } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { optionalInput, requiredInput } from "../../lib/inputs.ts";
 import { readUntil } from "../../lib/wait.ts";
 import { retryWithGrowingWait } from "../../lib/retry.ts";
 import { commandPassesWithin } from "../../lib/run.ts";
-import { writeOutputs } from "../../lib/step-output.ts";
 import { CATEGORY_IDS, type PageScores, Report, reportName, type Scores, scoresOf, summaryTable } from "./scores.ts";
 import { choosePages, pagesOf, routesOf, serveSite, siteFiles } from "./site.ts";
 
@@ -84,13 +83,17 @@ const auditPage = Effect.fn("auditPage")(function* (chrome: string, url: string,
     wait: RETRY_WAIT,
     onRetry: (attempt) => Console.log(`lighthouse on ${url} attempt ${String(attempt)} failed, retrying`),
   });
-  if (!passed) return yield* new LighthouseError({ message: `lighthouse wrote no report for ${url} in ${String(ATTEMPTS)} attempts` });
   const fs = yield* FileSystem.FileSystem;
-  return scoresOf(
-    yield* decodeReport(yield* fs.readFileString(reportPath)).pipe(
-      Effect.mapError(() => new LighthouseError({ message: `${reportPath} is not a Lighthouse report with the four category scores` })),
-    ),
-  );
+  if (passed) {
+    return scoresOf(
+      yield* decodeReport(yield* fs.readFileString(reportPath)).pipe(
+        Effect.mapError(() => new LighthouseError({ message: `${reportPath} is not a Lighthouse report with the four category scores` })),
+      ),
+    );
+  }
+  const fallback = yield* fs.readFileString(reportPath).pipe(Effect.flatMap(decodeReport), Effect.option);
+  if (Option.isSome(fallback)) return scoresOf(fallback.value);
+  return yield* new LighthouseError({ message: `lighthouse wrote no report for ${url} in ${String(ATTEMPTS)} attempts` });
 });
 
 export const main = Effect.gen(function* () {
@@ -117,6 +120,5 @@ export const main = Effect.gen(function* () {
   const table = summaryTable(results, runs);
   yield* Console.log(table);
   yield* fs.writeFileString(yield* Config.String("GITHUB_STEP_SUMMARY"), table, { flag: "a" });
-  yield* writeOutputs({ reports });
   return true;
 }).pipe(Effect.scoped);

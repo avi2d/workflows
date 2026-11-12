@@ -191,10 +191,6 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 | `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
 | `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
 
-| Output | Value |
-| --- | --- |
-| `reports` | the folder holding each run's JSON report |
-
 ## heavy-slot
 
 Takes or frees the machine's heavy slot around a heavy step, on runners whose name starts with the prefix the caller names.

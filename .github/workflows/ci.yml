@@ -295,7 +295,7 @@ jobs:
       - name: a low score that fails the step, or a run left without its report or one of its four scores, fails
         env:
           OUTCOME: ${{ steps.audit.outcome }}
-          REPORTS: ${{ steps.audit.outputs.reports }}
+          REPORTS: ${{ runner.temp }}/lighthouse-reports
         run: bun ci/lighthouse-smoke.ts
   mutation-scope:
     runs-on: ubuntu-latest

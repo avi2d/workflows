@@ -13,10 +13,6 @@ inputs:
   chrome-path:
     description: The Chrome to start. Empty takes the first of google-chrome-stable, google-chrome, chromium and chromium-browser on the PATH.
     default: ""
-outputs:
-  reports:
-    description: The folder holding the JSON report of each run.
-    value: ${{ steps.audit.outputs.reports }}
 runs:
   using: composite
   steps:

@@ -34,14 +34,9 @@ export function choosePages(found: readonly string[], named: string): Effect.Eff
 }
 
 export function answer(root: string, routes: Routes, request: Request): Response {
-  const url = new URL(request.url);
-  const pathname = decodeURIComponent(url.pathname);
+  const pathname = decodeURIComponent(new URL(request.url).pathname);
   const file = routes.get(pathname);
   if (file !== undefined) return new Response(Bun.file(`${root}/${file}`));
-  if (routes.has(`${pathname}/`)) {
-    url.pathname = `${url.pathname}/`;
-    return Response.redirect(url.href, 301);
-  }
   return new Response("not found", { status: 404 });
 }
 
