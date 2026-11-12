@@ -15,13 +15,20 @@ exec sleep 60`;
 const LIGHTHOUSE_WRITES_THE_REPORT = `if [ -n "$FAIL_ONCE" ] && [ ! -e "$FAIL_ONCE" ]; then : > "$FAIL_ONCE"; exit 1; fi
 for arg in "$@"; do case "$arg" in --output-path=*) printf '%s' "$REPORT" > "\${arg#--output-path=}" ;; esac; done`;
 
+const LIGHTHOUSE_FAILS_AFTER_WRITING = `for arg in "$@"; do case "$arg" in --output-path=*) printf '%s' "$REPORT" > "\${arg#--output-path=}" ;; esac; done
+exit 1`;
+
+const RUNTIME_ERROR_REPORT = JSON.stringify({
+  categories: { performance: { score: null }, accessibility: { score: null }, "best-practices": { score: null }, seo: { score: null } },
+});
+
 const REPORT = JSON.stringify({
   categories: { performance: { score: 0.97 }, accessibility: { score: 0.39 }, "best-practices": { score: 1 }, seo: { score: 0.69 } },
 });
 
-function audit(env: Readonly<Record<string, string>>) {
+function audit(env: Readonly<Record<string, string>>, lighthouseStub = LIGHTHOUSE_WRITES_THE_REPORT) {
   stubBin(scratch.at("bin"), "chrome", CHROME_WRITES_ITS_PORT);
-  stubBin(scratch.at("bin"), "lighthouse", LIGHTHOUSE_WRITES_THE_REPORT);
+  stubBin(scratch.at("bin"), "lighthouse", lighthouseStub);
   scratch.write("summary", "");
   return runAction(MAIN, [], {
     PATH: `${scratch.at("bin")}:${process.env["PATH"] ?? ""}`,
@@ -63,6 +70,14 @@ test("a Lighthouse run that fails once and is not tried again fails", async () =
   expect(readFileSync(scratch.at("reports", "01-index-run-1.json"), "utf8")).toBe(REPORT);
   expect(recordedCalls(scratch.at("calls")).filter((call) => Array.isArray(call) && call.includes("--quiet"))).toHaveLength(2);
 }, 20_000);
+
+test("a Lighthouse runtime error that still writes its report and fails the step fails", async () => {
+  const ran = await audit({ RUNS: "1", PAGES: "/", REPORT: RUNTIME_ERROR_REPORT }, LIGHTHOUSE_FAILS_AFTER_WRITING);
+  expect(ran.exitCode).toBe(0);
+  expect(scratch.read("summary")).toContain("| `/` | none | none | none | none |");
+  expect(readFileSync(scratch.at("reports", "01-index-run-1.json"), "utf8")).toBe(RUNTIME_ERROR_REPORT);
+  expect(recordedCalls(scratch.at("calls")).filter((call) => Array.isArray(call) && call.includes("--quiet"))).toHaveLength(3);
+}, 30_000);
 
 test("a chrome-path that does not exist and still audits fails", async () => {
   const ran = await audit({ CHROME: scratch.at("no-chrome") });

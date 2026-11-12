@@ -78,21 +78,14 @@ const auditOnce = Effect.fn("auditOnce")(
 );
 
 const auditPage = Effect.fn("auditPage")(function* (chrome: string, url: string, reportPath: string) {
-  const passed = yield* retryWithGrowingWait(auditOnce(chrome, url, reportPath), {
+  yield* retryWithGrowingWait(auditOnce(chrome, url, reportPath), {
     attempts: ATTEMPTS,
     wait: RETRY_WAIT,
     onRetry: (attempt) => Console.log(`lighthouse on ${url} attempt ${String(attempt)} failed, retrying`),
   });
   const fs = yield* FileSystem.FileSystem;
-  if (passed) {
-    return scoresOf(
-      yield* decodeReport(yield* fs.readFileString(reportPath)).pipe(
-        Effect.mapError(() => new LighthouseError({ message: `${reportPath} is not a Lighthouse report with the four category scores` })),
-      ),
-    );
-  }
-  const fallback = yield* fs.readFileString(reportPath).pipe(Effect.flatMap(decodeReport), Effect.option);
-  if (Option.isSome(fallback)) return scoresOf(fallback.value);
+  const report = yield* fs.readFileString(reportPath).pipe(Effect.flatMap(decodeReport), Effect.option);
+  if (Option.isSome(report)) return scoresOf(report.value);
   return yield* new LighthouseError({ message: `lighthouse wrote no report for ${url} in ${String(ATTEMPTS)} attempts` });
 });
 
