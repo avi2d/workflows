@@ -52,8 +52,9 @@ const startChrome = Effect.fn("startChrome")(function* (chrome: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const profile = yield* fs.makeTempDirectoryScoped({ prefix: "lighthouse-chrome-" });
-  yield* spawner.spawn(ChildProcess.make(chrome, [...CHROME_FLAGS, `--user-data-dir=${profile}`, "about:blank"], { stdin: "ignore", stdout: "ignore", stderr: "ignore" }));
+  const profile = yield* fs.makeTempDirectory({ prefix: "lighthouse-chrome-" });
+  yield* Effect.addFinalizer(() => fs.remove(profile, { recursive: true }).pipe(Effect.ignore));
+  yield* spawner.spawn(ChildProcess.make(chrome, [...CHROME_FLAGS, `--user-data-dir=${profile}`, "about:blank"], { stdin: "ignore", stdout: "ignore", stderr: "ignore", forceKillAfter: Duration.seconds(5) }));
   const portFile = path.join(profile, PORT_FILE);
   const readPort = fs.readFileString(portFile).pipe(
     Effect.map(firstLine),

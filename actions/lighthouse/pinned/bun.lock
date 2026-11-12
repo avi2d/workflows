@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "lighthouse-action",
+      "name": "lighthouse-pinned",
       "dependencies": {
         "lighthouse": "13.6.0",
       },
