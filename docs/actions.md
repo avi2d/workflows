@@ -159,6 +159,38 @@ An image whose version differs from the caller's `playwright-core` holds other b
 | `browsers` | `webkit` | the browsers to install, separated by spaces |
 | `cache` | `true` | whether to restore and save `~/.cache/ms-playwright`, keyed on the browsers, the runner OS and `bun.lock` |
 
+## lighthouse
+
+Serves a built folder on a local address and audits each of its pages with Lighthouse.
+It writes the median score of each category to the job summary, showing none where Lighthouse leaves a category unscored.
+It keeps every run's JSON report as the `lighthouse-reports` artifact.
+The scores are advice: no score fails the step.
+The step fails only when a page gets no report with the four category scores in three attempts, or when an input names nothing it can use.
+
+The caller builds the site first, since one site's build for the audit may differ from its default build:
+
+```yaml
+- uses: avi2d/workflows/actions/setup@v2
+- run: bun run build:production
+- uses: avi2d/workflows/actions/lighthouse@v2
+  with:
+    site: dist
+```
+
+Every `.html` file of the folder is a page, with `index.html` audited at its folder's address.
+Each run starts a fresh headless Chrome with its own profile folder and hands Lighthouse its debugging port, so Lighthouse never launches Chrome itself.
+Lighthouse's own launch derives the profile folder from the machine's `PATH` under WSL, and fails there.
+Lighthouse runs on mobile settings with the four categories performance, accessibility, best practices and SEO.
+The action pins Lighthouse in `actions/lighthouse/pinned/package.json`, and installs it apart from the caller's dependencies.
+It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or later.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `site` | required | the built folder to serve and audit |
+| `runs` | `3` | how many times to audit each page, whose median the summary shows |
+| `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
+| `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
+
 ## heavy-slot
 
 Takes or frees the machine's heavy slot around a heavy step, on runners whose name starts with the prefix the caller names.
