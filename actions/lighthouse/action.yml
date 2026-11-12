@@ -27,8 +27,7 @@ runs:
     - name: install the pinned Lighthouse
       shell: bash
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH/pinned"
-    - id: audit
-      name: audit each page and write the median scores to the summary
+    - name: audit each page and write the median scores to the summary
       shell: bash
       env:
         SITE: ${{ inputs.site }}

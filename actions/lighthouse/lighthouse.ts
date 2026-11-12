@@ -86,7 +86,7 @@ const auditPage = Effect.fn("auditPage")(function* (chrome: string, url: string,
   const fs = yield* FileSystem.FileSystem;
   const report = yield* fs.readFileString(reportPath).pipe(Effect.flatMap(decodeReport), Effect.option);
   if (Option.isSome(report)) return scoresOf(report.value);
-  return yield* new LighthouseError({ message: `lighthouse wrote no report for ${url} in ${String(ATTEMPTS)} attempts` });
+  return yield* new LighthouseError({ message: `lighthouse wrote no report with the four category scores to ${reportPath} for ${url} in ${String(ATTEMPTS)} attempts` });
 });
 
 export const main = Effect.gen(function* () {

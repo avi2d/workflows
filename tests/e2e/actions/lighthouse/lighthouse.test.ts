@@ -37,7 +37,6 @@ function audit(env: Readonly<Record<string, string>>, lighthouseStub = LIGHTHOUS
     CHROME: scratch.at("bin", "chrome"),
     REPORTS: scratch.at("reports"),
     REPORT,
-    GITHUB_OUTPUT: scratch.at("output"),
     GITHUB_STEP_SUMMARY: scratch.at("summary"),
     ...env,
   });
