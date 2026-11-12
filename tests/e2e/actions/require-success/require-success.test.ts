@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dir, "../../../../actions/require-success/main.sh");
+const SCRIPT = join(import.meta.dir, "../../../../actions/require-success/main.ts");
 
 function gate(results: string, skips = "") {
-  const result = Bun.spawnSync(["bash", SCRIPT], { env: { RESULTS: results, SKIPS: skips } });
+  const result = Bun.spawnSync([process.execPath, SCRIPT], { env: { RESULTS: results, SKIPS: skips } });
   return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
 

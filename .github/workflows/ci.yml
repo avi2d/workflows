@@ -139,6 +139,30 @@ jobs:
           CODE: ${{ steps.code.outputs.docs-only }}
           NONE: ${{ steps.none.outputs.docs-only }}
         run: bun ci/docs-only-smoke.ts verify
+  require-success:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: a gate in a job that holds no Bun that cannot start, or that refuses a success and an expected skip, fails
+        uses: ./actions/require-success
+        with:
+          results: unit=success e2e=skipped
+          skips: e2e=true
+      - id: failed
+        continue-on-error: true
+        uses: ./actions/require-success
+        with:
+          results: unit=success e2e=failure
+      - name: a gate that passes a failed result fails
+        env:
+          OUTCOME: ${{ steps.failed.outcome }}
+        run: test "$OUTCOME" = failure
   head-status:
     # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
@@ -364,7 +388,7 @@ jobs:
         run: bun ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-version, release-guard]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, require-success, head-status, playwright, heavy-slot, kit-bin, mutation-scope, secrets-pack, release-version, release-guard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -364,6 +364,7 @@ A build that changes nothing makes no commit.
 Fails unless every named result is `success` or an expected skip, and names each one that is not.
 A gate job that `needs` other jobs runs it with `if: always()`, so a cancelled job or an unexpected skip fails the gate.
 A result that is `skipped` passes only when `skips` holds the same name with `true`, such as a job whose `if:` skips it on a docs-only change.
+In a job that holds no Bun, such as a gate that runs before setup, it installs the Bun this repository's `.bun-version` names, as setup does.
 
 | Input | Default | What it sets |
 | --- | --- | --- |

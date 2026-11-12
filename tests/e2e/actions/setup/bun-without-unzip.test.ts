@@ -32,21 +32,33 @@ beforeEach(() => {
   scratch.write("repository/.bun-version", "1.4.3\n");
 });
 
-function setup(part: string) {
-  const env = { PATH: scratch.at("bin"), HOME: scratch.at("home"), RUNNER_TEMP: scratch.at("temp"), STUB_RECORD: scratch.at("calls") };
-  const result = Bun.spawnSync([onPath("bash"), SCRIPT, part], { cwd: scratch.at("repository"), env });
+function setup(part: string, args: readonly string[] = [], extraEnv: Record<string, string> = {}) {
+  const env = { PATH: scratch.at("bin"), HOME: scratch.at("home"), RUNNER_TEMP: scratch.at("temp"), STUB_RECORD: scratch.at("calls"), ...extraEnv };
+  const result = Bun.spawnSync([onPath("bash"), SCRIPT, part, ...args], { cwd: scratch.at("repository"), env });
   return { exitCode: result.exitCode, stdout: result.stdout.toString() };
 }
 
-test("an image without unzip that is left with npm's placeholder, or without the pinned Bun, where setup-bun looks for one fails", () => {
+function fetchesBunWithoutUnzip(args: readonly string[] = [], extraEnv: Record<string, string> = {}, expected: string) {
   stubBin(scratch.at("bin"), "npm", NPM_LEAVES_A_PLACEHOLDER_THAT_FAILS);
   stubBin(scratch.at("bin"), "node", INSTALL_JS_SWAPS_IN_A_BUN_THAT_PRINTS_ITS_VERSION);
-  expect(setup("bun-without-unzip")).toEqual({ exitCode: 0, stdout: "1.4.3\n" });
+  expect(setup("bun-without-unzip", args, extraEnv)).toEqual({ exitCode: 0, stdout: `${expected}\n` });
   expect(recordedCalls(scratch.at("calls"))).toEqual([
-    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), "bun@1.4.3"],
+    ["install", "--ignore-scripts", "--prefix", scratch.at("temp", "bun-from-npm"), `bun@${expected}`],
     [scratch.at("temp", "bun-from-npm/node_modules/bun/install.js")],
   ]);
-  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe("1.4.3\n");
+  expect(Bun.spawnSync([scratch.at("home", ".bun/bin/bun"), "--version"]).stdout.toString()).toBe(`${expected}\n`);
+}
+
+test("an image without unzip that is left with npm's placeholder, or without the pinned Bun, where setup-bun looks for one fails", () => {
+  fetchesBunWithoutUnzip([], {}, "1.4.3");
+});
+
+test("a version from the argument list that the file on disk replaces fails", () => {
+  fetchesBunWithoutUnzip(["1.4.4"], {}, "1.4.4");
+});
+
+test("a BUN_VERSION from the caller's environment that replaces the file on disk fails", () => {
+  fetchesBunWithoutUnzip([], { BUN_VERSION: "1.4.4" }, "1.4.3");
 });
 
 test("an image with unzip that fetches Bun through npm in place of setup-bun fails", () => {
@@ -67,6 +79,6 @@ test("an image with neither unzip nor npm that passes fails", () => {
 test("a part main.sh does not know that passes fails", () => {
   expect(setup("install-node")).toEqual({
     exitCode: 1,
-    stdout: "::error::setup's main.sh takes require-bun-version or bun-without-unzip, not 'install-node'\n",
+    stdout: "::error::setup's main.sh takes require-bun-version, bun-without-unzip or bun-held, not 'install-node'\n",
   });
 });
