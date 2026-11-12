@@ -162,10 +162,10 @@ An image whose version differs from the caller's `playwright-core` holds other b
 ## lighthouse
 
 Serves a built folder on a local address and audits each of its pages with Lighthouse.
-It writes the median score of each category to the job summary.
+It writes the median score of each category to the job summary, showing none where Lighthouse leaves a category unscored.
 It keeps every run's JSON report as the `lighthouse-reports` artifact.
 The scores are advice: no score fails the step.
-The step fails only when a page gets no report in three attempts, or when an input names nothing it can use.
+The step fails only when a page gets no report with the four category scores in three attempts, or when an input names nothing it can use.
 
 The caller builds the site first, since one site's build for the audit may differ from its default build:
 
