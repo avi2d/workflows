@@ -4,6 +4,12 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+export function needsOf(job: Record<string, unknown>): readonly string[] {
+  const needs = job["needs"];
+  if (typeof needs === "string") return [needs];
+  return Array.isArray(needs) ? needs.filter((need): need is string => typeof need === "string") : [];
+}
+
 export function workflowSteps(workflow: string, job: string): readonly Record<string, unknown>[] {
   const document: unknown = Bun.YAML.parse(readFileSync(workflow, "utf8"));
   const jobs = isRecord(document) ? document["jobs"] : undefined;

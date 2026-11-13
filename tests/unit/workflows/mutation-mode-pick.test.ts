@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Context, conditionRuns } from "../../lib/condition.ts";
-import { isRecord } from "../../lib/workflow.ts";
+import { isRecord, needsOf } from "../../lib/workflow.ts";
 
 const WORKFLOW = join(import.meta.dir, "../../../.github/workflows/mutation.yml");
 const document: unknown = Bun.YAML.parse(readFileSync(WORKFLOW, "utf8"));
@@ -23,12 +23,6 @@ function jobNamed(name: string): Record<string, unknown> {
   const job = at(jobsSection, name);
   if (!isRecord(job)) throw new Error(`mutation.yml has no job ${name}`);
   return job;
-}
-
-function needsOf(job: Record<string, unknown>): readonly string[] {
-  const needs = job["needs"];
-  if (typeof needs === "string") return [needs];
-  return Array.isArray(needs) ? needs.filter((need): need is string => typeof need === "string") : [];
 }
 
 function jobRuns(name: string, context: Context): boolean {

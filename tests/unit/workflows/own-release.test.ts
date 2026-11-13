@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { conditionRuns } from "../../lib/condition.ts";
-import { isRecord } from "../../lib/workflow.ts";
+import { isRecord, needsOf } from "../../lib/workflow.ts";
 
 const REPOSITORY = join(import.meta.dir, "../../..");
 
@@ -25,12 +25,6 @@ function inputs(job: Record<string, unknown>): Record<string, unknown> {
 function releaseJobs(): Record<string, unknown> {
   const document: unknown = Bun.YAML.parse(readFileSync(join(REPOSITORY, ".github/workflows/release.yml"), "utf8"));
   return isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
-}
-
-function needsOf(job: Record<string, unknown>): readonly string[] {
-  const needs = job["needs"];
-  if (typeof needs === "string") return [needs];
-  return Array.isArray(needs) ? needs.filter((need): need is string => typeof need === "string") : [];
 }
 
 function antecedents(jobs: Record<string, unknown>, name: string): readonly string[] {
