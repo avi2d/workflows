@@ -37,8 +37,8 @@ function commit(subject: string): void {
   git("commit", "-q", "--allow-empty", "-m", subject);
 }
 
-function build() {
-  return runAction(SCRIPT, [], env(), scratch.at("repo"));
+function build(released = "2026-11-12") {
+  return runAction(SCRIPT, [], { ...env(), RELEASE_DATE: released }, scratch.at("repo"));
 }
 
 beforeEach(() => {
@@ -62,12 +62,11 @@ test("a build on the tagged version that writes the changes since its tag into t
 
 test("a release build that drops the hand-written sections, lists a commit from before the last tag, or leaves out one since it fails", async () => {
   manifest("1.1.0");
-  const ran = await build();
+  const ran = await build("2026-11-12");
   expect(ran.exitCode).toBe(0);
-  const today = new Date().toISOString().slice(0, 10);
   const section = [
     "## 1.1.0",
-    `Released ${today}.`,
+    "Released 2026-11-12.",
     "### Features",
     `- **actions:** add a thing [#2](${URL}/pull/2)`,
     "### Fixes",
@@ -91,6 +90,18 @@ test("a landed release commit whose build rewrites the changelog, which the tag 
   expect(git("status", "--porcelain")).toBe("");
 });
 
+test("a landed release rebuilt on another day whose date moves, which the tag job refuses, fails", async () => {
+  manifest("1.1.0");
+  await build("2026-11-12");
+  commit("chore: release 1.1.0 (#5)");
+  const written = scratch.read("repo/CHANGELOG.md");
+  expect(written).toContain("Released 2026-11-12.");
+  const ran = await build("2026-11-13");
+  expect(ran.exitCode).toBe(0);
+  expect(git("status", "--porcelain")).toBe("");
+  expect(scratch.read("repo/CHANGELOG.md")).toBe(written);
+});
+
 test("a cancelled release whose section stays in the changelog fails", async () => {
   manifest("1.1.0");
   await build();
@@ -103,15 +114,16 @@ test("a cancelled release whose section stays in the changelog fails", async () 
 
 test("a release that merged behind main whose build leaves the changelog unchanged fails", async () => {
   manifest("1.1.0");
-  await build();
+  await build("2026-11-12");
   const released = scratch.read("repo/CHANGELOG.md");
   git("stash", "-q");
   commit("feat: land on main meanwhile (#6)");
   git("stash", "pop", "-q");
   scratch.write("repo/CHANGELOG.md", released);
   commit("chore: release 1.1.0 (#5)");
-  await build();
+  await build("2026-11-13");
   expect(git("status", "--porcelain")).toBe("M CHANGELOG.md");
+  expect(scratch.read("repo/CHANGELOG.md")).toContain("Released 2026-11-12.");
   expect(scratch.read("repo/CHANGELOG.md")).toContain(`- land on main meanwhile [#6](${URL}/pull/6)`);
 });
 

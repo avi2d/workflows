@@ -67,6 +67,11 @@ function headsVersion(chunk: string, version: string): boolean {
   return chunk.split("\n", 1)[0] === `## ${version}`;
 }
 
+function recordedReleased(changelog: string, version: string): string | undefined {
+  const section = chunksOf(changelog).find((chunk) => headsVersion(chunk, version));
+  return /Released (\d{4}-\d{2}-\d{2})\./.exec(section ?? "")?.[1];
+}
+
 export function withSection(changelog: string, version: string, section: string): string {
   const [intro = "", ...sections] = chunksOf(changelog);
   const at = sections.findIndex((chunk) => headsVersion(chunk, version));
@@ -136,7 +141,7 @@ const build = Effect.gen(function* () {
   if (since !== undefined && Bun.semver.order(version, since.slice(1)) !== 1) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, which is not past the last release tag ${since}` });
   }
-  const released = new Date().toISOString().slice(0, 10);
+  const released = recordedReleased(changelog, version) ?? process.env["RELEASE_DATE"] ?? new Date().toISOString().slice(0, 10);
   const section = renderSection({ version, released, subjects: yield* subjectsSince(root, since), repositoryUrl });
   if (section === undefined) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, yet no feat, fix, perf, revert or breaking commit landed since ${since ?? "the first commit"}` });
