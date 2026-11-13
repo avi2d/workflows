@@ -3,6 +3,22 @@
 Every release of `workflows`, newest first.
 The release pull request writes each new section from the conventional commits since the last release tag.
 
+## 2.5.0
+
+Released 2026-11-13.
+
+### Features
+
+- **release:** date each generated changelog section with its release day [#69](https://github.com/avi2d/workflows/pull/69)
+- **lighthouse:** add an action that audits a built site and reports median scores [#67](https://github.com/avi2d/workflows/pull/67)
+- **release:** release this repository through its own release runs [#65](https://github.com/avi2d/workflows/pull/65)
+
+### Fixes
+
+- **docs-only:** read bracket expressions as Bash does under C.UTF-8 [#61](https://github.com/avi2d/workflows/pull/61)
+
+The `v2` tag moves to this release.
+
 ## 2.4.0
 
 Released 2026-11-11.
