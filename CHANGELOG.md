@@ -3,6 +3,16 @@
 Every release of `workflows`, newest first.
 The release pull request writes each new section from the conventional commits since the last release tag.
 
+## 2.5.1
+
+Released 2026-11-13.
+
+### Fixes
+
+- **release:** run publish after a skipped preflight [#72](https://github.com/avi2d/workflows/pull/72)
+
+The `v2` tag moves to this release.
+
 ## 2.5.0
 
 Released 2026-11-13.
