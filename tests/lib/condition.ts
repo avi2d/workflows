@@ -13,6 +13,7 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
   if (typeof condition !== "string" || condition.trim() === "") return true;
   const source = condition;
   let pos = 0;
+  let checkedStatus = false;
   const skipSpaces = (): void => {
     while (pos < source.length && /\s/.test(source[pos] ?? "")) pos += 1;
   };
@@ -37,10 +38,22 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
       skipSpaces();
       if (source[pos] !== ")") throw new Error(`cannot read ${condition}`);
       pos += 1;
-      if (name === "always") return status.always;
-      if (name === "success") return status.success;
-      if (name === "cancelled") return status.cancelled;
-      if (name === "failure") return status.failure;
+      if (name === "always") {
+        checkedStatus = true;
+        return status.always;
+      }
+      if (name === "success") {
+        checkedStatus = true;
+        return status.success;
+      }
+      if (name === "cancelled") {
+        checkedStatus = true;
+        return status.cancelled;
+      }
+      if (name === "failure") {
+        checkedStatus = true;
+        return status.failure;
+      }
       return true;
     }
     if (name === "true") return true;
@@ -97,5 +110,5 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
   const result = parseOr();
   skipSpaces();
   if (pos !== source.length) throw new Error(`cannot read ${condition}`);
-  return result;
+  return checkedStatus ? result : result && status.success;
 }
