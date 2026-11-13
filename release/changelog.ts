@@ -141,7 +141,7 @@ const build = Effect.gen(function* () {
   if (since !== undefined && Bun.semver.order(version, since.slice(1)) !== 1) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, which is not past the last release tag ${since}` });
   }
-  const released = recordedReleased(changelog, version) ?? process.env["RELEASE_DATE"] ?? new Date().toISOString().slice(0, 10);
+  const released = recordedReleased(changelog, version) ?? new Date().toISOString().slice(0, 10);
   const section = renderSection({ version, released, subjects: yield* subjectsSince(root, since), repositoryUrl });
   if (section === undefined) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, yet no feat, fix, perf, revert or breaking commit landed since ${since ?? "the first commit"}` });

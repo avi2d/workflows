@@ -2,7 +2,6 @@ import { beforeEach, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { useScratch } from "../lib/scratch.ts";
-import { runAction } from "../lib/stub-api.ts";
 
 const SCRIPT = join(import.meta.dir, "../../../release/changelog.ts");
 const URL = "https://github.com/owner/repo";
@@ -37,8 +36,20 @@ function commit(subject: string): void {
   git("commit", "-q", "--allow-empty", "-m", subject);
 }
 
-function build(released = "2026-11-12") {
-  return runAction(SCRIPT, [], { ...env(), RELEASE_DATE: released }, scratch.at("repo"));
+async function build(fixed = "2026-11-12") {
+  scratch.write(
+    "clock.ts",
+    `const fixed = Date.parse("${fixed}T00:00:00.000Z");\nconst RealDate = Date;\nglobalThis.Date = class extends RealDate {\n  constructor(...args) {\n    super(...(args.length === 0 ? [fixed] : args));\n  }\n  static now() {\n    return fixed;\n  }\n};\n`,
+  );
+  const child = Bun.spawn([process.execPath, "--preload", scratch.at("clock.ts"), SCRIPT], {
+    cwd: scratch.at("repo"),
+    env: env(),
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
+  return { exitCode, stdout, stderr };
 }
 
 beforeEach(() => {
