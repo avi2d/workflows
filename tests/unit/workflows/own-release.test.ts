@@ -51,6 +51,14 @@ test("a publish that never moves the major tag or never writes the release page 
   expect(existsSync(join(REPOSITORY, entry ?? ""))).toBe(true);
 });
 
+test("a publish that a skipped preflight keeps from running, or that runs after a verify that did not succeed, fails", () => {
+  const publish = Bun.YAML.parse(readFileSync(join(REPOSITORY, ".github/workflows/release.yml"), "utf8"));
+  const jobs = isRecord(publish) && isRecord(publish["jobs"]) ? publish["jobs"] : {};
+  const job = isRecord(jobs["publish"]) ? jobs["publish"] : {};
+  expect(job["needs"]).toBe("verify");
+  expect(job["if"]).toBe("${{ always() && !cancelled() && needs.verify.result == 'success' }}");
+});
+
 test("a build that the release pull request and the tag check run but package.json does not name fails", () => {
   const manifest: unknown = JSON.parse(readFileSync(join(REPOSITORY, "package.json"), "utf8"));
   const scripts = isRecord(manifest) && isRecord(manifest["scripts"]) ? manifest["scripts"] : {};

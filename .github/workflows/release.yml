@@ -99,6 +99,7 @@ jobs:
   # Only this job holds the publish token, so no lint, test or caller check runs beside it.
   publish:
     needs: verify
+    if: ${{ always() && !cancelled() && needs.verify.result == 'success' }}
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
