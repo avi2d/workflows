@@ -1,6 +1,15 @@
 export type Context = Readonly<Record<string, string>>;
 
-export function conditionRuns(condition: unknown, context: Context): boolean {
+export type Status = {
+  readonly always: boolean;
+  readonly cancelled: boolean;
+  readonly success: boolean;
+  readonly failure: boolean;
+};
+
+const running: Status = { always: true, cancelled: false, success: true, failure: false };
+
+export function conditionRuns(condition: unknown, context: Context, status: Status = running): boolean {
   if (typeof condition !== "string" || condition.trim() === "") return true;
   const source = condition;
   let pos = 0;
@@ -28,8 +37,10 @@ export function conditionRuns(condition: unknown, context: Context): boolean {
       skipSpaces();
       if (source[pos] !== ")") throw new Error(`cannot read ${condition}`);
       pos += 1;
-      if (name === "always" || name === "success") return true;
-      if (name === "cancelled" || name === "failure") return false;
+      if (name === "always") return status.always;
+      if (name === "success") return status.success;
+      if (name === "cancelled") return status.cancelled;
+      if (name === "failure") return status.failure;
       return true;
     }
     if (name === "true") return true;
