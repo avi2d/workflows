@@ -23,12 +23,14 @@ test.each([["chore: release 2.4.0 (#60)"], ["docs(changelog): name the release"]
 test("a section out of group order, unlinked or without the major tag line fails", () => {
   const section = renderSection({
     version: "2.4.0",
+    released: "2026-11-12",
     repositoryUrl: URL,
     subjects: ["fix(ci): install first (#54)", "chore: tidy", "feat(mutation): pick the run (#57)", "feat: plain feature"],
   });
   expect(section).toBe(
     [
       "## 2.4.0",
+      "Released 2026-11-12.",
       "### Features",
       `- **mutation:** pick the run [#57](${URL}/pull/57)\n- plain feature`,
       "### Fixes",
@@ -39,7 +41,12 @@ test("a section out of group order, unlinked or without the major tag line fails
 });
 
 test("a section written from no listed change fails", () => {
-  expect(renderSection({ version: "2.4.0", repositoryUrl: URL, subjects: ["chore: tidy", "docs: say more"] })).toBeUndefined();
+  expect(renderSection({ version: "2.4.0", released: "2026-11-12", repositoryUrl: URL, subjects: ["chore: tidy", "docs: say more"] })).toBeUndefined();
+});
+
+test("a section rendered with no release date line fails the docs check", () => {
+  const section = renderSection({ version: "2.4.0", released: "2026-11-12", repositoryUrl: URL, subjects: ["fix: a thing"] });
+  expect(section?.split("\n\n")[1]).toMatch(/^Released \d{4}-\d{2}-\d{2}\.$/);
 });
 
 const HAND = "# Changelog\n\nEvery release, newest first.\n\n## 2.3.1\n\nReleased 2026-11-11.\n\n### Fixes\n\n- by hand.\n\n## 2.3.0\n\nReleased 2026-11-10.\n\n### Features\n\n- by hand too.\n";
