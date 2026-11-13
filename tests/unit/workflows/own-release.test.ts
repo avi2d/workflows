@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isRecord } from "../../lib/workflow.ts";
+import { conditionRuns } from "../../lib/condition.ts";
+import { isRecord, needsOf } from "../../lib/workflow.ts";
 
 const REPOSITORY = join(import.meta.dir, "../../..");
 
@@ -19,6 +20,53 @@ function triggers(file: string): Record<string, unknown> {
 
 function inputs(job: Record<string, unknown>): Record<string, unknown> {
   return isRecord(job["with"]) ? job["with"] : {};
+}
+
+function releaseJobs(): Record<string, unknown> {
+  const document: unknown = Bun.YAML.parse(readFileSync(join(REPOSITORY, ".github/workflows/release.yml"), "utf8"));
+  return isRecord(document) && isRecord(document["jobs"]) ? document["jobs"] : {};
+}
+
+function antecedents(jobs: Record<string, unknown>, name: string): readonly string[] {
+  const seen = new Set<string>();
+  const visit = (job: string): void => {
+    const body = jobs[job];
+    if (!isRecord(body)) return;
+    for (const need of needsOf(body)) {
+      if (!seen.has(need)) {
+        seen.add(need);
+        visit(need);
+      }
+    }
+  };
+  visit(name);
+  return [...seen];
+}
+
+function unwrapped(condition: unknown): unknown {
+  if (typeof condition !== "string") return condition;
+  const start = "${{";
+  const end = "}}";
+  return condition.startsWith(start) && condition.endsWith(end)
+    ? condition.slice(start.length, -end.length).trim()
+    : condition;
+}
+
+function publishRuns(jobs: Record<string, unknown>, results: Record<string, string>, cancelled: boolean): boolean {
+  const publish = isRecord(jobs["publish"]) ? jobs["publish"] : {};
+  const prior = antecedents(jobs, "publish");
+  const status = {
+    always: true,
+    cancelled,
+    success: !cancelled && prior.every((job) => results[job] === "success"),
+    failure: prior.some((job) => results[job] === "failure"),
+  };
+  const condition = unwrapped(publish["if"]);
+  if (typeof condition !== "string" || condition.trim() === "") return status.success;
+  const context = Object.fromEntries(
+    Object.entries(results).map(([job, result]) => [`needs.${job}.result`, result]),
+  );
+  return conditionRuns(condition, context, status);
 }
 
 test("a release pull request that calls the shared copy at a pinned ref in place of this commit, or never runs on dispatch and on main, fails", () => {
@@ -49,6 +97,19 @@ test("a publish that never moves the major tag or never writes the release page 
   const [runner, entry] = String(publish["publish-command"]).split(" ");
   expect(runner).toBe("bun");
   expect(existsSync(join(REPOSITORY, entry ?? ""))).toBe(true);
+});
+
+test("a publish that a skipped preflight keeps from running, or that runs after a verify that did not succeed, fails", () => {
+  const jobs = releaseJobs();
+  const publish = isRecord(jobs["publish"]) ? jobs["publish"] : {};
+  expect(needsOf(publish)).toEqual(["verify"]);
+  expect(publishRuns(jobs, { preflight: "skipped", verify: "success" }, false)).toBe(true);
+  expect(publishRuns(jobs, { preflight: "success", verify: "success" }, false)).toBe(true);
+  expect(publishRuns(jobs, { preflight: "success", verify: "failure" }, false)).toBe(false);
+  expect(publishRuns(jobs, { preflight: "skipped", verify: "failure" }, false)).toBe(false);
+  expect(publishRuns(jobs, { preflight: "success", verify: "cancelled" }, false)).toBe(false);
+  expect(publishRuns(jobs, { preflight: "success", verify: "skipped" }, false)).toBe(false);
+  expect(publishRuns(jobs, { preflight: "success", verify: "success" }, true)).toBe(false);
 });
 
 test("a build that the release pull request and the tag check run but package.json does not name fails", () => {
