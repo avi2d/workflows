@@ -55,7 +55,7 @@ jobs:
     timeout-minutes: 10
     steps:
       # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+      - uses: avi2d/workflows/actions/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
         with:
           fetch-depth: 0
       - name: fail fast when the release cannot run
@@ -69,7 +69,7 @@ jobs:
       - name: ref is a tag
         run: test "$GITHUB_REF_TYPE" = tag
       # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+      - uses: avi2d/workflows/actions/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
         with:
           fetch-depth: 0
       - name: tag is on main
@@ -109,7 +109,7 @@ jobs:
         if: inputs.publish-command == '' && !inputs.github-release
         run: exit 1
       # A ./actions/setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/actions/setup@4ac751c064c28d79887b28005c0d1a7e2c0c6488 # v2.0.0
+      - uses: avi2d/workflows/actions/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
         with:
           fetch-depth: 0
       # A publish cannot be undone, so the notes are written before it and a missing changelog section stops the release unpublished.
