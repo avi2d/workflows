@@ -43,19 +43,20 @@ function entryOf(subject: string, repositoryUrl: string): string {
 
 export type Release = {
   readonly version: string;
+  readonly released: string;
   readonly subjects: readonly string[];
   readonly repositoryUrl: string;
 };
 
 // Undefined when no subject is a change a release lists.
-export function renderSection({ version, subjects, repositoryUrl }: Release): string | undefined {
+export function renderSection({ version, released, subjects, repositoryUrl }: Release): string | undefined {
   const major = PLAIN_VERSION.exec(version)?.[1];
   const groups = GROUPS.flatMap((group) => {
     const listed = subjects.filter((subject) => groupOf(subject) === group).map((subject) => entryOf(subject, repositoryUrl));
     return listed.length === 0 ? [] : [`### ${group}`, listed.join("\n")];
   });
   if (major === undefined || groups.length === 0) return undefined;
-  return [`## ${version}`, ...groups, `The \`v${major}\` tag moves to this release.`].join("\n\n");
+  return [`## ${version}`, `Released ${released}.`, ...groups, `The \`v${major}\` tag moves to this release.`].join("\n\n");
 }
 
 function chunksOf(changelog: string): string[] {
@@ -64,6 +65,11 @@ function chunksOf(changelog: string): string[] {
 
 function headsVersion(chunk: string, version: string): boolean {
   return chunk.split("\n", 1)[0] === `## ${version}`;
+}
+
+function recordedReleased(changelog: string, version: string): string | undefined {
+  const section = chunksOf(changelog).find((chunk) => headsVersion(chunk, version));
+  return /Released (\d{4}-\d{2}-\d{2})\./.exec(section ?? "")?.[1];
 }
 
 export function withSection(changelog: string, version: string, section: string): string {
@@ -135,7 +141,8 @@ const build = Effect.gen(function* () {
   if (since !== undefined && Bun.semver.order(version, since.slice(1)) !== 1) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, which is not past the last release tag ${since}` });
   }
-  const section = renderSection({ version, subjects: yield* subjectsSince(root, since), repositoryUrl });
+  const released = recordedReleased(changelog, version) ?? new Date().toISOString().slice(0, 10);
+  const section = renderSection({ version, released, subjects: yield* subjectsSince(root, since), repositoryUrl });
   if (section === undefined) {
     return yield* new ChangelogRefused({ message: `${MANIFEST} holds ${version}, yet no feat, fix, perf, revert or breaking commit landed since ${since ?? "the first commit"}` });
   }
