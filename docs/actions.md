@@ -207,23 +207,37 @@ on:
 permissions:
   contents: read
 jobs:
+  runner:
+    uses: avi2d/workflows/.github/workflows/runner.yml@v2
   draft-hold:
-    runs-on: ubuntu-latest
+    needs: runner
+    runs-on: ${{ needs.runner.outputs.runs-on }}
     permissions:
       actions: write
     steps:
       - uses: avi2d/workflows/actions/draft-hold@v2
   checks:
     needs: draft-hold
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.runner.outputs.runs-on }}
     steps:
       - uses: avi2d/workflows/actions/setup@v2
       - run: bun run test
+  required:
+    needs: [runner, draft-hold, checks]
+    if: always()
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+    steps:
+      - uses: avi2d/workflows/actions/require-success@v2
+        with:
+          results: hold=${{ needs['draft-hold'].result }} checks=${{ needs.checks.result }}
 ```
 
 The caller adds `ready_for_review`, which starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
 Only the job that cancels carries `actions: write`, and no workflow grants it workflow wide.
-The gate job runs only the hold action, with no checkout and no other code, and every job that would otherwise start by itself needs the gate job.
+The hold job runs only the hold action, with no checkout and no other code, and every job that would otherwise start by itself needs the hold job.
+The hold job runs on the caller's runner pick, because a hosted gate the caller cannot start leaves the checks skipped.
+The runner must have `gh`, which the hold calls to cancel the run.
+Point the required check at the `always()` gate, which fails where the hold or the checks are skipped or cancelled, as this repository's own `checks` job does.
 A preview workflow leaves the hold off.
 
 It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
