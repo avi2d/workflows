@@ -250,7 +250,7 @@ So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts 
 A dispatched run also passes through it untouched.
 When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
 
-On a draft push the required check shows cancelled, and after a re-run by hand or after the draft turns ready it shows the checks result.
+On a draft push the required check shows cancelled, or failed where the required check is an `always()` gate job, and after a re-run by hand or after the draft turns ready it shows the checks result.
 
 GitHub does not stop a job whose `if:` is `always()`.
 A gate job with `always()` that needs the held jobs fails on their cancelled results without this action, which keeps the required check unmet.

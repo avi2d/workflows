@@ -23,26 +23,25 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: cancel the run when a push to a draft pull request started it
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          DRAFT: ${{ github.event.pull_request.draft }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-        run: |
-          case "$EVENT_NAME" in
-            pull_request|pull_request_target) ;;
-            *) exit 0 ;;
-          esac
-          if [ "$DRAFT" != true ]; then exit 0; fi
-          if [ "$RUN_ATTEMPT" != 1 ]; then exit 0; fi
-          if ! gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null; then
-            echo "::warning::draft-hold could not cancel this run, so the checks run."
-            exit 0
-          fi
-          echo "::notice::The pull request is a draft, so its checks wait."
-          sleep 30
-          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: actions/draft-hold
+      - uses: ./actions/draft-hold
+  draft-hold-smoke:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: actions/draft-hold
+      - uses: ./actions/draft-hold
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || github.run_attempt != 1 }}
+        name: a run that is no held draft but cancels itself fails
   static:
     needs: draft-hold
     runs-on: ubuntu-latest
@@ -122,7 +121,7 @@ jobs:
         run: bunx checks-secrets HEAD
   gitleaks-cache:
     # The fill job's cache save runs in its post step, which ends before this job starts.
-    needs: [draft-hold, gitleaks-cache-fill]
+    needs: gitleaks-cache-fill
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -449,7 +448,7 @@ jobs:
         run: bun ci/release-skeleton.ts .github/workflows/release-pr.yml .github/workflows/release.yml
   checks:
     # Branch protection passes a skipped check, so this runs after a failed part and fails.
-    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, require-success, head-status, playwright, heavy-slot, kit-bin, lighthouse, mutation-scope, secrets-pack, release-version, release-guard]
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, require-success, head-status, playwright, heavy-slot, kit-bin, lighthouse, mutation-scope, secrets-pack, release-version, release-guard, draft-hold-smoke]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

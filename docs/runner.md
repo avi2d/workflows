@@ -46,8 +46,9 @@ jobs:
 ```
 
 Keep the preview in its own workflow file with the input off, because the cancel stops every job of the run that has not finished.
-A caller that passes no input and grants no actions permission keeps working exactly as today.
-On a draft push the required check shows cancelled, and after a re-run by hand or after the draft turns ready it shows the checks result.
+The pick requests no permission the caller did not grant, so a caller that passes no input and grants nothing keeps working exactly as today.
+The input works from the release that carries the action: the hold job runs only when a caller sets the input, so a caller that leaves the input off never resolves the reference.
+On a draft push the required check shows cancelled, or failed where the required check is an `always()` gate job, and after a re-run by hand or after the draft turns ready it shows the checks result.
 The hold job runs only on the first attempt of a draft pull request run, so other runs bill nothing extra.
 
 ## Costs

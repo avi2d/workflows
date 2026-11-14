@@ -10,31 +10,21 @@ on:
       runs-on:
         description: The caller's CI_RUNS_ON variable when set, else ubuntu-latest.
         value: ${{ vars.CI_RUNS_ON || jobs.hosted-minutes.outputs.runs-on || 'ubuntu-latest' }}
-permissions:
-  contents: read
 jobs:
   draft-hold:
     if: ${{ inputs.draft-hold && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && github.event.pull_request.draft == true && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      actions: write
     steps:
-      - name: cancel the run when a push to a draft pull request started it
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null; then
-            echo "::notice::The pull request is a draft, so its checks wait."
-          else
-            echo "::warning::draft-hold could not cancel this run, so the checks run."
-          fi
+      - uses: avi2d/workflows/actions/draft-hold@v2
   # A hosted job refused for want of minutes fails before any step, so continue-on-error cannot keep it off the check list.
   hosted-minutes:
     if: ${{ !vars.CI_RUNS_ON }}
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 1
+    permissions:
+      contents: read
     outputs:
       runs-on: ubuntu-latest
     steps:
@@ -44,6 +34,8 @@ jobs:
     if: ${{ vars.CI_RUNS_ON }}
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 1
+    permissions:
+      contents: read
     steps:
       - run: 'echo "runner pick: $RUNS_ON"'
         env:
