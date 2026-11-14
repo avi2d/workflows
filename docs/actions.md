@@ -217,7 +217,7 @@ jobs:
     steps:
       - uses: avi2d/workflows/actions/draft-hold@v2
   checks:
-    needs: draft-hold
+    needs: [runner, draft-hold]
     runs-on: ${{ needs.runner.outputs.runs-on }}
     steps:
       - uses: avi2d/workflows/actions/setup@v2
@@ -253,7 +253,7 @@ Keep the required check on such an `always()` gate.
 
 GitHub does not stop a job whose `if:` is `always()`.
 A gate job with `always()` that needs the held jobs fails on their cancelled results, which keeps the required check unmet.
-Called inside such a job, the action waits for GitHub to stop the job and then fails it.
+Called inside such a job, the action waits its 30 seconds, GitHub does not stop the job, and the action then fails it.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
