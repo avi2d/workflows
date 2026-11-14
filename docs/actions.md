@@ -7,8 +7,8 @@ audience: consumers
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
 A caller calls it as `avi2d/workflows/actions/<name>@v2`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
-Every action but setup, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
-heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
+Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
+draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
 `ci/heavy-slot-smoke.sh` stays in shell so its job, which runs no setup, proves heavy-slot needs no Bun.
 `ci/package-hosts-smoke.sh` stays in shell because its listener starts before setup, so a setup that asked an Ubuntu package host fails the job.
 `ci/actionlint.sh` stays in shell because it only runs actionlint's own Bash installer and then actionlint.
@@ -190,6 +190,48 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 | `runs` | `3` | how many times to audit each page, whose median the summary shows |
 | `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
 | `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
+
+## draft-hold
+
+Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
+A job that calls it first spends seconds on a draft push, and every job of the run that has not finished stops with it.
+A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed, so a required check stays unmet until the checks run.
+
+The caller's workflow makes three edits:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: avi2d/workflows/actions/draft-hold@v2
+      - uses: avi2d/workflows/actions/setup@v2
+      - run: bun run test
+```
+
+- `ready_for_review` starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
+- `actions: write` lets the job's token cancel its own run.
+- The step goes first in each job that starts without waiting for another, and any step above it runs on every draft push.
+
+It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
+So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts a draft's checks by hand, and the result lands on the pull request as the same check.
+A dispatched run also passes through it untouched.
+When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
+
+GitHub does not stop a job whose `if:` is `always()`.
+A gate job with `always()` that needs the held jobs fails on their cancelled results without this action, which keeps the required check unmet.
+Called inside such a job, the action waits `wait-seconds` and then fails the job.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `token` | the job's token | the token that cancels the run, which needs `actions: write` |
+| `wait-seconds` | `30` | how long the step waits for GitHub to stop the job once the cancel is accepted, before it fails the job |
 
 ## heavy-slot
 

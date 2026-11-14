@@ -2,12 +2,13 @@ name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
   statuses: write
+  actions: write
   # The title lookup on a dispatched run needs pull request read access.
   pull-requests: read
 
@@ -24,6 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/draft-hold
       # The head, not the merge ref, so the gates read the commit the range ends at.
       # Whole history: the range starts where the head branched off the base.
       - id: setup
