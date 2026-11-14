@@ -195,7 +195,8 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 
 Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
 Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
-A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed, so a required check stays unmet until the checks run.
+A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
+A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.
 
 A caller holds its checks through one gate job:
 
@@ -230,17 +231,19 @@ So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts 
 A dispatched run also passes through it untouched.
 When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
 
-On a draft push the jobs that started show cancelled and the jobs that never started show skipped, and a skipped required check reads as passed.
+On a draft push the required check shows cancelled, or failed where it is an `always()` gate job.
 After a re-run by hand or after the draft turns ready the checks run and the required check shows their result.
+Skipped is not what the cancel produces.
+The gate job fails after its wait only where GitHub never stops the run, and there only an `always()` gate that fails on skipped parts, such as require-success, keeps the check unmet.
+Keep the required check on such an `always()` gate.
 
 GitHub does not stop a job whose `if:` is `always()`.
-A gate job with `always()` that needs the held jobs fails on their cancelled results without this action, which keeps the required check unmet.
-Called inside such a job, the action waits `wait-seconds` and then fails the job.
+A gate job with `always()` that needs the held jobs fails on their cancelled results, which keeps the required check unmet.
+Called inside such a job, the action waits for GitHub to stop the job and then fails it.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `token` | the job's token | the token that cancels the run, which needs `actions: write` |
-| `wait-seconds` | `30` | how long the step waits for GitHub to stop the job once the cancel is accepted, before it fails the job |
 
 ## heavy-slot
 

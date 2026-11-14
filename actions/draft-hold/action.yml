@@ -4,9 +4,6 @@ inputs:
   token:
     description: The token that cancels the run. It needs actions write.
     default: ${{ github.token }}
-  wait-seconds:
-    description: How long the step waits for GitHub to stop the job once the cancel is accepted, before it fails the job.
-    default: "30"
 runs:
   using: composite
   steps:
@@ -17,5 +14,5 @@ runs:
         EVENT_NAME: ${{ github.event_name }}
         DRAFT: ${{ github.event.pull_request.draft }}
         RUN_ATTEMPT: ${{ github.run_attempt }}
-        WAIT_SECONDS: ${{ inputs.wait-seconds }}
+        WAIT_SECONDS: "30"
       run: bash "$GITHUB_ACTION_PATH/main.sh"

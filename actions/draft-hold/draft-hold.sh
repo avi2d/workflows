@@ -14,7 +14,7 @@ if [ "$RUN_ATTEMPT" != 1 ]; then
   exit 0
 fi
 
-# A skipped job reads as a passed check, and a cancelled one does not.
+# A cancelled check stays unmet, and a skipped one would read as passed.
 if ! gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null; then
   echo "::warning::draft-hold could not cancel this run, so the checks run. Give the job actions: write to hold a draft's checks."
   exit 0
