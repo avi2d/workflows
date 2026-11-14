@@ -197,27 +197,7 @@ Cancels the run a push to a draft pull request started, so a draft's checks wait
 Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed, so a required check stays unmet until the checks run.
 
-A caller that calls the runner pick holds its checks through the pick:
-
-```yaml
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-jobs:
-  runner:
-    uses: avi2d/workflows/.github/workflows/runner.yml@v2
-    with:
-      draft-hold: true
-    permissions:
-      actions: write
-  checks:
-    needs: runner
-    runs-on: ${{ needs.runner.outputs.runs-on }}
-    steps:
-      - run: bun run test
-```
-
-A caller that does not call the pick holds its checks through one gate job:
+A caller holds its checks through one gate job:
 
 ```yaml
 on:
@@ -240,8 +220,8 @@ jobs:
       - run: bun run test
 ```
 
-In both shapes `ready_for_review` starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
-In both shapes only the job that cancels carries `actions: write`, and no workflow grants it workflow wide.
+The caller adds `ready_for_review`, which starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
+Only the job that cancels carries `actions: write`, and no workflow grants it workflow wide.
 The gate job runs only the hold action, with no checkout and no other code, and every job that would otherwise start by itself needs the gate job.
 A preview workflow leaves the hold off.
 
@@ -250,7 +230,8 @@ So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts 
 A dispatched run also passes through it untouched.
 When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
 
-On a draft push the required check shows cancelled, or failed where the required check is an `always()` gate job, and after a re-run by hand or after the draft turns ready it shows the checks result.
+On a draft push the jobs that started show cancelled and the jobs that never started show skipped, and a skipped required check reads as passed.
+After a re-run by hand or after the draft turns ready the checks run and the required check shows their result.
 
 GitHub does not stop a job whose `if:` is `always()`.
 A gate job with `always()` that needs the held jobs fails on their cancelled results without this action, which keeps the required check unmet.
