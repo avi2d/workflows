@@ -11,6 +11,7 @@ A private caller passes its settings in as inputs, as secrets it names, or throu
 - The `@avi2dg/checks` kit installed for the docs-only action, which runs its `checks-docs-only` bin unless the caller names `paths`.
 - A job with `statuses: write` for the commitlint-status and head-status actions, and `pull-requests: read` as well when head-status reads the head of `pull-request`.
 - A job with `contents: write` for the github-release action.
+- A job with `actions: write` and `gh` on the runner for the draft-hold action.
 - Chrome on the runner for the lighthouse action, which `ubuntu-latest` holds.
 - Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup action installs.
 
@@ -65,16 +66,12 @@ A public caller does not call the pick and stays on `ubuntu-latest`, because a f
 
 A caller releases on demand through two reusable workflows, as [The release runs](docs/release.md) shows.
 
-## Bump the pin with Dependabot
-
-[Bump the pin with Dependabot](docs/dependabot.md) shows the caller's config.
-
 ## What a private caller supplies
 
 | Setting | How it reaches the shared code |
 | --- | --- |
 | The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release runs read in the caller's context |
-| A token other than the job's own | the `token` input of commitlint-status or head-status, written as `${{ secrets.NAME }}` in the caller |
+| A token other than the job's own | the `token` input of commitlint-status, head-status or draft-hold, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
 | The browsers a job needs | the `browsers` input of playwright |
 | The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
