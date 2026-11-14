@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 60
     steps:
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
         with:
           commands: checks-mutation-baseline
@@ -74,7 +74,7 @@ jobs:
     timeout-minutes: 30
     steps:
       # The head is what the run judges, and the scope diffs it against the base, so the checkout holds the whole history.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
@@ -125,7 +125,7 @@ jobs:
       shards: ${{ steps.shards.outputs.shards }}
     steps:
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
         with:
           commands: checks-mutation-baseline checks-mutation-scope
@@ -149,7 +149,7 @@ jobs:
     timeout-minutes: 60
     steps:
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
       - name: Run one shard
         env:
           SHARD: ${{ matrix.shard }}
@@ -172,7 +172,7 @@ jobs:
     timeout-minutes: 15
     steps:
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
         with:
           commands: checks-mutation-baseline checks-mutation-merge
