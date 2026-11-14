@@ -7,8 +7,8 @@ audience: consumers
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
 A caller calls it as `avi2d/workflows/actions/<name>@v2`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
-Every action but setup, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
-heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
+Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
+draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
 `ci/heavy-slot-smoke.sh` stays in shell so its job, which runs no setup, proves heavy-slot needs no Bun.
 `ci/package-hosts-smoke.sh` stays in shell because its listener starts before setup, so a setup that asked an Ubuntu package host fails the job.
 `ci/actionlint.sh` stays in shell because it only runs actionlint's own Bash installer and then actionlint.
@@ -190,6 +190,74 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 | `runs` | `3` | how many times to audit each page, whose median the summary shows |
 | `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
 | `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
+
+## draft-hold
+
+Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
+Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
+A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
+A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.
+
+A caller holds its checks through one gate job:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+jobs:
+  runner:
+    uses: avi2d/workflows/.github/workflows/runner.yml@v2
+  draft-hold:
+    needs: runner
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+    permissions:
+      actions: write
+    steps:
+      - uses: avi2d/workflows/actions/draft-hold@v2
+  checks:
+    needs: [runner, draft-hold]
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+    steps:
+      - uses: avi2d/workflows/actions/setup@v2
+      - run: bun run test
+  required:
+    needs: [runner, draft-hold, checks]
+    if: always()
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+    steps:
+      - uses: avi2d/workflows/actions/require-success@v2
+        with:
+          results: hold=${{ needs['draft-hold'].result }} checks=${{ needs.checks.result }}
+```
+
+The caller adds `ready_for_review`, which starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
+Only the job that cancels carries `actions: write`, and no workflow grants it workflow wide.
+The hold job runs only the hold action, with no checkout and no other code, and every job that would otherwise start by itself needs the hold job.
+The hold job runs on the caller's runner pick, because a hosted gate the caller cannot start leaves the checks skipped.
+The runner must have `gh`, which the hold calls to cancel the run.
+Point the required check at the `always()` gate, which fails where the hold or the checks are skipped or cancelled, as this repository's own `checks` job does.
+A preview workflow leaves the hold off.
+
+It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
+So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts a draft's checks by hand, and the result lands on the pull request as the same check.
+A dispatched run also passes through it untouched.
+When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
+
+On a draft push the required check shows cancelled, or failed where it is an `always()` gate job.
+After a re-run by hand or after the draft turns ready the checks run and the required check shows their result.
+Skipped is not what the cancel produces.
+The gate job fails after its wait only where GitHub never stops the run, and there only an `always()` gate that fails on skipped parts, such as require-success, keeps the check unmet.
+Keep the required check on such an `always()` gate.
+
+GitHub does not stop a job whose `if:` is `always()`.
+A gate job with `always()` that needs the held jobs fails on their cancelled results, which keeps the required check unmet.
+Called inside such a job, the action waits its 30 seconds, GitHub does not stop the job, and the action then fails it.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `token` | the job's token | the token that cancels the run, which needs `actions: write` |
 
 ## heavy-slot
 

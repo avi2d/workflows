@@ -1,0 +1,18 @@
+name: draft-hold
+description: Cancel the run a push to a draft pull request started, so a draft's checks wait until someone re-runs that run by hand or marks the pull request ready.
+inputs:
+  token:
+    description: The token that cancels the run. It needs actions write.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: cancel the run when a push to a draft pull request started it
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        EVENT_NAME: ${{ github.event_name }}
+        DRAFT: ${{ github.event.pull_request.draft }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
+        WAIT_SECONDS: "30"
+      run: bash "$GITHUB_ACTION_PATH/main.sh"

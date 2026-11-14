@@ -2,7 +2,7 @@ name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  draft-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: actions/draft-hold
+      - uses: ./actions/draft-hold
+        name: a run that is no held draft but cancels itself fails
   static:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -61,6 +75,7 @@ jobs:
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: bash ci/actionlint.sh
   setup:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -80,6 +95,7 @@ jobs:
       - name: missing or relocked dependencies fail
         run: bun ci/setup-smoke.ts dependencies
   gitleaks-cache-fill:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -106,6 +122,7 @@ jobs:
       - name: a gitleaks the next job has to download again fails
         run: bun ci/gitleaks-cache-smoke.ts
   docs-only:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -140,6 +157,7 @@ jobs:
           NONE: ${{ steps.none.outputs.docs-only }}
         run: bun ci/docs-only-smoke.ts verify
   require-success:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -166,6 +184,7 @@ jobs:
   head-status:
     # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -196,6 +215,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
+    needs: draft-hold
     runs-on: ubuntu-latest
     # A bare runner fetches webkit's system packages from the Ubuntu package hosts, and the image holds them.
     container: mcr.microsoft.com/playwright:v1.63.0-resolute@sha256:b022639ae9197f864040f92eef7b57c6d4b47db2190f77c909d8a5d902dd4b7e
@@ -218,6 +238,7 @@ jobs:
       - name: a job that asked an Ubuntu package host for anything fails
         run: bash ci/package-hosts-smoke.sh verify
   heavy-slot:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -253,6 +274,7 @@ jobs:
           UNKNOWN: ${{ steps.unknown.outcome }}
         run: bash ci/heavy-slot-smoke.sh verify
   kit-bin:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -277,6 +299,7 @@ jobs:
           MISSING: ${{ steps.missing.outcome }}
         run: bun ci/kit-bin-smoke.ts verify
   lighthouse:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -298,6 +321,7 @@ jobs:
           REPORTS: ${{ runner.temp }}/lighthouse-reports
         run: bun ci/lighthouse-smoke.ts
   mutation-scope:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -322,6 +346,7 @@ jobs:
           EXPECT_USER_TYPE: ${{ github.event.pull_request.user.type }}
         run: bun ci/mutation-scope-smoke.ts verify
   secrets-pack:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -351,6 +376,7 @@ jobs:
           EMPTY: ${{ steps.empty.outcome }}
         run: test "$EMPTY" = failure
   release-version:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -380,6 +406,7 @@ jobs:
           MISMATCH: ${{ steps.mismatch.outcome }}
         run: test "$MISMATCH" = failure
   release-guard:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
