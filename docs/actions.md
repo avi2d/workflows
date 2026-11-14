@@ -194,10 +194,30 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 ## draft-hold
 
 Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
-A job that calls it first spends seconds on a draft push, and every job of the run that has not finished stops with it.
+Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed, so a required check stays unmet until the checks run.
 
-The caller's workflow makes three edits:
+A caller that calls the runner pick holds its checks through the pick:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+jobs:
+  runner:
+    uses: avi2d/workflows/.github/workflows/runner.yml@v2
+    with:
+      draft-hold: true
+    permissions:
+      actions: write
+  checks:
+    needs: runner
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+    steps:
+      - run: bun run test
+```
+
+A caller that does not call the pick holds its checks through one gate job:
 
 ```yaml
 on:
@@ -205,24 +225,32 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 permissions:
   contents: read
-  actions: write
 jobs:
-  checks:
+  draft-hold:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - uses: avi2d/workflows/actions/draft-hold@v2
+  checks:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    steps:
       - uses: avi2d/workflows/actions/setup@v2
       - run: bun run test
 ```
 
-- `ready_for_review` starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
-- `actions: write` lets the job's token cancel its own run.
-- The step goes first in each job that starts without waiting for another, and any step above it runs on every draft push.
+In both shapes `ready_for_review` starts the full checks when the draft turns ready, and without it a held draft turns ready with no run.
+In both shapes only the job that cancels carries `actions: write`, and no workflow grants it workflow wide.
+The gate job runs only the hold action, with no checkout and no other code, and every job that would otherwise start by itself needs the gate job.
+A preview workflow leaves the hold off.
 
 It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
 So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts a draft's checks by hand, and the result lands on the pull request as the same check.
 A dispatched run also passes through it untouched.
 When GitHub refuses the cancel, as it does for the read-only token of a fork's pull request, it warns and the checks run.
+
+On a draft push the required check shows cancelled, and after a re-run by hand or after the draft turns ready it shows the checks result.
 
 GitHub does not stop a job whose `if:` is `always()`.
 A gate job with `always()` that needs the held jobs fails on their cancelled results without this action, which keeps the required check unmet.

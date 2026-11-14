@@ -1,6 +1,11 @@
 name: runner
 on:
   workflow_call:
+    inputs:
+      draft-hold:
+        description: Whether to cancel the run a push to a draft pull request started, so the caller's checks wait until someone starts them by hand.
+        type: boolean
+        default: false
     outputs:
       runs-on:
         description: The caller's CI_RUNS_ON variable when set, else ubuntu-latest.
@@ -8,6 +13,22 @@ on:
 permissions:
   contents: read
 jobs:
+  draft-hold:
+    if: ${{ inputs.draft-hold && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && github.event.pull_request.draft == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: cancel the run when a push to a draft pull request started it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null; then
+            echo "::notice::The pull request is a draft, so its checks wait."
+          else
+            echo "::warning::draft-hold could not cancel this run, so the checks run."
+          fi
   # A hosted job refused for want of minutes fails before any step, so continue-on-error cannot keep it off the check list.
   hosted-minutes:
     if: ${{ !vars.CI_RUNS_ON }}

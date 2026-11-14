@@ -8,7 +8,6 @@ on:
 permissions:
   contents: read
   statuses: write
-  actions: write
   # The title lookup on a dispatched run needs pull request read access.
   pull-requests: read
 
@@ -18,14 +17,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  draft-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: cancel the run when a push to a draft pull request started it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          case "$EVENT_NAME" in
+            pull_request|pull_request_target) ;;
+            *) exit 0 ;;
+          esac
+          if [ "$DRAFT" != true ]; then exit 0; fi
+          if [ "$RUN_ATTEMPT" != 1 ]; then exit 0; fi
+          if ! gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" > /dev/null; then
+            echo "::warning::draft-hold could not cancel this run, so the checks run."
+            exit 0
+          fi
+          echo "::notice::The pull request is a draft, so its checks wait."
+          sleep 30
+          exit 1
   static:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./actions/draft-hold
       # The head, not the merge ref, so the gates read the commit the range ends at.
       # Whole history: the range starts where the head branched off the base.
       - id: setup
@@ -63,6 +88,7 @@ jobs:
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: bash ci/actionlint.sh
   setup:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -82,6 +108,7 @@ jobs:
       - name: missing or relocked dependencies fail
         run: bun ci/setup-smoke.ts dependencies
   gitleaks-cache-fill:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -95,7 +122,7 @@ jobs:
         run: bunx checks-secrets HEAD
   gitleaks-cache:
     # The fill job's cache save runs in its post step, which ends before this job starts.
-    needs: gitleaks-cache-fill
+    needs: [draft-hold, gitleaks-cache-fill]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -108,6 +135,7 @@ jobs:
       - name: a gitleaks the next job has to download again fails
         run: bun ci/gitleaks-cache-smoke.ts
   docs-only:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -142,6 +170,7 @@ jobs:
           NONE: ${{ steps.none.outputs.docs-only }}
         run: bun ci/docs-only-smoke.ts verify
   require-success:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -168,6 +197,7 @@ jobs:
   head-status:
     # A dispatched run's status lands on the head, where a failure shows on the pull request.
     if: github.event_name == 'pull_request'
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -198,6 +228,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
   playwright:
+    needs: draft-hold
     runs-on: ubuntu-latest
     # A bare runner fetches webkit's system packages from the Ubuntu package hosts, and the image holds them.
     container: mcr.microsoft.com/playwright:v1.63.0-resolute@sha256:b022639ae9197f864040f92eef7b57c6d4b47db2190f77c909d8a5d902dd4b7e
@@ -220,6 +251,7 @@ jobs:
       - name: a job that asked an Ubuntu package host for anything fails
         run: bash ci/package-hosts-smoke.sh verify
   heavy-slot:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -255,6 +287,7 @@ jobs:
           UNKNOWN: ${{ steps.unknown.outcome }}
         run: bash ci/heavy-slot-smoke.sh verify
   kit-bin:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -279,6 +312,7 @@ jobs:
           MISSING: ${{ steps.missing.outcome }}
         run: bun ci/kit-bin-smoke.ts verify
   lighthouse:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -300,6 +334,7 @@ jobs:
           REPORTS: ${{ runner.temp }}/lighthouse-reports
         run: bun ci/lighthouse-smoke.ts
   mutation-scope:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -324,6 +359,7 @@ jobs:
           EXPECT_USER_TYPE: ${{ github.event.pull_request.user.type }}
         run: bun ci/mutation-scope-smoke.ts verify
   secrets-pack:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -353,6 +389,7 @@ jobs:
           EMPTY: ${{ steps.empty.outcome }}
         run: test "$EMPTY" = failure
   release-version:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -382,6 +419,7 @@ jobs:
           MISMATCH: ${{ steps.mismatch.outcome }}
         run: test "$MISMATCH" = failure
   release-guard:
+    needs: draft-hold
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
