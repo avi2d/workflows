@@ -31,5 +31,8 @@ Private credentials, runner labels and customer data live with the caller, and n
 Job gates belong to the checks kit, which also writes each caller's workflow files and refuses one that differs.
 It never places a public caller's jobs on a self-hosted runner, since that placement stays the private caller's choice.
 
-A change aligns when it retires a copy every caller would otherwise keep, carries one more private setting as an input, or lets the shared steps do more while each caller's workflow files stay short callers.
-A change should be resisted when it stores anything private, duplicates what the kit decides, gives a caller's workflow file a step of its own, schedules anything beside the scan, or puts a public job on a private runner.
+A change aligns when it retires a copy every caller would otherwise keep, or when it carries one more private setting as an input.
+It also aligns when it lets the shared steps do more while each caller's workflow files stay short callers.
+A change should be resisted when it stores anything private or duplicates what the kit decides.
+Resist it as well when it gives a caller's workflow file a step of its own.
+Resist it too when it schedules anything beside the scan or puts a public job on a private runner.

@@ -1,9 +1,10 @@
 # workflows
 
 Shared GitHub Actions plumbing for avi2d repositories.
-It holds the shared CI every repository's workflow files call, the composite actions its steps run, and reusable workflows that pick the runner, scan for advisories, run mutation and release.
-The repository is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
-A private caller passes its settings in as inputs, as secrets it names, or through its repository variables.
+It holds the shared CI every repository's workflow files call and the composite actions its steps run.
+It also holds reusable workflows that pick the runner, scan for advisories, run mutation and release.
+It is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
+A private caller passes its settings in as inputs, named secrets, or repository variables.
 
 ## Before you begin
 
@@ -25,7 +26,7 @@ To call an action from a workflow, pin it to a version tag:
     fetch-depth: 0
 ```
 
-The `v3` tag moves: the release run points it at each new `v3.x.y` release, so a caller on `v3` takes each release as it lands.
+The `v3` tag moves to each new `v3.x.y` release, so a caller on `v3` takes each release as it lands.
 A caller that wants one fixed version uses its exact tag, such as `v3.0.0`, which never moves.
 The `v1` tags hold the actions at the repository root, so `avi2d/workflows/<name>@v1` still resolves.
 
@@ -69,7 +70,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 | The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
 | The site names and secrets | the `package.json` site field and `secrets: inherit` in [The shared CI](docs/shared-ci.md) |
 
-A composite action cannot read the caller's `secrets` context, so a secret reaches it only as an input the caller writes.
+A composite action cannot read the caller's `secrets` context, so each secret reaches it as a caller-written input.
 
 ## Where things are
 
