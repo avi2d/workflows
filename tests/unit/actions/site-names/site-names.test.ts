@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Exit } from "effect";
-import { readSite } from "../../../../actions/site-names/site-names.ts";
-import { namesOf } from "../../../../src/site-names.ts";
+import { namesOf, readSite } from "../../../../actions/site-names/site-names.ts";
 
 const AZALIALAW = { pages: "azalialaw", domain: "azalialaw.com", production: "azalialaw/azalialaw.com" };
 
