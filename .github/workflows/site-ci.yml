@@ -21,7 +21,6 @@ jobs:
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
       # site-names and pages-served first reach main in v3, so every step takes its action from the v3 tag.
-      - uses: avi2d/workflows/actions/draft-hold@v3
       - uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -68,6 +67,7 @@ jobs:
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           commit-dirty: "true"
+      - uses: avi2d/workflows/actions/draft-hold@v3
       - if: steps.preview.outputs.origin != ''
         uses: avi2d/workflows/actions/preview-comment@v3
         with:
@@ -100,4 +100,5 @@ jobs:
         uses: avi2d/workflows/actions/head-status@v3
         with:
           job-status: ${{ job.status }}
+          context: checks / checks
           attempts: "5"

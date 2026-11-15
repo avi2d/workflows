@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 20
     concurrency:
-      group: site-main
+      group: "${{ startsWith(github.event.head_commit.message, 'chore: release ') && format('site-main-{0}', github.sha) || 'site-main' }}"
       cancel-in-progress: false
     permissions:
       contents: write

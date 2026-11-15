@@ -13,9 +13,8 @@ jobs:
       statuses: write
       pull-requests: read
     steps:
-      # A ./actions reference resolves in the caller's checkout, so each action is pinned to a commit of main that holds it.
-      - uses: avi2d/workflows/actions/draft-hold@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
-      - uses: avi2d/workflows/actions/setup@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/draft-hold@v3
+      - uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: "0"
@@ -28,7 +27,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-commit-title
-      - uses: avi2d/workflows/actions/commitlint-status@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/commitlint-status@v3
         with:
           outcome: ${{ steps.title.outcome }}
           attempts: "5"
@@ -39,7 +38,8 @@ jobs:
       - run: bunx checks-test --pr
       # GitHub keeps a dispatched run's check off the pull request, so the release pull request reads this status.
       - if: always() && github.event_name == 'workflow_dispatch'
-        uses: avi2d/workflows/actions/head-status@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+        uses: avi2d/workflows/actions/head-status@v3
         with:
           job-status: ${{ job.status }}
+          context: checks / checks
           attempts: "5"

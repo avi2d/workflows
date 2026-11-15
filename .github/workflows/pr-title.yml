@@ -12,8 +12,7 @@ jobs:
       statuses: write
       pull-requests: read
     steps:
-      # A ./actions reference resolves in the caller's checkout, so each action is pinned to a commit of main that holds it.
-      - uses: avi2d/workflows/actions/setup@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: "false"
@@ -23,7 +22,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-commit-title
-      - uses: avi2d/workflows/actions/commitlint-status@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/commitlint-status@v3
         with:
           outcome: ${{ steps.title.outcome }}
           attempts: "5"

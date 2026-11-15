@@ -15,13 +15,12 @@ jobs:
       pull-requests: write
       actions: write
     steps:
-      # A ./actions reference resolves in the caller's checkout, so each action is pinned to a commit of main that holds it.
       # A rerun plans the branch tip, not the commit the dispatch named.
-      - uses: avi2d/workflows/actions/setup@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.ref }}
           fetch-depth: "0"
       - env:
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-release-pr ci.yml
-      - uses: avi2d/workflows/actions/held-runs@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/held-runs@v3

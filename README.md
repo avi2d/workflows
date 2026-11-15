@@ -42,7 +42,8 @@ git ls-remote https://github.com/avi2d/workflows 'refs/tags/v2.0.0*'
     fetch-depth: 0
 ```
 
-A SHA pin keeps the job on the commit that was reviewed, and `sha_pinning_required` accepts only that form.
+A SHA pin keeps the job on the commit that was reviewed.
+The v3 shared workflows call `@v3` tags, so a caller with `sha_pinning_required` turned on cannot call them.
 [The shared actions](docs/actions.md) lists what each action takes and returns.
 
 ## Call the shared CI

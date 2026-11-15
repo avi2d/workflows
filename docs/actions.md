@@ -196,7 +196,8 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 ## draft-hold
 
 Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
-Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
+In a site checks job the hold runs after the preview deploy, so the preview is up before the cancel stops the later steps.
+A code repository carries no preview, so the hold stays first there.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
 A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.
 
@@ -240,7 +241,7 @@ The hold job runs only the hold action, with no checkout and no other code, and 
 The hold job runs on the caller's runner pick, because a hosted gate the caller cannot start leaves the checks skipped.
 The runner must have `gh`, which the hold calls to cancel the run.
 Point the required check at the `always()` gate, which fails where the hold or the checks are skipped or cancelled, as this repository's own `checks` job does.
-A preview workflow leaves the hold off.
+A workflow that only removes a preview leaves the hold off.
 
 It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
 So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts a draft's checks by hand, and the result lands on the pull request as the same check.

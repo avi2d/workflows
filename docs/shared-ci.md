@@ -13,7 +13,7 @@ What differs between repositories lives in each one's `package.json` commands.
 
 | Workflow | Called by | What its one job does |
 | --- | --- | --- |
-| `site-ci.yml` | a site's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, deploys the preview, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
+| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
 | `site-main.yml` | a site's `main.yml` | builds the site, deploys it to staging, waits until staging serves it, then runs `checks-release-tag` |
 | `site-production.yml` | a site's `production.yml` | runs `checks-release-gate` on the staged commit, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
@@ -82,6 +82,7 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
 - The permissions each calling job grants, which bound what the shared job holds.
 - `secrets: inherit` where the shared workflow declares secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
+  A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.
 - The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site and `build:production` for its production run.
 

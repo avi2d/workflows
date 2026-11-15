@@ -7,17 +7,13 @@ jobs:
   release:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
-    concurrency:
-      group: release-main
-      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
       actions: read
       pull-requests: read
     steps:
-      # A ./actions reference resolves in the caller's checkout, so each action is pinned to a commit of main that holds it.
-      - uses: avi2d/workflows/actions/setup@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
+      - uses: avi2d/workflows/actions/setup@v3
         with:
           fetch-depth: "0"
       # npm takes a trusted publish only from the Node it set up with its registry.

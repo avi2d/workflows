@@ -20,7 +20,7 @@ jobs:
 ```
 
 Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the jobs run on.
-A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
+A public caller leaves `CI_RUNS_ON` unset and stays on `ubuntu-latest`, so a fork pull request never runs on the self hosted runner.
 
 ## Output
 

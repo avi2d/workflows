@@ -63,11 +63,15 @@ export const main = Effect.gen(function* () {
   const paths = servedPaths(files);
   if (paths.length === 0) return yield* new NotServed({ message: `directory names ${directory}, which holds no file to check` });
   let attempt = 0;
+  let remaining: readonly string[] = paths;
   const left = yield* readUntil(
     Effect.suspend(() => {
       attempt += 1;
-      return differing(root, origin, paths, attempt).pipe(
-        Effect.tap((found) => (found.length === 0 ? Effect.void : Console.log(`try ${String(attempt)}: ${origin} serves ${String(found.length)} of ${String(paths.length)} files unlike the build`))),
+      return differing(root, origin, remaining, attempt).pipe(
+        Effect.tap((found) => {
+          remaining = found;
+          return found.length === 0 ? Effect.void : Console.log(`try ${String(attempt)}: ${origin} serves ${String(found.length)} of ${String(paths.length)} files unlike the build`);
+        }),
       );
     }),
     (found) => found.length === 0,
