@@ -1,4 +1,4 @@
-import { Console, Effect, FileSystem, Schema } from "effect";
+import { Console, Effect, Schema } from "effect";
 import { requiredInput } from "../../lib/inputs.ts";
 import { writeOutputs } from "../../lib/step-output.ts";
 
@@ -13,10 +13,7 @@ const Domain = Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:[a-z0-9](?:
 const Repository = Schema.String.pipe(Schema.check(Schema.isPattern(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/)));
 
 const Site = Schema.Struct({ pages: ProjectName, domain: Domain, production: Repository });
-
-const Manifest = Schema.Struct({ site: Site });
-
-const decodeManifest = Schema.decodeUnknownEffect(Schema.fromJsonString(Manifest));
+const decodeSite = Schema.decodeUnknownEffect(Site);
 
 export type SiteNames = {
   readonly pages: string;
@@ -38,23 +35,19 @@ export function namesOf(site: typeof Site.Type): SiteNames {
   };
 }
 
-export const readSite = Effect.fn("readSite")(function* (manifest: string) {
-  const text = yield* (yield* FileSystem.FileSystem).readFileString(manifest).pipe(
-    Effect.mapError(() => new SiteUnnamed({ message: `${ACTION} cannot read ${manifest}` })),
-  );
-  const { site } = yield* decodeManifest(text).pipe(
-    Effect.mapError(
-      (issue) =>
-        new SiteUnnamed({
-          message: `${manifest} needs a site field such as {"pages": "azalialaw", "domain": "azalialaw.com", "production": "azalialaw/azalialaw.com"}: ${issue.message}`,
-        }),
-    ),
+export const readSite = Effect.fn("readSite")(function* (input: unknown) {
+  const site = yield* decodeSite(input).pipe(
+    Effect.mapError((issue) => new SiteUnnamed({ message: `invalid site inputs: ${issue.message}` })),
   );
   return namesOf(site);
 });
 
 export const main = Effect.gen(function* () {
-  const names = yield* readSite(yield* requiredInput(ACTION, "manifest", "MANIFEST"));
+  const names = yield* readSite({
+    pages: yield* requiredInput(ACTION, "pages", "PAGES"),
+    domain: yield* requiredInput(ACTION, "domain", "DOMAIN"),
+    production: yield* requiredInput(ACTION, "production", "PRODUCTION"),
+  });
   yield* Console.log(`the site stages on ${names["staging-origin"]}, previews on the ${names.preview} project and publishes ${names.production} at ${names["production-origin"]}`);
   yield* writeOutputs(names);
   return true;

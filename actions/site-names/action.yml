@@ -1,9 +1,15 @@
 name: site-names
-description: Write the names a site's package.json site field holds, and the project and origins they give, as step outputs.
+description: Write the site names and their derived project and origins as step outputs.
 inputs:
-  manifest:
-    description: The manifest whose site field names the Cloudflare Pages project, the domain and the repository that publishes the site.
-    default: package.json
+  pages:
+    description: The Cloudflare Pages project that stages the site.
+    required: true
+  domain:
+    description: The domain the published site answers on.
+    required: true
+  production:
+    description: The repository that publishes the site, as owner/name.
+    required: true
 outputs:
   pages:
     description: The Cloudflare Pages project that stages the site.
@@ -31,8 +37,10 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
     - id: names
-      name: read the site names from the manifest
+      name: derive the site names from the inputs
       shell: bash
       env:
-        MANIFEST: ${{ inputs.manifest }}
+        PAGES: ${{ inputs.pages }}
+        DOMAIN: ${{ inputs.domain }}
+        PRODUCTION: ${{ inputs.production }}
       run: bun "$GITHUB_ACTION_PATH/main.ts"

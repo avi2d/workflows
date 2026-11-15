@@ -1,6 +1,16 @@
 name: site-production
 on:
   workflow_call:
+    inputs:
+      pages:
+        required: true
+        type: string
+      domain:
+        required: true
+        type: string
+      production:
+        required: true
+        type: string
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -31,6 +41,10 @@ jobs:
           persist-credentials: "false"
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
+        with:
+          pages: ${{ inputs.pages }}
+          domain: ${{ inputs.domain }}
+          production: ${{ inputs.production }}
       - id: staging
         uses: avi2d/workflows/actions/pages-staged-commit@v3
         with:
