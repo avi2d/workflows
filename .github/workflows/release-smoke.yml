@@ -1,5 +1,5 @@
 name: release-smoke
-# A fork pull request starts neither trigger, so the runner pick in release-pr.yml stays out of its reach.
+# A fork pull request starts neither trigger, so the runner pick in release-pr-v2.yml stays out of its reach.
 # GitHub dispatches a workflow missing from the default branch only after it has run once, so the push that adds or edits this file runs it.
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
-    uses: ./.github/workflows/release-pr.yml
+    uses: ./.github/workflows/release-pr-v2.yml
     with:
       plan-command: echo smoke-plan
       tag-command: echo smoke-tag

@@ -1,7 +1,7 @@
 # workflows
 
 Shared GitHub Actions plumbing for avi2d repositories.
-It holds composite actions that run inside the caller's job, and reusable workflows that pick the runner, scan for advisories, run mutation and release.
+It holds the shared CI every repository's workflow files call, the composite actions its steps run, and reusable workflows that pick the runner, scan for advisories, run mutation and release.
 The repository is public, so every repository its owners hold can call it, and it holds no secret, no runner name and no customer data.
 A private caller passes its settings in as inputs, as secrets it names, or through its repository variables.
 
@@ -29,7 +29,7 @@ The `v2` tag moves: the release run points it at each new `v2.x.y` release, so a
 A caller that wants one fixed version uses its exact tag, such as `v2.0.0`, which never moves.
 The `v1` tags hold the actions at the repository root, so `avi2d/workflows/<name>@v1` still resolves.
 
-A caller that wants a SHA pin can still use one, with the tag in a trailing comment.
+A caller can pin a SHA instead, with the tag in a trailing comment.
 Find the commit a tag points at, taking the line that ends in `^{}` for an annotated tag:
 
 ```sh
@@ -45,22 +45,13 @@ git ls-remote https://github.com/avi2d/workflows 'refs/tags/v2.0.0*'
 A SHA pin keeps the job on the commit that was reviewed, and `sha_pinning_required` accepts only that form.
 [The shared actions](docs/actions.md) lists what each action takes and returns.
 
+## Call the shared CI
+
+Each workflow file of a site or a code repository calls one shared workflow from `@v3`, as [The shared CI](docs/shared-ci.md) shows.
+
 ## Pick the runner
 
-A private caller runs a job on its own self-hosted runner when it names one, and on `ubuntu-latest` otherwise:
-
-```yaml
-jobs:
-  runner:
-    uses: avi2d/workflows/.github/workflows/runner.yml@v2
-  checks:
-    needs: runner
-    runs-on: ${{ needs.runner.outputs.runs-on }}
-```
-
-Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the jobs run on.
-A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
-[The runner pick](docs/runner.md) says how it decides and what it costs.
+A private caller names its own runner through its `CI_RUNS_ON` repository variable, as [The runner pick](docs/runner.md) shows.
 
 ## Release on demand
 
@@ -72,7 +63,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 | --- | --- |
 | The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release runs read in the caller's context |
 | A token other than the job's own | the `token` input of commitlint-status, head-status or draft-hold, written as `${{ secrets.NAME }}` in the caller |
-| The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot |
+| The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot, or the `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` variables |
 | The browsers a job needs | the `browsers` input of playwright |
 | The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
 | The site projects, hosts, repositories and secrets | the site actions' inputs in [The shared actions](docs/actions.md), written as `${{ secrets.NAME }}` in the caller |
@@ -91,15 +82,17 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | `.github/workflows/runner.yml` | the reusable runner pick |
 | `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
 | `.github/workflows/mutation.yml` | the reusable mutation runs |
-| `.github/workflows/release-pr.yml` | the reusable release pull request, plan on dispatch and tag on merge |
+| `.github/workflows/` | the shared CI from `v3` on, as [The shared CI](docs/shared-ci.md) lists it, beside the files below |
+| `.github/workflows/release-pr-v2.yml` | the `v2` reusable release pull request, plan on dispatch and tag on merge |
 | `.github/workflows/release-smoke.yml` | the release pull request smoke, manual and push on edit |
 | `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command and the opt-in GitHub release |
 | `.github/workflows/own-release-pr.yml`, `.github/workflows/own-release.yml` | this repository's own release, calling the two release runs by local path |
-| `.github/workflows/ci.yml` | this repository's CI, with actionlint and a smoke job for each action that has one |
+| `.github/workflows/own-ci.yml`, `.github/workflows/own-pr-title.yml` | this repository's CI, with actionlint and a smoke job for each action that has one, and its title check |
 | `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
 ## Related topics
 
+- [The shared CI](docs/shared-ci.md)
 - [The shared actions](docs/actions.md)
 - [The runner pick](docs/runner.md)
 - [The advisory scan](docs/advisories.md)

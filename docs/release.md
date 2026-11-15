@@ -4,8 +4,9 @@ audience: consumers
 ---
 # The release runs
 
-The release runs are the reusable workflows `.github/workflows/release-pr.yml` and `.github/workflows/release.yml`.
-`release-pr.yml` opens the release pull request on a manual run and tags the release when that pull request merges.
+The release runs are the `v2` reusable workflows `.github/workflows/release-pr.yml` and `.github/workflows/release.yml`.
+From `v3` on, `release-pr.yml` is part of [The shared CI](shared-ci.md), and the `v2` copy lives on in `release-pr-v2.yml`.
+`release-pr.yml` at `v2` opens the release pull request on a manual run and tags the release when that pull request merges.
 `release.yml` guards the tag and publishes it.
 The caller keeps its trigger files and its publish command, and the shared copy keeps the gates every caller repeats.
 
@@ -123,7 +124,7 @@ A fork pull request never starts these jobs in a caller.
 The caller's trigger files run them only on a manual run, a push to `main` and a tag push.
 Each of those needs write access to the caller, which a fork author does not hold.
 This repository keeps them out of a fork pull request's reach too.
-Its `release-smoke.yml` calls `release-pr.yml` only on a manual run and on a push that edits `release-smoke.yml`.
+Its `release-smoke.yml` calls `release-pr-v2.yml` only on a manual run and on a push that edits `release-smoke.yml`.
 The `release-guard` CI job starts that manual run on the head branch and waits for it.
 A fork pull request runs with a read-only token, which cannot start the run, so `release-guard` fails there.
 This repository sets no `CI_RUNS_ON`, so the run stands for a caller that sets none.
@@ -132,11 +133,11 @@ The `release-guard` CI job fails when the planning job of that run runs anywhere
 ## How this repository releases
 
 This repository releases through its own two release runs, called by local path, like any caller.
-The shared copies hold the names `release-pr.yml` and `release.yml`, so its trigger files are `.github/workflows/own-release-pr.yml` and `.github/workflows/own-release.yml`.
+The shared copies hold the names `release-pr.yml`, `release-pr-v2.yml` and `release.yml`, so it calls `release-pr-v2.yml`, and its trigger files are `.github/workflows/own-release-pr.yml` and `.github/workflows/own-release.yml`.
 Each calls the shared copy from the same commit, so a release runs the release workflows it ships.
 
-1. A manual run of `own-release-pr` opens or refreshes the release pull request through `checks-release-pr ci.yml`, after `checks-release-preflight own-release.yml` passes.
-   It bumps `package.json` from the last release tag by the kit's rule, runs `bun run build`, and dispatches `ci.yml` on the release branch.
+1. A manual run of `own-release-pr` opens or refreshes the release pull request through `checks-release-pr own-ci.yml`, after `checks-release-preflight own-release.yml` passes.
+   It bumps `package.json` from the last release tag by the kit's rule, runs `bun run build`, and dispatches `own-ci.yml` on the release branch.
 2. The release pull request merges on explicit word only.
 3. The push of its `chore: release <version>` commit to `main` runs the `tag` job, which tags the commit through `checks-release-tag own-release.yml` and dispatches `own-release` on the tag.
 4. `own-release` verifies the tag, then its `publish` job runs `bun release/major-tag.ts` and creates the release page from the version's `CHANGELOG.md` section.

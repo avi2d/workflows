@@ -1,0 +1,39 @@
+name: preview-remove
+on:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: false
+      CLOUDFLARE_ACCOUNT_ID:
+        required: false
+permissions:
+  contents: read
+jobs:
+  remove:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # site-names and pages-served first reach main in v3, so every step takes its action from the v3 tag.
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: "false"
+      - id: site
+        uses: avi2d/workflows/actions/site-names@v3
+      # A fork's or Dependabot's pull request runs without the repository secrets, so it got no preview.
+      - id: secrets
+        uses: avi2d/workflows/actions/preview-secrets-check@v3
+        with:
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          missing-note: the Cloudflare secrets are not set, so there is no preview to remove
+      - if: steps.secrets.outputs.set == 'true'
+        uses: avi2d/workflows/actions/preview-remove@v3
+        with:
+          project: ${{ steps.site.outputs.preview }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          marker: <!-- ${{ steps.site.outputs.preview }} -->

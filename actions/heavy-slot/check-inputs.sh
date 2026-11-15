@@ -6,6 +6,9 @@ case "$ACTION" in
   acquire | release) ;;
   *) echo "::error::action must be acquire or release, not '$ACTION'"; exit 1 ;;
 esac
+if [ -z "$RUNNER_PREFIX" ] && [ -z "$COMMAND" ]; then
+  exit 0
+fi
 if [ -z "$RUNNER_PREFIX" ] || [ -z "$COMMAND" ]; then
   echo "::error::heavy-slot needs runner-prefix and command"
   exit 1

@@ -6,6 +6,22 @@ audience: consumers
 
 The runner pick is the reusable workflow `.github/workflows/runner.yml`, whose `runs-on` output names the runner a caller's jobs run on.
 
+## Call it
+
+A private caller runs a job on its own self-hosted runner when it names one, and on `ubuntu-latest` otherwise:
+
+```yaml
+jobs:
+  runner:
+    uses: avi2d/workflows/.github/workflows/runner.yml@v2
+  checks:
+    needs: runner
+    runs-on: ${{ needs.runner.outputs.runs-on }}
+```
+
+Set the caller's `CI_RUNS_ON` repository variable to the self-hosted label the jobs run on.
+A public caller does not call the pick and stays on `ubuntu-latest`, because a fork pull request would run its code on the self-hosted runner.
+
 ## Output
 
 | Output | Value |

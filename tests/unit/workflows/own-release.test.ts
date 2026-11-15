@@ -70,7 +70,7 @@ function publishRuns(jobs: Record<string, unknown>, results: Record<string, stri
 }
 
 test("a release pull request that calls the shared copy at a pinned ref in place of this commit, or never runs on dispatch and on main, fails", () => {
-  expect(onlyJob("own-release-pr.yml")["uses"]).toBe("./.github/workflows/release-pr.yml");
+  expect(onlyJob("own-release-pr.yml")["uses"]).toBe("./.github/workflows/release-pr-v2.yml");
   expect(Object.keys(triggers("own-release-pr.yml")).toSorted()).toEqual(["push", "workflow_dispatch"]);
   expect(triggers("own-release-pr.yml")["push"]).toEqual({ branches: ["main"] });
 });
@@ -83,7 +83,7 @@ test("a tag command that dispatches a workflow file that does not exist or takes
   expect(triggers(dispatched)).toHaveProperty("workflow_dispatch");
 });
 
-test("a plan that dispatches no ci.yml, so the release pull request runs no required check, fails", () => {
+test("a plan that dispatches no own-ci.yml, so the release pull request runs no required check, fails", () => {
   const command = String(inputs(onlyJob("own-release-pr.yml"))["plan-command"]);
   const [runner, kit, dispatched] = command.split(" ");
   expect([runner, kit]).toEqual(["bunx", "checks-release-pr"]);

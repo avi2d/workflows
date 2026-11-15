@@ -1,5 +1,5 @@
 ---
-governs: [actions/playwright/action.yml, .github/workflows/ci.yml]
+governs: [actions/playwright/action.yml, .github/workflows/own-ci.yml]
 ---
 # 0007. The playwright job runs in the Playwright image
 
@@ -40,6 +40,6 @@ The action takes no input that picks the image, since a composite action cannot 
 
 A caller on a bare runner sees the same steps and the same `apt-get` call as before, after one dry run.
 A caller stops needing the Ubuntu package hosts by adding `container:` with the image of its own `playwright-core` version to the job.
-A `playwright-core` bump moves the image tag and digest in `ci.yml` with it, or the job downloads browsers the image does not hold.
+A `playwright-core` bump moves the image tag and digest in `own-ci.yml` with it, or the job downloads browsers the image does not hold.
 The job pulls about 1 GB per run in place of the `apt-get` download.
 A self-hosted runner skips the system package step as before.

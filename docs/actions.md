@@ -265,6 +265,8 @@ Called inside such a job, the action waits its 30 seconds, GitHub does not stop 
 
 Takes or frees the machine's heavy slot around a heavy step, on runners whose name starts with the prefix the caller names.
 A composite action has no post step, so the caller calls it twice, freeing the slot with `if: always()`.
+A caller with no heavy slot machines leaves both `runner-prefix` and `command` empty, and every runner skips the call.
+One of the two empty fails the step.
 
 | Input | Default | What it sets |
 | --- | --- | --- |

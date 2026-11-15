@@ -1,39 +1,32 @@
 name: pr-title
-
-# Separate from ci.yml, so a title edit reruns only this, not the whole suite.
 on:
-  pull_request:
-    types: [edited]
-
+  workflow_call:
 permissions:
   contents: read
-  statuses: write
-
-concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   title:
-    if: github.event.changes.title
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 10
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A ./actions reference resolves in the caller's checkout, so each action is pinned to a commit of main that holds it.
+      - uses: avi2d/workflows/actions/setup@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: ./actions/setup
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: "false"
       - id: title
-        name: lint the title
+        continue-on-error: true
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-commit-title
-      # Branch protection needs a commitlint check; no job has that name.
-      - name: report the title as commitlint
-        if: always()
-        uses: ./actions/commitlint-status
+      - uses: avi2d/workflows/actions/commitlint-status@438d3e2b51a5e69e55cc12693b1f6c6bf35af93d
         with:
           outcome: ${{ steps.title.outcome }}
+          attempts: "5"
+      - env:
+          OUTCOME: ${{ steps.title.outcome }}
+        run: test "$OUTCOME" = success
