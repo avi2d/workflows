@@ -8,11 +8,11 @@ import { namesOf, readSite } from "../../../../actions/site-names/site-names.ts"
 
 const AZALIALAW = { pages: "azalialaw", domain: "azalialaw.com", production: "azalialaw/azalialaw.com" };
 
-function readManifest(manifest: unknown) {
+async function readManifest(manifest: unknown) {
   const folder = mkdtempSync(join(tmpdir(), "site-names-"));
   try {
     writeFileSync(join(folder, "package.json"), JSON.stringify(manifest));
-    return Effect.runSyncExit(readSite(join(folder, "package.json")).pipe(Effect.provide(BunServices.layer)));
+    return await Effect.runPromiseExit(readSite(join(folder, "package.json")).pipe(Effect.provide(BunServices.layer)));
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
@@ -32,20 +32,20 @@ describe("namesOf", () => {
 });
 
 describe("readSite", () => {
-  test("a manifest with the design's site field that is refused fails", () => {
-    const read = readManifest({ name: "azalialaw", site: AZALIALAW });
+  test("a manifest with the design's site field that is refused fails", async () => {
+    const read = await readManifest({ name: "azalialaw", site: AZALIALAW });
     expect(Exit.isSuccess(read) ? read.value.production : "").toBe("azalialaw/azalialaw.com");
   });
 
-  test("a manifest without a site field that passes, or whose message never names the field, fails", () => {
-    const read = readManifest({ name: "website" });
+  test("a manifest without a site field that passes, or whose message never names the field, fails", async () => {
+    const read = await readManifest({ name: "website" });
     expect(Exit.isFailure(read)).toBe(true);
     expect(String(read)).toContain("site field");
   });
 
-  test("a pages name with capitals, a domain with a scheme or a production without its owner that passes fails", () => {
-    expect(Exit.isFailure(readManifest({ site: { ...AZALIALAW, pages: "Azalialaw" } }))).toBe(true);
-    expect(Exit.isFailure(readManifest({ site: { ...AZALIALAW, domain: "https://azalialaw.com" } }))).toBe(true);
-    expect(Exit.isFailure(readManifest({ site: { ...AZALIALAW, production: "azalialaw.com" } }))).toBe(true);
+  test("a pages name with capitals, a domain with a scheme or a production without its owner that passes fails", async () => {
+    expect(Exit.isFailure(await readManifest({ site: { ...AZALIALAW, pages: "Azalialaw" } }))).toBe(true);
+    expect(Exit.isFailure(await readManifest({ site: { ...AZALIALAW, domain: "https://azalialaw.com" } }))).toBe(true);
+    expect(Exit.isFailure(await readManifest({ site: { ...AZALIALAW, production: "azalialaw.com" } }))).toBe(true);
   });
 });
