@@ -15,7 +15,7 @@ What differs between repositories lives in each one's `package.json` commands.
 | --- | --- | --- |
 | `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
 | `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
-| `site-production.yml` | a site's `production.yml` | runs `checks-release-gate` on the staged commit, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
+| `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
 | `ci.yml` | a code repository's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, lints, typechecks and runs `checks-test --pr` |
 | `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up |
@@ -27,7 +27,7 @@ The kit decides what each command does on each event, so the jobs hold no condit
 On a release commit it checks the files equal the release pull request that passed, then creates the tag and the GitHub release.
 A release deploy can land over a later merge deploy.
 The production gate still refuses unless staging serves a published release, and the next merge to main puts staging back.
-Production runs no tests again.
+The production run tests the release commit before it publishes, so a red release commit never reaches production.
 
 ## The site files
 
@@ -86,7 +86,7 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.
-- The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site and `build:production` for its production run.
+- The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site, and `build:production`, `test` and `test:pixel` for its production run, where `test` takes `--full`.
 
 A called job reports its check as `<caller job> / <shared job>`, such as `checks / checks`, so branch protection names that check.
 A pull request from a fork or from Dependabot runs without the repository secrets, so it gets no preview.
