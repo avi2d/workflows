@@ -196,7 +196,7 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 ## draft-hold
 
 Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
-In a site checks job the hold runs after the preview deploy, so the preview is up before the cancel stops the later steps.
+In a site checks job the hold runs after the preview comment, so the preview link is posted before the cancel stops the later steps.
 A code repository carries no preview, so the hold stays first there.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
 A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.

@@ -22,10 +22,12 @@ jobs:
     env:
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
-      # site-names and pages-served first reach main in v3, so every step takes its action from the v3 tag.
       - uses: avi2d/workflows/actions/setup@v3
         with:
           fetch-depth: "0"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-release-tag
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
       - run: bun run build:site
@@ -39,6 +41,3 @@ jobs:
       - uses: avi2d/workflows/actions/pages-served@v3
         with:
           origin: ${{ steps.site.outputs.staging-origin }}
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        run: bunx checks-release-tag

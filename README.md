@@ -20,24 +20,24 @@ A private caller passes its settings in as inputs, as secrets it names, or throu
 To call an action from a workflow, pin it to a version tag:
 
 ```yaml
-- uses: avi2d/workflows/actions/setup@v2
+- uses: avi2d/workflows/actions/setup@v3
   with:
     fetch-depth: 0
 ```
 
-The `v2` tag moves: the release run points it at each new `v2.x.y` release, so a caller on `v2` takes each release as it lands.
-A caller that wants one fixed version uses its exact tag, such as `v2.0.0`, which never moves.
+The `v3` tag moves: the release run points it at each new `v3.x.y` release, so a caller on `v3` takes each release as it lands.
+A caller that wants one fixed version uses its exact tag, such as `v3.0.0`, which never moves.
 The `v1` tags hold the actions at the repository root, so `avi2d/workflows/<name>@v1` still resolves.
 
 A caller can pin a SHA instead, with the tag in a trailing comment.
 Find the commit a tag points at, taking the line that ends in `^{}` for an annotated tag:
 
 ```sh
-git ls-remote https://github.com/avi2d/workflows 'refs/tags/v2.0.0*'
+git ls-remote https://github.com/avi2d/workflows 'refs/tags/v3.0.0*'
 ```
 
 ```yaml
-- uses: avi2d/workflows/actions/setup@<full commit SHA> # v2.0.0
+- uses: avi2d/workflows/actions/setup@<full commit SHA> # v3.0.0
   with:
     fetch-depth: 0
 ```

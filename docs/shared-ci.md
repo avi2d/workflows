@@ -13,8 +13,8 @@ What differs between repositories lives in each one's `package.json` commands.
 
 | Workflow | Called by | What its one job does |
 | --- | --- | --- |
-| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
-| `site-main.yml` | a site's `main.yml` | builds the site, deploys it to staging, waits until staging serves it, then runs `checks-release-tag` |
+| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
+| `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
 | `site-production.yml` | a site's `production.yml` | runs `checks-release-gate` on the staged commit, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
 | `ci.yml` | a code repository's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, lints, typechecks and runs `checks-test --pr` |
@@ -25,6 +25,8 @@ What differs between repositories lives in each one's `package.json` commands.
 The kit decides what each command does on each event, so the jobs hold no condition on what to test.
 `checks-release-tag` does nothing on a merge that is not a release commit.
 On a release commit it checks the files equal the release pull request that passed, then creates the tag and the GitHub release.
+A release deploy can land over a later merge deploy.
+The production gate still refuses unless staging serves a published release, and the next merge to main puts staging back.
 Production runs no tests again.
 
 ## The site files
