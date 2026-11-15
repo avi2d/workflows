@@ -3,12 +3,6 @@
 Every release of `workflows`, newest first.
 The release pull request writes each new section from the conventional commits since the last release tag.
 
-## 3.0.1
-
-### Fixes
-
-- **production:** run the production gate, the full test suite and the pixel screenshots on the staged release commit before it publishes
-
 ## 3.0.0
 
 Released 2026-11-15.

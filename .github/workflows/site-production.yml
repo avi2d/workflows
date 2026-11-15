@@ -48,17 +48,22 @@ jobs:
           SHA: ${{ steps.staging.outputs.sha }}
         run: git checkout --detach "$SHA"
       - run: bun install --frozen-lockfile
+      - uses: avi2d/workflows/actions/heavy-slot@v3
+        with:
+          action: acquire
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
       - uses: avi2d/workflows/actions/playwright@v3
       - name: run the full test suite on the release commit
         run: bun run test --full
       - name: run the pixel screenshots on the release commit
         run: bun run test:pixel
-      - if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - if: always()
+        uses: avi2d/workflows/actions/heavy-slot@v3
         with:
-          name: release-screens
-          path: artifacts/
-          if-no-files-found: ignore
+          action: release
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
       - run: bun run build:production
       - uses: avi2d/workflows/actions/pages-publish@v3
         with:
