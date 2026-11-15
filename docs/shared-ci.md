@@ -76,7 +76,7 @@ The other site files call their shared workflow the same way:
 
 ## The code repository files
 
-A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-main.yml`, and `release.yml`.
+A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-main.yml`, and `release.yml` calling `release-pr.yml`.
 `advisories.yml`, `mutation.yml` and `flake.yml` stay where a repository has them.
 
 ## What a caller supplies

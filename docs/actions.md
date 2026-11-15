@@ -387,7 +387,8 @@ A caller writes the notes first, such as with `checks-release-notes` through [ki
 ## The site actions
 
 The site actions stage, publish and preview a static site on Cloudflare Pages and GitHub Pages.
-The caller names every project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
+The shared CI reads the site names from the caller `package.json` site field through [site-names](#site-names).
+Each other site action names its project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
 Each heading below names the action's folder under `actions/`.
 No action prints a secret, and an action that needs a secret fails with a message when the caller passes it empty.
 A caller whose Cloudflare secrets may be unset checks them with [preview-secrets-check](#preview-secrets-check) and guards the Cloudflare steps with an `if:`.

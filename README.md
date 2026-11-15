@@ -67,7 +67,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot, or the `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` variables |
 | The browsers a job needs | the `browsers` input of playwright |
 | The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
-| The site projects, hosts, repositories and secrets | the site actions' inputs in [The shared actions](docs/actions.md), written as `${{ secrets.NAME }}` in the caller |
+| The site names and secrets | the `package.json` site field and `secrets: inherit` in [The shared CI](docs/shared-ci.md) |
 
 A composite action cannot read the caller's `secrets` context, so a secret reaches it only as an input the caller writes.
 

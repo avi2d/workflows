@@ -4,7 +4,7 @@ audience: consumers
 ---
 # The release runs
 
-The release runs are the `v2` reusable workflows `.github/workflows/release-pr.yml` and `.github/workflows/release.yml`.
+The release runs are the `v2` reusable workflows `.github/workflows/release-pr-v2.yml` and `.github/workflows/release.yml`.
 From `v3` on, `release-pr.yml` is part of [The shared CI](shared-ci.md), and the `v2` copy lives on in `release-pr-v2.yml`.
 `release-pr.yml` at `v2` opens the release pull request on a manual run and tags the release when that pull request merges.
 `release.yml` guards the tag and publishes it.
@@ -54,7 +54,7 @@ Each trigger file stays in the caller, beside the publish command only that call
 
 ## What it does
 
-`release-pr.yml` runs a `pull-request` job on every run that is not a push to main.
+`release-pr-v2.yml` runs a `pull-request` job on every run that is not a push to main.
 It runs a `tag` job on every push to main whose head commit starts with `chore: release `.
 The `pull-request` job checks out the branch tip with the whole history.
 It runs the caller preflight when one is set, then the caller plan command with `GH_TOKEN` set.
@@ -82,7 +82,7 @@ A caller whose release pull request already ran the full suite leaves `test-comm
 
 ## What the caller sets
 
-The release pull request takes these inputs.
+The `v2` release pull request takes these inputs.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ The publish run takes these inputs.
 - A calling job that grants `contents: write`, `pull-requests: write` and `actions: write` to the release pull request call.
 - A calling job that grants `contents: write` and `id-token: write` to the publish call.
 - Its `CI_RUNS_ON` repository variable when its release runs on its own runner.
-  Every job in `release-pr.yml` and `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
+  Every job in `release-pr-v2.yml` and `release.yml` runs on `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, read in the caller's context.
   A caller that sets no `CI_RUNS_ON` runs every release job on `ubuntu-latest`.
 
 ## Runners and fork pull requests
