@@ -44,6 +44,7 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
 
 `static.yml` and `test.yml` hold a draft by default through `hold`, and a caller sets `hold: false` on the jobs that start before the preview so a draft still gets its preview link.
+A `test.yml` caller grants `actions: write`, since the draft hold cancels the run whatever `hold` is set to.
 Each `test.yml` job keys its own browser cache, so parallel jobs never fight over one cache.
 `runs-on` defaults to `ubuntu-latest`, and a caller that keeps its `CI_RUNS_ON` override passes `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`.
 The caller's `checks` job calls `gate.yml`, whose job is also `checks`, so branch protection still reads `checks / checks`.
@@ -87,11 +88,17 @@ jobs:
   unit:
     needs: changes
     if: needs.changes.outputs.docs-only != 'true'
+    permissions:
+      contents: read
+      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     with:
       hold: false
   browser:
     needs: site
+    permissions:
+      contents: read
+      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     with:
       run: bunx checks-browser --pr
@@ -129,6 +136,9 @@ jobs:
       pull-requests: read
     uses: avi2d/workflows/.github/workflows/static.yml@v3
   test:
+    permissions:
+      contents: read
+      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
   checks:
     needs: [static, test]
