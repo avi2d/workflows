@@ -13,7 +13,7 @@ permissions:
 jobs:
   production:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     concurrency:
       group: site-production
       cancel-in-progress: false
@@ -39,14 +39,31 @@ jobs:
           account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           deploy-key: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
           workflow: main.yml
-      - env:
+      - name: refuse a staged commit that is not a published release
+        env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.staging.outputs.sha }}
-        run: bunx checks-release-gate "$SHA"
+        run: bunx checks-production-gate "$SHA"
       - env:
           SHA: ${{ steps.staging.outputs.sha }}
         run: git checkout --detach "$SHA"
       - run: bun install --frozen-lockfile
+      - uses: avi2d/workflows/actions/heavy-slot@v3
+        with:
+          action: acquire
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
+      - uses: avi2d/workflows/actions/playwright@v3
+      - name: run the full test suite on the release commit
+        run: bun run test --full
+      - name: run the pixel screenshots on the release commit
+        run: bun run test:pixel
+      - if: always()
+        uses: avi2d/workflows/actions/heavy-slot@v3
+        with:
+          action: release
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
       - run: bun run build:production
       - uses: avi2d/workflows/actions/pages-publish@v3
         with:
