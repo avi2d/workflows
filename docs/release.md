@@ -160,6 +160,13 @@ The tag step dispatches `own-release` on the tag, so no pushed tag starts it.
 
 GitHub refuses the release pull request until the repository turns on **Allow GitHub Actions to create and approve pull requests**, under its Actions settings.
 
+## Moving from v2 to v3
+
+`release-pr.yml` at `v3` declares no inputs and runs `checks-release-pr ci.yml` only.
+A caller that passes it `plan-command`, `preflight-command`, `tree-guard-command` or `tag-command` passes inputs the v3 file does not declare.
+Such a caller either keeps `@v2`, or calls `release-pr-v2.yml` at `@v3` with the same inputs.
+The tag job leaves the release pull request: a code repository's `main.yml` calls `release-main.yml`, which runs `checks-release-tag`.
+
 ## Related topics
 
 - [The shared actions](actions.md)
