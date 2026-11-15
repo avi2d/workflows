@@ -102,7 +102,7 @@ jobs:
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     with:
       run: bunx checks-browser --pr
-      browsers: chromium
+      browsers: webkit
       artifact: site-dist
       heavy: true
   checks:
