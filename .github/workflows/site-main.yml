@@ -1,0 +1,43 @@
+name: site-main
+on:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+permissions:
+  contents: read
+jobs:
+  staging:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    concurrency:
+      group: "${{ startsWith(github.event.head_commit.message, 'chore: release ') && format('site-main-{0}', github.sha) || 'site-main' }}"
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          fetch-depth: "0"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-release-tag
+      - id: site
+        uses: avi2d/workflows/actions/site-names@v3
+      - run: bun run build:site
+      - uses: avi2d/workflows/actions/pages-deploy@v3
+        with:
+          project: ${{ steps.site.outputs.pages }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          commit-message: Staging build of ${{ github.repository }} main
+          address: ${{ steps.site.outputs.staging-origin }}/
+      - uses: avi2d/workflows/actions/pages-served@v3
+        with:
+          origin: ${{ steps.site.outputs.staging-origin }}

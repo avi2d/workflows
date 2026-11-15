@@ -1,0 +1,460 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+  # The title lookup on a dispatched run needs pull request read access.
+  pull-requests: read
+
+# Dispatched runs get a group of their own, so nothing cancels them.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  draft-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: actions/draft-hold
+      - uses: ./actions/draft-hold
+        name: a run that is no held draft but cancels itself fails
+  static:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # The head, not the merge ref, so the gates read the commit the range ends at.
+      # Whole history: the range starts where the head branched off the base.
+      - id: setup
+        uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - run: bun run install:instrumenter
+      - id: title
+        name: lint the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-commit-title
+      # Branch protection needs a commitlint check; no job has that name.
+      - name: report the title as commitlint
+        if: always()
+        uses: ./actions/commitlint-status
+        with:
+          outcome: ${{ steps.title.outcome }}
+      - name: a commitlint status that disagrees with the title lint fails
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          OUTCOME: ${{ steps.title.outcome }}
+        run: bun ci/status-check.ts "$HEAD_SHA" commitlint "$OUTCOME"
+      - run: bun run build
+      - name: a build that rewrites a committed file fails
+        run: git diff --exit-code
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - name: lint the workflows
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        run: bash ci/actionlint.sh
+  setup:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Without ref, a pull request checks out GitHub's merge commit, not the head.
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          cache: "true"
+      - name: a shallow checkout or a commit other than the asked one fails
+        env:
+          WANT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bun ci/setup-smoke.ts checkout
+      - name: a Bun other than the one .bun-version names fails
+        run: bun ci/setup-smoke.ts bun-version
+      - name: missing or relocked dependencies fail
+        run: bun ci/setup-smoke.ts dependencies
+  gitleaks-cache-fill:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: a kit that cannot fetch or run its pinned gitleaks fails
+        run: bunx checks-secrets HEAD
+  gitleaks-cache:
+    # The fill job's cache save runs in its post step, which ends before this job starts.
+    needs: gitleaks-cache-fill
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: a gitleaks the next job has to download again fails
+        run: bun ci/gitleaks-cache-smoke.ts
+  docs-only:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - id: commits
+        name: commit a docs change, then a code change
+        run: bun ci/docs-only-smoke.ts commit
+      - id: docs
+        uses: ./actions/docs-only
+        with:
+          base: ${{ steps.commits.outputs.base }}
+          head: ${{ steps.commits.outputs.docs }}
+      - id: code
+        uses: ./actions/docs-only
+        with:
+          base: ${{ steps.commits.outputs.docs }}
+          head: ${{ steps.commits.outputs.code }}
+      - id: none
+        uses: ./actions/docs-only
+        with:
+          base: ""
+      - name: a code change read as docs-only or a README change read as code fails
+        env:
+          DOCS: ${{ steps.docs.outputs.docs-only }}
+          CODE: ${{ steps.code.outputs.docs-only }}
+          NONE: ${{ steps.none.outputs.docs-only }}
+        run: bun ci/docs-only-smoke.ts verify
+  require-success:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: a gate in a job that holds no Bun that cannot start, or that refuses a success and an expected skip, fails
+        uses: ./actions/require-success
+        with:
+          results: unit=success e2e=skipped
+          skips: e2e=true
+      - id: failed
+        continue-on-error: true
+        uses: ./actions/require-success
+        with:
+          results: unit=success e2e=failure
+      - name: a gate that passes a failed result fails
+        env:
+          OUTCOME: ${{ steps.failed.outcome }}
+        run: test "$OUTCOME" = failure
+  head-status:
+    # A dispatched run's status lands on the head, where a failure shows on the pull request.
+    if: github.event_name == 'pull_request'
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/head-status
+        with:
+          job-status: success
+          context: smoke/head-status-success
+          attempts: "2"
+      - name: a successful job reported as failure fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun ci/status-check.ts "$GITHUB_SHA" smoke/head-status-success success
+      - uses: ./actions/head-status
+        with:
+          job-status: success
+          context: smoke/head-status-head-sha
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          description: the chosen head and description
+      - name: a status written to GITHUB_SHA in place of the chosen head, or without its description, fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bun ci/status-check.ts "$HEAD_SHA" smoke/head-status-head-sha success "the chosen head and description"
+  playwright:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    # A bare runner fetches webkit's system packages from the Ubuntu package hosts, and the image holds them.
+    container: mcr.microsoft.com/playwright:v1.63.0-resolute@sha256:b022639ae9197f864040f92eef7b57c6d4b47db2190f77c909d8a5d902dd4b7e
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: answer for the Ubuntu package hosts with a listener that records each request
+        run: bash ci/package-hosts-smoke.sh listen
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/playwright
+        with:
+          browsers: webkit
+          cache: "false"
+      - name: a webkit that cannot open a page fails
+        run: bun ci/playwright-smoke.ts
+      - name: a job that asked an Ubuntu package host for anything fails
+        run: bash ci/package-hosts-smoke.sh verify
+  heavy-slot:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: put a stand-in slot command on the PATH
+        run: bash ci/heavy-slot-smoke.sh stub
+      - uses: ./actions/heavy-slot
+        with:
+          action: acquire
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - uses: ./actions/heavy-slot
+        with:
+          action: acquire
+          runner-prefix: no-such-runner-
+          command: heavy-slot-stub
+      - uses: ./actions/heavy-slot
+        with:
+          action: release
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - id: unknown
+        uses: ./actions/heavy-slot
+        continue-on-error: true
+        with:
+          action: take
+          runner-prefix: ${{ runner.name }}
+          command: heavy-slot-stub
+      - name: a slot call on another runner or an unknown action that passes fails
+        env:
+          UNKNOWN: ${{ steps.unknown.outcome }}
+        run: bash ci/heavy-slot-smoke.sh verify
+  kit-bin:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: map a command to its source the way the kit's own package.json does
+        run: bun ci/kit-bin-smoke.ts fixture
+      - uses: ./actions/kit-bin
+        with:
+          commands: checks-docs-only smoke-kit-source
+      - id: missing
+        uses: ./actions/kit-bin
+        continue-on-error: true
+        with:
+          commands: no-such-kit-command
+      - name: a command off the shims, a source command that does not run, or a missing command that passes fails
+        env:
+          MISSING: ${{ steps.missing.outcome }}
+        run: bun ci/kit-bin-smoke.ts verify
+  lighthouse:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: audit
+        uses: ./actions/lighthouse
+        continue-on-error: true
+        with:
+          site: tests/fixtures/lighthouse
+          runs: "2"
+      - name: a low score that fails the step, or a run left without its report or one of its four scores, fails
+        env:
+          OUTCOME: ${{ steps.audit.outcome }}
+          REPORTS: ${{ runner.temp }}/lighthouse-reports
+        run: bun ci/lighthouse-smoke.ts
+  mutation-scope:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: put stand-in mutation commands on the PATH
+        run: bun ci/mutation-scope-smoke.ts stand-ins
+      - uses: ./actions/mutation-scope
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
+      - name: a scope taken from anything but the merge base with main, a release or bot pull request that is scoped, or a person's pull request that skips, fails
+        env:
+          EXPECT_HEAD_REF: ${{ github.head_ref }}
+          EXPECT_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          EXPECT_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          EXPECT_BASE_REPO: ${{ github.repository }}
+          EXPECT_USER_TYPE: ${{ github.event.pull_request.user.type }}
+        run: bun ci/mutation-scope-smoke.ts verify
+  secrets-pack:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: pack
+        name: build a pack whose term no tracked file holds
+        run: bun ci/smoke-pack.ts
+      - uses: ./actions/secrets-pack
+        with:
+          pack: ${{ steps.pack.outputs.json }}
+      - name: a pack written anywhere but RUNNER_TEMP/secrets-pack.json, changed on the way or unread by the kit's scan fails
+        env:
+          PACK: ${{ steps.pack.outputs.json }}
+        run: bun ci/pack-check.ts
+      - id: empty
+        uses: ./actions/secrets-pack
+        continue-on-error: true
+        with:
+          pack: ""
+      - name: an empty pack that passes fails
+        env:
+          EMPTY: ${{ steps.empty.outcome }}
+        run: test "$EMPTY" = failure
+  release-version:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: match
+        uses: ./actions/release-version
+        with:
+          package-path: tests/fixtures/release-version/manifest.json
+          tag: v1.2.3
+      - id: mismatch
+        uses: ./actions/release-version
+        continue-on-error: true
+        with:
+          package-path: tests/fixtures/release-version/manifest.json
+          tag: v1.2.4
+      - name: a matching tag whose version is not written fails
+        env:
+          VERSION: ${{ steps.match.outputs.version }}
+        run: test "$VERSION" = 1.2.3
+      - name: a tag off the manifest version that passes fails
+        env:
+          MISMATCH: ${{ steps.mismatch.outcome }}
+        run: test "$MISMATCH" = failure
+  release-guard:
+    needs: draft-hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # A call of release-pr-v2.yml from this workflow would put its jobs in a fork pull request's reach, where the kit refuses their runner pick.
+      - id: smoke
+        name: a release smoke that cannot start on the head branch, that runs another commit or that never finishes fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.head_ref || github.ref_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bun ci/release-smoke.ts
+      - name: a release pull request that never plans, that tags here, or that leaves ubuntu-latest with no CI_RUNS_ON set fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.smoke.outputs.run-id }}
+        run: bun ci/release-jobs.ts
+      - name: a release whose tag, verify or publish guard drifts, or whose job leaves the caller's runner pick, fails
+        run: bun ci/release-skeleton.ts .github/workflows/release-pr-v2.yml .github/workflows/release.yml
+  checks:
+    # Branch protection passes a skipped check, so this runs after a failed part and fails.
+    needs: [static, setup, gitleaks-cache-fill, gitleaks-cache, docs-only, require-success, head-status, playwright, heavy-slot, kit-bin, lighthouse, mutation-scope, secrets-pack, release-version, release-guard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./actions/setup
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: require every part
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
+        run: bun ci/require-parts.ts
+      # A dispatched run's check stays off the pull request, so this reports a commit status.
+      - name: report the result on the head commit
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: ./actions/head-status
+        with:
+          job-status: ${{ job.status }}

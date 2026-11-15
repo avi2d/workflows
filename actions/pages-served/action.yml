@@ -1,0 +1,26 @@
+name: pages-served
+description: Wait until an origin serves every file of a built folder byte for byte, and fail when it still serves one unlike the build after the last try.
+inputs:
+  directory:
+    description: The built folder the origin must serve.
+    default: dist
+  origin:
+    description: The https origin that serves the folder, such as https://azalialaw.pages.dev.
+    required: true
+  attempts:
+    description: How many times to read every file before failing, ten seconds apart.
+    default: "30"
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - name: wait until the origin serves every built file as built
+      shell: bash
+      env:
+        DIRECTORY: ${{ inputs.directory }}
+        ORIGIN: ${{ inputs.origin }}
+        ATTEMPTS: ${{ inputs.attempts }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

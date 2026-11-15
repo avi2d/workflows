@@ -1,4 +1,4 @@
-import { Data, Effect, FileSystem, Path } from "effect";
+import { Data, Effect, Option } from "effect";
 
 export class SiteError extends Data.TaggedError("SiteError")<{ readonly message: string }> {}
 
@@ -33,28 +33,20 @@ export function choosePages(found: readonly string[], named: string): Effect.Eff
   return Effect.succeed([...new Set(wanted)]);
 }
 
+export function auditOrigin(named: string): Effect.Effect<Option.Option<string>, SiteError> {
+  if (named === "") return Effect.succeedNone;
+  if (!URL.canParse(named) || new URL(named).protocol !== "https:") {
+    return Effect.fail(new SiteError({ message: `origin must be an https address such as https://azalialaw.com, not '${named}'` }));
+  }
+  return Effect.succeedSome(`${new URL(named).origin}/`);
+}
+
 export function answer(root: string, routes: Routes, request: Request): Response {
   const pathname = decodeURIComponent(new URL(request.url).pathname);
   const file = routes.get(pathname);
   if (file !== undefined) return new Response(Bun.file(`${root}/${file}`));
   return new Response("not found", { status: 404 });
 }
-
-export const siteFiles = Effect.fn("siteFiles")(function* (site: string) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const root = path.resolve(site);
-  const isDirectory = yield* fs.stat(root).pipe(
-    Effect.map(({ type }) => type === "Directory"),
-    Effect.orElseSucceed(() => false),
-  );
-  if (!isDirectory) return yield* new SiteError({ message: `site names ${site}, which is not a folder, so build the site before the audit` });
-  const files: string[] = [];
-  for (const entry of yield* fs.readDirectory(root, { recursive: true })) {
-    if ((yield* fs.stat(path.join(root, entry))).type === "File") files.push(entry.split(path.sep).join("/"));
-  }
-  return { root, files };
-});
 
 export const serveSite = (root: string, routes: Routes) =>
   Effect.acquireRelease(

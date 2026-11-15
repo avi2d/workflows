@@ -5,7 +5,7 @@ audience: consumers
 # The shared actions
 
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
-A caller calls it as `avi2d/workflows/actions/<name>@v2`.
+A caller calls it as `avi2d/workflows/actions/<name>@v3`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
 Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
 draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
@@ -105,7 +105,7 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
 
 ```yaml
 - id: skip
-  uses: avi2d/workflows/actions/docs-only@v2
+  uses: avi2d/workflows/actions/docs-only@v3
   with:
     head: ${{ github.event.pull_request.head.sha }}
     paths: "*.[mM][dD] copy.json"
@@ -145,8 +145,8 @@ jobs:
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v<playwright-core version>-noble
     steps:
-      - uses: avi2d/workflows/actions/setup@v2
-      - uses: avi2d/workflows/actions/playwright@v2
+      - uses: avi2d/workflows/actions/setup@v3
+      - uses: avi2d/workflows/actions/playwright@v3
         with:
           cache: "false"
 ```
@@ -162,6 +162,7 @@ An image whose version differs from the caller's `playwright-core` holds other b
 ## lighthouse
 
 Serves a built folder on a local address and audits each of its pages with Lighthouse.
+With `origin` set, it audits those pages at that origin instead, such as the live site the folder was published to.
 It writes the median score of each category to the job summary, showing none where Lighthouse leaves a category unscored.
 It keeps every run's JSON report as the `lighthouse-reports` artifact.
 The scores are advice: no score fails the step.
@@ -170,9 +171,9 @@ The step fails only when a page gets no report with the four category scores in 
 The caller builds the site first, since one site's build for the audit may differ from its default build:
 
 ```yaml
-- uses: avi2d/workflows/actions/setup@v2
+- uses: avi2d/workflows/actions/setup@v3
 - run: bun run build:production
-- uses: avi2d/workflows/actions/lighthouse@v2
+- uses: avi2d/workflows/actions/lighthouse@v3
   with:
     site: dist
 ```
@@ -186,7 +187,8 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 
 | Input | Default | What it sets |
 | --- | --- | --- |
-| `site` | required | the built folder to serve and audit |
+| `site` | required | the built folder whose pages are audited |
+| `origin` | empty, serve the folder locally | the https origin that serves the folder, audited in place of a local address |
 | `runs` | `3` | how many times to audit each page, whose median the summary shows |
 | `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
 | `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
@@ -194,11 +196,12 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 ## draft-hold
 
 Cancels the run a push to a draft pull request started, so a draft's checks wait until someone starts them by hand.
-Put the hold only in a workflow that carries no preview job, and keep the preview in its own workflow file, because the cancel stops every job of the run that has not finished.
+In a site checks job the hold runs after the preview comment, so the preview link is posted before the cancel stops the later steps.
+A code repository carries no preview, so the hold stays first there.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
 A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.
 
-A caller holds its checks through one gate job:
+On `v2` a caller holds its checks through one gate job:
 
 ```yaml
 on:
@@ -238,7 +241,7 @@ The hold job runs only the hold action, with no checkout and no other code, and 
 The hold job runs on the caller's runner pick, because a hosted gate the caller cannot start leaves the checks skipped.
 The runner must have `gh`, which the hold calls to cancel the run.
 Point the required check at the `always()` gate, which fails where the hold or the checks are skipped or cancelled, as this repository's own `checks` job does.
-A preview workflow leaves the hold off.
+A workflow that only removes a preview leaves the hold off.
 
 It lets the checks run when the event is no pull request, when the pull request is ready, and when the run attempt is past the first.
 So **Re-run all jobs** on the cancelled run, or `gh run rerun <run id>`, starts a draft's checks by hand, and the result lands on the pull request as the same check.
@@ -263,6 +266,8 @@ Called inside such a job, the action waits its 30 seconds, GitHub does not stop 
 
 Takes or frees the machine's heavy slot around a heavy step, on runners whose name starts with the prefix the caller names.
 A composite action has no post step, so the caller calls it twice, freeing the slot with `if: always()`.
+A caller with no heavy slot machines leaves both `runner-prefix` and `command` empty, and every runner skips the call.
+One of the two empty fails the step.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
@@ -382,7 +387,8 @@ A caller writes the notes first, such as with `checks-release-notes` through [ki
 ## The site actions
 
 The site actions stage, publish and preview a static site on Cloudflare Pages and GitHub Pages.
-The caller names every project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
+The shared CI reads the site names from the caller `package.json` site field through [site-names](#site-names).
+Each other site action names its project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
 Each heading below names the action's folder under `actions/`.
 No action prints a secret, and an action that needs a secret fails with a message when the caller passes it empty.
 A caller whose Cloudflare secrets may be unset checks them with [preview-secrets-check](#preview-secrets-check) and guards the Cloudflare steps with an `if:`.
@@ -482,6 +488,43 @@ A failing first run skips the screen run.
 | `always` | `./tests/unit` | the test paths every run holds, separated by whitespace |
 | `files` | empty | the affected test files, separated by whitespace |
 | `screens` | empty, no screen run | the affected screen test files, separated by whitespace |
+
+### site-names
+
+Reads the `site` field of the caller's `package.json` and writes the names it holds, and the project and origins they give, as outputs.
+The field names the Cloudflare Pages project, the domain and the repository that publishes the site:
+
+```json
+"site": { "pages": "azalialaw", "domain": "azalialaw.com", "production": "azalialaw/azalialaw.com" }
+```
+
+It fails when the field is missing, when `pages` is not a Cloudflare project name, when `domain` is not a bare host name, or when `production` is not `owner/name`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `manifest` | `package.json` | the manifest that holds the `site` field |
+
+| Output | Value |
+| --- | --- |
+| `pages` | the Cloudflare Pages project that stages the site |
+| `preview` | the Cloudflare Pages project the previews go to, `<pages>-preview` |
+| `domain` | the domain the published site answers on |
+| `production` | the repository that publishes the site |
+| `staging-origin` | `https://<pages>.pages.dev` |
+| `production-origin` | `https://<domain>` |
+
+### pages-served
+
+Reads every file of a built folder from an origin until each one comes back byte for byte as built, ten seconds between tries.
+It fails when a file still differs after the last try, and names up to 20 of them.
+Each try asks with a fresh query, so a cache in front of the host cannot answer with the bytes it held before the deploy.
+It asks for `index.html` at its folder's address, and leaves out the host's own files at the root: `_headers`, `_redirects`, `_routes.json`, `_worker.js`, `.nojekyll` and `CNAME`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `directory` | `dist` | the built folder the origin must serve |
+| `origin` | required | the https origin that serves the folder |
+| `attempts` | `30` | how many times to read every file before failing |
 
 ### pages-staging-address
 

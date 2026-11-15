@@ -15,7 +15,7 @@ function pinnedPlaywrightCore(): string {
 }
 
 function playwrightJobImage(): string {
-  const workflow: unknown = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8"));
+  const workflow: unknown = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/own-ci.yml"), "utf8"));
   return String(at(workflow, "jobs", "playwright", "container"));
 }
 

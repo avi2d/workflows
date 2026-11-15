@@ -19,6 +19,10 @@ test.each(["take", "", "Acquire"])("an action of %p that passes fails", (action)
   });
 });
 
+test("a caller with no heavy slot machines, which names neither a prefix nor a command, that is refused fails", () => {
+  expect(check({ ACTION: "acquire", RUNNER_PREFIX: "", COMMAND: "" })).toEqual({ exitCode: 0, stdout: "" });
+});
+
 test("an empty prefix, which would match every runner, or an empty command that passes fails", () => {
   const refused = { exitCode: 1, stdout: "::error::heavy-slot needs runner-prefix and command\n" };
   expect(check({ ACTION: "acquire", RUNNER_PREFIX: "", COMMAND: "heavy-slot" })).toEqual(refused);
