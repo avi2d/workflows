@@ -70,4 +70,6 @@ jobs:
         with:
           name: site-dist
           path: ${{ inputs.path }}
+          include-hidden-files: true
+          retention-days: 1
           if-no-files-found: error

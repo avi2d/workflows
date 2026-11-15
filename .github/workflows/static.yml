@@ -1,6 +1,11 @@
 name: static
 on:
   workflow_call:
+    inputs:
+      hold:
+        description: Whether a push to a draft pull request cancels the run until ready for review.
+        type: boolean
+        default: true
 permissions:
   contents: read
 jobs:
@@ -13,7 +18,8 @@ jobs:
       statuses: write
       pull-requests: read
     steps:
-      - uses: avi2d/workflows/actions/draft-hold@v3
+      - if: inputs.hold
+        uses: avi2d/workflows/actions/draft-hold@v3
       - uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}

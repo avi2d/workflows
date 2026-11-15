@@ -38,12 +38,12 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 | Part | Inputs | What its job does |
 | --- | --- | --- |
 | `changes.yml` | `paths` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output |
-| `static.yml` | none | holds a draft, checks the workflow files and the title, builds, refuses a diff the build leaves, lints and typechecks |
-| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `shards`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names |
+| `static.yml` | `hold` | holds a draft, checks the workflow files and the title, builds, refuses a diff the build leaves, lints and typechecks |
+| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names |
 | `site-preview.yml` | `pages`, `path` | builds the site, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
 
-`test.yml` splits its command over `shards` jobs, from 1 to 10, and each reads its shard from `TEST_SHARD` and the count from `TEST_SHARDS`.
+`static.yml` and `test.yml` hold a draft by default through `hold`, and a caller sets `hold: false` on the jobs that start before the preview so a draft still gets its preview link.
 Each `test.yml` job keys its own browser cache, so parallel jobs never fight over one cache.
 `runs-on` defaults to `ubuntu-latest`, and a caller that keeps its `CI_RUNS_ON` override passes `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`.
 The caller's `checks` job calls `gate.yml`, whose job is also `checks`, so branch protection still reads `checks / checks`.
@@ -72,6 +72,8 @@ jobs:
       statuses: write
       pull-requests: read
     uses: avi2d/workflows/.github/workflows/static.yml@v3
+    with:
+      hold: false
   site:
     needs: changes
     if: needs.changes.outputs.docs-only != 'true'
@@ -86,6 +88,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.docs-only != 'true'
     uses: avi2d/workflows/.github/workflows/test.yml@v3
+    with:
+      hold: false
   browser:
     needs: site
     uses: avi2d/workflows/.github/workflows/test.yml@v3
@@ -94,7 +98,6 @@ jobs:
       browsers: chromium
       artifact: site-dist
       heavy: true
-      shards: 2
   checks:
     needs: [changes, static, site, unit, browser]
     if: always()
@@ -192,7 +195,7 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
 
 ## What a caller supplies
 
-- The `pages`, `domain`, and `production` inputs on each call to a site workflow.
+- The `pages` and `path` inputs on each call to `site-preview.yml`.
 - The permissions each calling job grants, which bound what the shared job holds.
 - `secrets: inherit` where the shared workflow declares secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
