@@ -1,0 +1,33 @@
+name: gate
+on:
+  workflow_call:
+    inputs:
+      results:
+        description: The results of every job the gate needs, as toJSON(needs).
+        required: true
+        type: string
+      skips:
+        description: The names of the needed jobs whose skip passes, separated by whitespace, or name=true pairs. Any other skipped job fails the gate.
+        type: string
+        default: ""
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: avi2d/workflows/actions/require-success@v3
+        with:
+          results: ${{ inputs.results }}
+          skips: ${{ inputs.skips }}
+      # GitHub keeps a dispatched run's check off the pull request, so the release pull request reads this status.
+      - if: always() && github.event_name == 'workflow_dispatch'
+        uses: avi2d/workflows/actions/head-status@v3
+        with:
+          job-status: ${{ job.status }}
+          context: checks / checks
+          attempts: "5"

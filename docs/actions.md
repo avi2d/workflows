@@ -151,6 +151,9 @@ jobs:
           cache: "false"
 ```
 
+Parallel jobs that install the same browsers and save one cache key collide, and all but one warn that they cannot reserve it.
+With `job` set, each job saves under a key of its own, and a job that misses its own key restores the newest cache of the same browsers.
+
 The image sets `PLAYWRIGHT_BROWSERS_PATH` to `/ms-playwright`, so `~/.cache/ms-playwright` stays empty and `cache` has nothing to save.
 An image whose version differs from the caller's `playwright-core` holds other browser builds, and the action then downloads the caller's.
 
@@ -158,6 +161,7 @@ An image whose version differs from the caller's `playwright-core` holds other b
 | --- | --- | --- |
 | `browsers` | `webkit` | the browsers to install, separated by spaces |
 | `cache` | `true` | whether to restore and save `~/.cache/ms-playwright`, keyed on the browsers, the runner OS and `bun.lock` |
+| `job` | empty, no job in the key | any text that tells this job apart from parallel jobs of the run that install the same browsers, such as the test command, whose hash goes in the cache key |
 
 ## lighthouse
 
@@ -469,13 +473,13 @@ A build that changes nothing makes no commit.
 
 Fails unless every named result is `success` or an expected skip, and names each one that is not.
 A gate job that `needs` other jobs runs it with `if: always()`, so a cancelled job or an unexpected skip fails the gate.
-A result that is `skipped` passes only when `skips` holds the same name with `true`, such as a job whose `if:` skips it on a docs-only change.
+A result that is `skipped` passes only when `skips` holds the same name with `true`, or the bare name, such as a job whose `if:` skips it on a docs-only change.
 In a job that holds no Bun, such as a gate that runs before setup, it installs the Bun this repository's `.bun-version` names, as setup does.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
-| `results` | required | `name=result` pairs separated by whitespace, such as `e2e=${{ needs.e2e.result }}` |
-| `skips` | empty, no skip passes | `name=true` pairs separated by whitespace, such as `e2e=${{ needs.changes.outputs.e2e-skip }}` |
+| `results` | required | `name=result` pairs separated by whitespace, such as `e2e=${{ needs.e2e.result }}`, or `${{ toJSON(needs) }}`, which names every job the gate needs |
+| `skips` | empty, no skip passes | `name=true` pairs or bare job names separated by whitespace, such as `e2e=${{ needs.changes.outputs.e2e-skip }}` or `e2e pixel`, where a bare name counts as `name=true` |
 
 ### affected-tests
 
@@ -492,13 +496,14 @@ A failing first run skips the screen run.
 ### site-names
 
 Writes the site names and the project and origins derived from them as outputs.
-It fails when an input is missing, when `pages` is not a Cloudflare project name, when `domain` is not a bare host name, or when `production` is not `owner/name`.
+It fails when `pages` is missing or is not a Cloudflare project name, when `domain` is set and is not a bare host name, or when `production` is set and is not `owner/name`.
+A job that only previews, such as `site-preview.yml`, leaves `domain` and `production` empty, and their outputs and `production-origin` stay empty.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `pages` | required | the Cloudflare Pages project that stages the site |
-| `domain` | required | the published site's bare domain |
-| `production` | required | the repository that publishes the site, as `owner/name` |
+| `domain` | empty | the published site's bare domain |
+| `production` | empty | the repository that publishes the site, as `owner/name` |
 
 | Output | Value |
 | --- | --- |
@@ -507,7 +512,7 @@ It fails when an input is missing, when `pages` is not a Cloudflare project name
 | `domain` | the domain the published site answers on |
 | `production` | the repository that publishes the site |
 | `staging-origin` | `https://<pages>.pages.dev` |
-| `production-origin` | `https://<domain>` |
+| `production-origin` | `https://<domain>`, or empty when `domain` is empty |
 
 ### pages-served
 

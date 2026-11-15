@@ -49,7 +49,7 @@ The v3 shared workflows call `@v3` tags, so a caller with `sha_pinning_required`
 
 ## Call the shared CI
 
-Each workflow file of a site or a code repository calls one shared workflow from `@v3`, as [The shared CI](docs/shared-ci.md) shows.
+Each workflow file of a site or a code repository calls one shared workflow from `@v3`, or composes the CI parts, as [The shared CI](docs/shared-ci.md) shows.
 
 ## Pick the runner
 

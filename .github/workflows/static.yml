@@ -1,0 +1,37 @@
+name: static
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write
+      statuses: write
+      pull-requests: read
+    steps:
+      - uses: avi2d/workflows/actions/draft-hold@v3
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - run: bunx checks-workflows
+      # The title reaches branch protection as the commitlint status, which pr-title.yml rewrites on an edit, so a bad title leaves this job green.
+      - id: title
+        continue-on-error: true
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+        run: bunx checks-commit-title
+      - uses: avi2d/workflows/actions/commitlint-status@v3
+        with:
+          outcome: ${{ steps.title.outcome }}
+          attempts: "5"
+      - run: bun run build
+      - run: git diff --exit-code
+      - run: bun run lint
+      - run: bun run typecheck
