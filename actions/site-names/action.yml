@@ -5,11 +5,11 @@ inputs:
     description: The Cloudflare Pages project that stages the site.
     required: true
   domain:
-    description: The domain the published site answers on.
-    required: true
+    description: The domain the published site answers on. Empty leaves domain and production-origin empty, for a job that only previews.
+    default: ""
   production:
-    description: The repository that publishes the site, as owner/name.
-    required: true
+    description: The repository that publishes the site, as owner/name. Empty leaves production empty, for a job that only previews.
+    default: ""
 outputs:
   pages:
     description: The Cloudflare Pages project that stages the site.

@@ -7,6 +7,9 @@ inputs:
   cache:
     description: Whether to restore and save ~/.cache/ms-playwright, keyed on the browsers and bun.lock.
     default: "true"
+  job:
+    description: Any text that tells this job apart from parallel jobs of the same run that install the same browsers, such as the test command. A hash of it goes in the cache key, so each such job saves its own cache. Empty keeps the key the browsers and bun.lock make.
+    default: ""
 runs:
   using: composite
   steps:
@@ -19,12 +22,14 @@ runs:
       shell: bash
       env:
         BROWSERS: ${{ inputs.browsers }}
+        JOB: ${{ inputs.job }}
       run: bun "$GITHUB_ACTION_PATH/main.ts" cache-key
     - if: inputs.cache == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        key: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}${{ steps.key.outputs.job }}
+        restore-keys: playwright-${{ steps.key.outputs.browsers }}-${{ runner.os }}-${{ hashFiles('bun.lock') }}
     - name: install the browsers
       shell: bash
       env:

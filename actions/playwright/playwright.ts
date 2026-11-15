@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { createHash } from "node:crypto";
 import { Config, Console, Data, Duration, Effect, FileSystem } from "effect";
 import { retryWithGrowingWait } from "../../lib/retry.ts";
 import { commandOutput, commandPassesWithin } from "../../lib/run.ts";
@@ -19,6 +20,12 @@ export function browsersOf(input: string): Effect.Effect<readonly string[], Play
 
 export function cacheKeyLine(browsers: readonly string[]): string {
   return `browsers=${browsers.join("-")}\n`;
+}
+
+// Parallel jobs that save one key collide, so each named job saves under a key of its own.
+export function jobKeyLine(job: string): string {
+  const name = job.trim();
+  return name === "" ? "job=\n" : `job=-${createHash("sha256").update(name).digest("hex").slice(0, 16)}\n`;
 }
 
 // A playwright-core that only prints the apt-get command on a dry run exits 0 too, so the exit code alone decides nothing.
@@ -48,7 +55,8 @@ const installSystemPackages = Effect.fn("installSystemPackages")(function* (brow
 
 const writeCacheKey = Effect.fn("writeCacheKey")(function* (browsers: readonly string[]) {
   const fs = yield* FileSystem.FileSystem;
-  yield* fs.writeFileString(yield* Config.String("GITHUB_OUTPUT"), cacheKeyLine(browsers), { flag: "a" });
+  const job = yield* Config.String("JOB").pipe(Config.withDefault(""));
+  yield* fs.writeFileString(yield* Config.String("GITHUB_OUTPUT"), cacheKeyLine(browsers) + jobKeyLine(job), { flag: "a" });
   return true;
 });
 

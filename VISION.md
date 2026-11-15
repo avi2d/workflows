@@ -4,10 +4,10 @@ workflows exists so that every repository calls one shared copy of each CI step 
 It serves every repository its owners hold, public or private, that calls its composite actions or its reusable workflows.
 It owns one thing: the shared workflows every repository's workflow files call, and the composite actions their steps run.
 
-## Each workflow file calls one shared workflow, which keeps every step
+## Each workflow file calls shared workflows, which keep every step
 
-A repository's workflow file is a short caller of one shared workflow, so every repository of a kind runs the same job.
-One event runs one job, and no step runs twice.
+A repository's workflow file is a short caller of shared workflows, so every repository of a kind runs the same jobs.
+An event runs one job per concern, in parallel, and one build is shared as an artifact, so no step runs twice.
 What differs between repositories lives in each one's `package.json` commands, not in its workflow files.
 The gates a job runs ship in the `@avi2dg/checks` kit, so this repository never duplicates what the kit already decides.
 

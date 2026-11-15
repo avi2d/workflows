@@ -1,5 +1,5 @@
 import { Console, Effect, Schema } from "effect";
-import { requiredInput } from "../../lib/inputs.ts";
+import { optionalInput, requiredInput } from "../../lib/inputs.ts";
 import { writeOutputs } from "../../lib/step-output.ts";
 
 const ACTION = "site-names";
@@ -12,7 +12,9 @@ const ProjectName = Schema.String.pipe(Schema.check(Schema.isPattern(/^[a-z0-9](
 const Domain = Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/)));
 const Repository = Schema.String.pipe(Schema.check(Schema.isPattern(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/)));
 
-const Site = Schema.Struct({ pages: ProjectName, domain: Domain, production: Repository });
+const Unnamed = Schema.Literal("");
+
+const Site = Schema.Struct({ pages: ProjectName, domain: Schema.Union([Unnamed, Domain]), production: Schema.Union([Unnamed, Repository]) });
 const decodeSite = Schema.decodeUnknownEffect(Site);
 
 export type SiteNames = {
@@ -31,7 +33,7 @@ export function namesOf(site: typeof Site.Type): SiteNames {
     domain: site.domain,
     production: site.production,
     "staging-origin": `https://${site.pages}.pages.dev`,
-    "production-origin": `https://${site.domain}`,
+    "production-origin": site.domain === "" ? "" : `https://${site.domain}`,
   };
 }
 
@@ -45,10 +47,11 @@ export const readSite = Effect.fn("readSite")(function* (input: unknown) {
 export const main = Effect.gen(function* () {
   const names = yield* readSite({
     pages: yield* requiredInput(ACTION, "pages", "PAGES"),
-    domain: yield* requiredInput(ACTION, "domain", "DOMAIN"),
-    production: yield* requiredInput(ACTION, "production", "PRODUCTION"),
+    domain: yield* optionalInput("DOMAIN"),
+    production: yield* optionalInput("PRODUCTION"),
   });
-  yield* Console.log(`the site stages on ${names["staging-origin"]}, previews on the ${names.preview} project and publishes ${names.production} at ${names["production-origin"]}`);
+  yield* Console.log(`the site stages on ${names["staging-origin"]} and previews on the ${names.preview} project`);
+  if (names.production !== "") yield* Console.log(`it publishes ${names.production} at ${names["production-origin"] || "no domain"}`);
   yield* writeOutputs(names);
   return true;
 });

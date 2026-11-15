@@ -1,0 +1,32 @@
+name: changes
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Bash patterns separated by whitespace that each match a whole documentation path, as the docs-only action takes them. Empty lets checks-docs-only decide.
+        type: string
+        default: ""
+    outputs:
+      docs-only:
+        description: true when the pull request changes only documentation, else false, and false on any other event.
+        value: ${{ jobs.changes.outputs.docs-only }}
+permissions:
+  contents: read
+jobs:
+  changes:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      docs-only: ${{ steps.classify.outputs.docs-only }}
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - id: classify
+        uses: avi2d/workflows/actions/docs-only@v3
+        with:
+          paths: ${{ inputs.paths }}

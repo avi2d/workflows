@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Exit } from "effect";
-import { browsersOf, cacheKeyLine, holdsSystemPackages } from "../../../../actions/playwright/playwright.ts";
+import { browsersOf, cacheKeyLine, holdsSystemPackages, jobKeyLine } from "../../../../actions/playwright/playwright.ts";
 
 describe("browsersOf", () => {
   test("browsers split other than on runs of whitespace fail", () => {
@@ -39,5 +39,21 @@ describe("holdsSystemPackages", () => {
 describe("cacheKeyLine", () => {
   test("a cache key whose browsers are joined other than by hyphens, or that spans lines, fails", () => {
     expect(cacheKeyLine(["webkit", "chromium"])).toBe("browsers=webkit-chromium\n");
+  });
+});
+
+describe("jobKeyLine", () => {
+  test("an empty job that changes the cache key a caller already saved under fails", () => {
+    expect(jobKeyLine("")).toBe("job=\n");
+    expect(jobKeyLine("  ")).toBe("job=\n");
+  });
+
+  test("a job suffix other than a hyphen and the first 16 hex digits of the job's SHA-256 fails", () => {
+    expect(jobKeyLine("bunx checks-browser --pr 1")).toBe("job=-ad10dce648ab21ec\n");
+  });
+
+  test("two parallel jobs that share one cache key fail", () => {
+    expect(jobKeyLine("bunx checks-test --tier=e2e 1")).not.toBe(jobKeyLine("bunx checks-browser --pr 1"));
+    expect(jobKeyLine("bun run test:pixel 1")).not.toBe(jobKeyLine("bun run test:pixel 2"));
   });
 });

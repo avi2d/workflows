@@ -21,6 +21,22 @@ describe("site names", () => {
     expect(Exit.isSuccess(read) ? read.value.production : "").toBe("azalialaw/azalialaw.com");
   });
 
+  test("a preview-only site named by its project alone that is refused, or that derives a production origin, fails", async () => {
+    const read = await Effect.runPromiseExit(readSite({ pages: "azalialaw", domain: "", production: "" }));
+    expect(Exit.isSuccess(read) ? read.value : undefined).toEqual({
+      pages: "azalialaw",
+      preview: "azalialaw-preview",
+      domain: "",
+      production: "",
+      "staging-origin": "https://azalialaw.pages.dev",
+      "production-origin": "",
+    });
+  });
+
+  test("an empty project name that passes fails", async () => {
+    expect(Exit.isFailure(await Effect.runPromiseExit(readSite({ ...AZALIALAW, pages: "" })))).toBe(true);
+  });
+
   test("invalid project, domain or repository inputs that pass fail", async () => {
     for (const input of [
       { ...AZALIALAW, pages: "Azalialaw" },

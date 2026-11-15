@@ -1,0 +1,78 @@
+name: test
+on:
+  workflow_call:
+    inputs:
+      run:
+        description: The one test command the job runs.
+        type: string
+        default: bunx checks-test --pr
+      browsers:
+        description: The Playwright browsers to install before the command, separated by spaces. Empty installs none.
+        type: string
+        default: ""
+      artifact:
+        description: The artifact of this run to download before the command, such as site-dist. Empty downloads none.
+        type: string
+        default: ""
+      artifact-path:
+        description: The folder the artifact is downloaded into.
+        type: string
+        default: dist
+      heavy:
+        description: Whether the command holds the machine's heavy slot while it runs.
+        type: boolean
+        default: false
+      hold:
+        description: Whether a push to a draft pull request cancels the run until ready for review.
+        type: boolean
+        default: true
+      runs-on:
+        description: The runner label of this job. A caller that keeps the CI_RUNS_ON override passes the CI_RUNS_ON variable or ubuntu-latest here.
+        type: string
+        default: ubuntu-latest
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - if: inputs.hold
+        uses: avi2d/workflows/actions/draft-hold@v3
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - if: inputs.artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ inputs.artifact-path }}
+      - if: inputs.heavy
+        uses: avi2d/workflows/actions/heavy-slot@v3
+        with:
+          action: acquire
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
+      - if: inputs.browsers != ''
+        uses: avi2d/workflows/actions/playwright@v3
+        with:
+          browsers: ${{ inputs.browsers }}
+          job: ${{ inputs.run }}
+      - run: ${{ inputs.run }}
+      - if: always() && inputs.heavy
+        uses: avi2d/workflows/actions/heavy-slot@v3
+        with:
+          action: release
+          runner-prefix: ${{ vars.HEAVY_SLOT_RUNNER_PREFIX }}
+          command: ${{ vars.HEAVY_SLOT_COMMAND }}
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: artifacts-${{ job.check_run_id }}
+          path: artifacts/
+          if-no-files-found: ignore
