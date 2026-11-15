@@ -387,7 +387,7 @@ A caller writes the notes first, such as with `checks-release-notes` through [ki
 ## The site actions
 
 The site actions stage, publish and preview a static site on Cloudflare Pages and GitHub Pages.
-The shared CI reads the site names from the caller `package.json` site field through [site-names](#site-names).
+The shared CI passes the site workflow inputs to [site-names](#site-names).
 Each other site action names its project, host, repository and secret as an input, and passes each secret from its own `secrets` context.
 Each heading below names the action's folder under `actions/`.
 No action prints a secret, and an action that needs a secret fails with a message when the caller passes it empty.
@@ -491,18 +491,14 @@ A failing first run skips the screen run.
 
 ### site-names
 
-Reads the `site` field of the caller's `package.json` and writes the names it holds, and the project and origins they give, as outputs.
-The field names the Cloudflare Pages project, the domain and the repository that publishes the site:
-
-```json
-"site": { "pages": "azalialaw", "domain": "azalialaw.com", "production": "azalialaw/azalialaw.com" }
-```
-
-It fails when the field is missing, when `pages` is not a Cloudflare project name, when `domain` is not a bare host name, or when `production` is not `owner/name`.
+Writes the site names and the project and origins derived from them as outputs.
+It fails when an input is missing, when `pages` is not a Cloudflare project name, when `domain` is not a bare host name, or when `production` is not `owner/name`.
 
 | Input | Default | What it sets |
 | --- | --- | --- |
-| `manifest` | `package.json` | the manifest that holds the `site` field |
+| `pages` | required | the Cloudflare Pages project that stages the site |
+| `domain` | required | the published site's bare domain |
+| `production` | required | the repository that publishes the site, as `owner/name` |
 
 | Output | Value |
 | --- | --- |

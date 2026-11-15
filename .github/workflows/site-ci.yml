@@ -1,6 +1,16 @@
 name: site-ci
 on:
   workflow_call:
+    inputs:
+      pages:
+        required: true
+        type: string
+      domain:
+        required: true
+        type: string
+      production:
+        required: true
+        type: string
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: false
@@ -41,6 +51,10 @@ jobs:
       - run: git diff --exit-code
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
+        with:
+          pages: ${{ inputs.pages }}
+          domain: ${{ inputs.domain }}
+          production: ${{ inputs.production }}
       # A fork's or Dependabot's pull request runs without the repository secrets, so it gets no preview.
       - id: secrets
         uses: avi2d/workflows/actions/preview-secrets-check@v3

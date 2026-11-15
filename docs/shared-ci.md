@@ -6,7 +6,7 @@ audience: consumers
 
 The shared CI is the set of reusable workflows that every site and every code repository calls from `@v3`.
 Each one runs one job, and every step in it is one plain command.
-What differs between repositories lives in each one's `package.json` commands.
+Each repository supplies its commands in `package.json` and each site supplies its names as workflow inputs.
 `bunx checks-workflows --write` from the checks kit writes the caller files, and the first step of each checks job runs `bunx checks-workflows` to refuse a file that differs.
 
 ## The shared workflows
@@ -31,14 +31,9 @@ The production run tests the release commit before it publishes, so a red releas
 
 ## The site files
 
-A site's `package.json` names the site:
-
-```json
-"site": { "pages": "azalialaw", "domain": "azalialaw.com", "production": "azalialaw/azalialaw.com" }
-```
-
-[site-names](actions.md#site-names) reads it, so the two sites carry byte-identical workflow files.
-Its `ci.yml`:
+A site caller passes its Cloudflare Pages project, live domain, and production repository to each site workflow.
+[site-names](actions.md#site-names) derives the preview project and origins from those inputs.
+A site's `ci.yml`:
 
 ```yaml
 name: ci
@@ -59,11 +54,16 @@ jobs:
       statuses: write
       pull-requests: write
     uses: avi2d/workflows/.github/workflows/site-ci.yml@v3
+    with:
+      pages: azalialaw
+      domain: azalialaw.com
+      production: azalialaw/azalialaw.com
     secrets: inherit
 ```
 
 `ready_for_review` starts the run that [draft-hold](actions.md#draft-hold) held on the draft.
-The other site files call their shared workflow the same way:
+The callers of `site-main.yml`, `site-production.yml`, and `preview-remove.yml` also pass all three inputs.
+The other site files call their shared workflow as follows:
 
 | File | Trigger | Calls |
 | --- | --- | --- |
@@ -81,6 +81,7 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
 
 ## What a caller supplies
 
+- The `pages`, `domain`, and `production` inputs on each call to a site workflow.
 - The permissions each calling job grants, which bound what the shared job holds.
 - `secrets: inherit` where the shared workflow declares secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.

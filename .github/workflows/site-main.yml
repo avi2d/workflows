@@ -1,6 +1,16 @@
 name: site-main
 on:
   workflow_call:
+    inputs:
+      pages:
+        required: true
+        type: string
+      domain:
+        required: true
+        type: string
+      production:
+        required: true
+        type: string
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -30,6 +40,10 @@ jobs:
         run: bunx checks-release-tag
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
+        with:
+          pages: ${{ inputs.pages }}
+          domain: ${{ inputs.domain }}
+          production: ${{ inputs.production }}
       - run: bun run build:site
       - uses: avi2d/workflows/actions/pages-deploy@v3
         with:
