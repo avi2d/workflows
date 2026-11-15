@@ -5,7 +5,7 @@ audience: consumers
 # The shared actions
 
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
-A caller calls it as `avi2d/workflows/actions/<name>@v2`.
+A caller calls it as `avi2d/workflows/actions/<name>@v3`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
 Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
 draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
@@ -105,7 +105,7 @@ To skip an end-to-end tier on Markdown anywhere and a root `copy.json`, a caller
 
 ```yaml
 - id: skip
-  uses: avi2d/workflows/actions/docs-only@v2
+  uses: avi2d/workflows/actions/docs-only@v3
   with:
     head: ${{ github.event.pull_request.head.sha }}
     paths: "*.[mM][dD] copy.json"
@@ -145,8 +145,8 @@ jobs:
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v<playwright-core version>-noble
     steps:
-      - uses: avi2d/workflows/actions/setup@v2
-      - uses: avi2d/workflows/actions/playwright@v2
+      - uses: avi2d/workflows/actions/setup@v3
+      - uses: avi2d/workflows/actions/playwright@v3
         with:
           cache: "false"
 ```
@@ -171,9 +171,9 @@ The step fails only when a page gets no report with the four category scores in 
 The caller builds the site first, since one site's build for the audit may differ from its default build:
 
 ```yaml
-- uses: avi2d/workflows/actions/setup@v2
+- uses: avi2d/workflows/actions/setup@v3
 - run: bun run build:production
-- uses: avi2d/workflows/actions/lighthouse@v2
+- uses: avi2d/workflows/actions/lighthouse@v3
   with:
     site: dist
 ```
@@ -201,7 +201,7 @@ A code repository carries no preview, so the hold stays first there.
 A cancelled job shows on the pull request as cancelled, where a skipped job would show as passed.
 A held draft's required check shows cancelled, or failed where it is an `always()` gate job, and it stays unmet until the checks run.
 
-A caller holds its checks through one gate job:
+On `v2` a caller holds its checks through one gate job:
 
 ```yaml
 on:

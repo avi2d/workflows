@@ -62,7 +62,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 
 | Setting | How it reaches the shared code |
 | --- | --- |
-| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan and the release runs read in the caller's context |
+| The self-hosted runner label | the caller's `CI_RUNS_ON` repository variable, which the runner pick, the advisory scan, the release runs and the shared CI read in the caller's context |
 | A token other than the job's own | the `token` input of commitlint-status, head-status or draft-hold, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot, or the `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` variables |
 | The browsers a job needs | the `browsers` input of playwright |
@@ -77,7 +77,7 @@ A composite action cannot read the caller's `secrets` context, so a secret reach
 | --- | --- |
 | `actions/<name>/` | the composite actions, one flat directory each, holding `action.yml`, the `main.ts` or `main.sh` its steps run, and the TypeScript and shell files that entry calls |
 | `lib/` | the code more than one action shares |
-| `ci/` | the smoke scripts the CI jobs run, in place of code inside `ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
+| `ci/` | the smoke scripts the CI jobs run, in place of code inside `own-ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
 | `release/` | the TypeScript this repository's own release runs: the changelog build and the major tag move |
 | `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/`, `release/` and `workflows/` for the code they test |
 | `.github/workflows/runner.yml` | the reusable runner pick |

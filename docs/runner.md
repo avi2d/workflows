@@ -13,7 +13,7 @@ A private caller runs a job on its own self-hosted runner when it names one, and
 ```yaml
 jobs:
   runner:
-    uses: avi2d/workflows/.github/workflows/runner.yml@v2
+    uses: avi2d/workflows/.github/workflows/runner.yml@v3
   checks:
     needs: runner
     runs-on: ${{ needs.runner.outputs.runs-on }}

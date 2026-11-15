@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     env:
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
