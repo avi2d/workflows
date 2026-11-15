@@ -1,0 +1,38 @@
+name: site-names
+description: Write the names a site's package.json site field holds, and the project and origins they give, as step outputs.
+inputs:
+  manifest:
+    description: The manifest whose site field names the Cloudflare Pages project, the domain and the repository that publishes the site.
+    default: package.json
+outputs:
+  pages:
+    description: The Cloudflare Pages project that stages the site.
+    value: ${{ steps.names.outputs.pages }}
+  preview:
+    description: The Cloudflare Pages project the pull request previews go to, the pages name with -preview after it.
+    value: ${{ steps.names.outputs.preview }}
+  domain:
+    description: The domain the published site answers on.
+    value: ${{ steps.names.outputs.domain }}
+  production:
+    description: The repository that publishes the site, as owner/name.
+    value: ${{ steps.names.outputs.production }}
+  staging-origin:
+    description: The origin the Pages project serves the staged site at, https://<pages>.pages.dev.
+    value: ${{ steps.names.outputs.staging-origin }}
+  production-origin:
+    description: The origin the published site answers on, https://<domain>.
+    value: ${{ steps.names.outputs.production-origin }}
+runs:
+  using: composite
+  steps:
+    # The script resolves effect beside itself, and the caller's install holds it only by chance.
+    - name: install the script's own dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --production --ignore-scripts --cwd "$GITHUB_ACTION_PATH"
+    - id: names
+      name: read the site names from the manifest
+      shell: bash
+      env:
+        MANIFEST: ${{ inputs.manifest }}
+      run: bun "$GITHUB_ACTION_PATH/main.ts"

@@ -162,6 +162,7 @@ An image whose version differs from the caller's `playwright-core` holds other b
 ## lighthouse
 
 Serves a built folder on a local address and audits each of its pages with Lighthouse.
+With `origin` set, it audits those pages at that origin instead, such as the live site the folder was published to.
 It writes the median score of each category to the job summary, showing none where Lighthouse leaves a category unscored.
 It keeps every run's JSON report as the `lighthouse-reports` artifact.
 The scores are advice: no score fails the step.
@@ -186,7 +187,8 @@ It sets up Node 24 for the rest of the job, since Lighthouse needs Node 22.19 or
 
 | Input | Default | What it sets |
 | --- | --- | --- |
-| `site` | required | the built folder to serve and audit |
+| `site` | required | the built folder whose pages are audited |
+| `origin` | empty, serve the folder locally | the https origin that serves the folder, audited in place of a local address |
 | `runs` | `3` | how many times to audit each page, whose median the summary shows |
 | `pages` | empty, every page | the pages to audit, as paths such as `/` or `/about/`, separated by whitespace |
 | `chrome-path` | the first of `google-chrome-stable`, `google-chrome`, `chromium` and `chromium-browser` on the `PATH` | the Chrome to start |
@@ -482,6 +484,43 @@ A failing first run skips the screen run.
 | `always` | `./tests/unit` | the test paths every run holds, separated by whitespace |
 | `files` | empty | the affected test files, separated by whitespace |
 | `screens` | empty, no screen run | the affected screen test files, separated by whitespace |
+
+### site-names
+
+Reads the `site` field of the caller's `package.json` and writes the names it holds, and the project and origins they give, as outputs.
+The field names the Cloudflare Pages project, the domain and the repository that publishes the site:
+
+```json
+"site": { "pages": "azalialaw", "domain": "azalialaw.com", "production": "azalialaw/azalialaw.com" }
+```
+
+It fails when the field is missing, when `pages` is not a Cloudflare project name, when `domain` is not a bare host name, or when `production` is not `owner/name`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `manifest` | `package.json` | the manifest that holds the `site` field |
+
+| Output | Value |
+| --- | --- |
+| `pages` | the Cloudflare Pages project that stages the site |
+| `preview` | the Cloudflare Pages project the previews go to, `<pages>-preview` |
+| `domain` | the domain the published site answers on |
+| `production` | the repository that publishes the site |
+| `staging-origin` | `https://<pages>.pages.dev` |
+| `production-origin` | `https://<domain>` |
+
+### pages-served
+
+Reads every file of a built folder from an origin until each one comes back byte for byte as built, ten seconds between tries.
+It fails when a file still differs after the last try, and names up to 20 of them.
+Each try asks with a fresh query, so a cache in front of the host cannot answer with the bytes it held before the deploy.
+It asks for `index.html` at its folder's address, and leaves out the host's own files at the root: `_headers`, `_redirects`, `_routes.json`, `_worker.js`, `.nojekyll` and `CNAME`.
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `directory` | `dist` | the built folder the origin must serve |
+| `origin` | required | the https origin that serves the folder |
+| `attempts` | `30` | how many times to read every file before failing |
 
 ### pages-staging-address
 

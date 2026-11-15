@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { Effect, Exit } from "effect";
+import { Effect, Exit, Option } from "effect";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { answer, choosePages, pagesOf, routesOf } from "../../../../actions/lighthouse/site.ts";
+import { answer, auditOrigin, choosePages, pagesOf, routesOf } from "../../../../actions/lighthouse/site.ts";
 
 describe("pagesOf", () => {
   test("a page list that keeps index.html in the address, takes files other than .html, or comes out unsorted fails", () => {
@@ -34,6 +34,21 @@ describe("choosePages", () => {
 
   test("a site with no page that passes fails", () => {
     expect(Exit.isFailure(Effect.runSyncExit(choosePages([], "")))).toBe(true);
+  });
+});
+
+describe("auditOrigin", () => {
+  test("an empty origin that audits anything but the local copy fails", () => {
+    expect(Option.isNone(Effect.runSync(auditOrigin("")))).toBe(true);
+  });
+
+  test("a live origin that keeps a path, or that comes back without the slash the local origin ends in, fails", () => {
+    expect(Effect.runSync(auditOrigin("https://azalialaw.com"))).toEqual(Option.some("https://azalialaw.com/"));
+    expect(Effect.runSync(auditOrigin("https://azalialaw.com/about/"))).toEqual(Option.some("https://azalialaw.com/"));
+  });
+
+  test("a plain http origin that passes fails", () => {
+    expect(Exit.isFailure(Effect.runSyncExit(auditOrigin("http://azalialaw.com")))).toBe(true);
   });
 });
 

@@ -5,7 +5,8 @@ import { readUntil } from "../../lib/wait.ts";
 import { retryWithGrowingWait } from "../../lib/retry.ts";
 import { commandPassesWithin } from "../../lib/run.ts";
 import { CATEGORY_IDS, type PageScores, Report, reportName, type Scores, scoresOf, summaryTable } from "./scores.ts";
-import { choosePages, pagesOf, routesOf, serveSite, siteFiles } from "./site.ts";
+import { builtFiles } from "../../lib/built-files.ts";
+import { auditOrigin, choosePages, pagesOf, routesOf, serveSite } from "./site.ts";
 
 class LighthouseError extends Data.TaggedError("LighthouseError")<{ readonly message: string }> {}
 
@@ -95,12 +96,13 @@ export const main = Effect.gen(function* () {
   const runs = yield* parseRuns(yield* Config.String("RUNS").pipe(Config.withDefault("3")));
   const chrome = yield* findChrome(yield* optionalInput("CHROME"));
   const reports = yield* Config.String("REPORTS");
-  const { root, files } = yield* siteFiles(site);
+  const { root, files } = yield* builtFiles("site", site);
   const pages = yield* choosePages(pagesOf(files), yield* optionalInput("PAGES"));
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   yield* fs.makeDirectory(reports, { recursive: true });
-  const origin = yield* serveSite(root, routesOf(files));
+  const live = yield* auditOrigin(yield* optionalInput("ORIGIN"));
+  const origin = Option.isSome(live) ? live.value : yield* serveSite(root, routesOf(files));
   const results: PageScores[] = [];
   for (const [index, page] of pages.entries()) {
     const url = new URL(page, origin).href;

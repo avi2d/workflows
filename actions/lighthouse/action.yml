@@ -1,9 +1,12 @@
 name: lighthouse
-description: Serve a built site, audit each of its pages with Lighthouse in a Chrome the action starts, write the median scores to the job summary and keep the reports as an artifact. No score fails the step.
+description: Serve a built site, or name the live origin that serves it, audit each of its pages with Lighthouse in a Chrome the action starts, write the median scores to the job summary and keep the reports as an artifact. No score fails the step.
 inputs:
   site:
-    description: The built folder to serve and audit.
+    description: The built folder whose pages are audited, served on a local address unless origin is set.
     required: true
+  origin:
+    description: The https origin that serves the built folder, such as the live site, audited in place of a local address. Empty serves the folder locally.
+    default: ""
   runs:
     description: How many times to audit each page.
     default: "3"
@@ -33,6 +36,7 @@ runs:
         SITE: ${{ inputs.site }}
         RUNS: ${{ inputs.runs }}
         PAGES: ${{ inputs.pages }}
+        ORIGIN: ${{ inputs.origin }}
         CHROME: ${{ inputs.chrome-path }}
         REPORTS: ${{ runner.temp }}/lighthouse-reports
       run: PATH="$GITHUB_ACTION_PATH/pinned/node_modules/.bin:$PATH" bun "$GITHUB_ACTION_PATH/main.ts"
