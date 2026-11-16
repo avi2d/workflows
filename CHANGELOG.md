@@ -3,6 +3,16 @@
 Every release of `workflows`, newest first.
 The release pull request writes each new section from the conventional commits since the last release tag.
 
+## 3.2.2
+
+Released 2026-11-16.
+
+### Fixes
+
+- **setup:** count Bun as held only when it runs [#88](https://github.com/avi2d/workflows/pull/88)
+
+The `v3` tag moves to this release.
+
 ## 3.2.1
 
 Released 2026-11-16.
