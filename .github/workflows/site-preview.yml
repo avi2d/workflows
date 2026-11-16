@@ -52,6 +52,7 @@ jobs:
       - env:
           VITE_PREVIEW_ORIGIN: ${{ steps.preview.outputs.origin }}
         run: bun run build:site
+      - run: bunx checks-lint --stage built
       - if: steps.preview.outputs.origin != ''
         uses: avi2d/workflows/actions/preview-deploy@v3
         with:

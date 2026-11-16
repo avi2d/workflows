@@ -37,7 +37,7 @@ jobs:
         with:
           outcome: ${{ steps.title.outcome }}
           attempts: "5"
+      - run: bun run lint
       - run: bun run build
       - run: git diff --exit-code
-      - run: bun run lint
       - run: bun run typecheck
