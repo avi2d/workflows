@@ -19,13 +19,18 @@ beforeEach(() => {
 });
 
 function bunHeld() {
-  const result = Bun.spawnSync([scratch.at("bin", "bash"), SCRIPT, "bun-held"], { cwd: scratch.at("caller"), env: { PATH: scratch.at("bin"), GITHUB_OUTPUT: scratch.at("output") } });
+  const result = Bun.spawnSync([scratch.at("bin", "bash"), SCRIPT, "bun-held"], { cwd: scratch.at("caller"), env: { PATH: scratch.at("bin"), GITHUB_OUTPUT: scratch.at("output"), STUB_RECORD: scratch.at("record") } });
   return { exitCode: result.exitCode, output: readFileSync(scratch.at("output"), "utf8") };
 }
 
 test("a job holding Bun that is told to install another over it fails", () => {
-  stubBin(scratch.at("bin"), "bun", "");
+  stubBin(scratch.at("bin"), "bun", "exit 0");
   expect(bunHeld()).toEqual({ exitCode: 0, output: `held=true\nversion=${PINNED}\n` });
+});
+
+test("a bun on the PATH that exits 127 is not a Bun the job holds", () => {
+  stubBin(scratch.at("bin"), "bun", "exit 127");
+  expect(bunHeld()).toEqual({ exitCode: 0, output: `held=false\nversion=${PINNED}\n` });
 });
 
 test("a job without Bun that is told it holds one, or given the caller's pin in place of this repository's, fails", () => {
