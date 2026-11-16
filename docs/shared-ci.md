@@ -205,9 +205,11 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.
 - The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site, and `build:production`, `test` and `test:pixel` for its production run, where `test` takes `--full`.
-- A caller of the composed parts keeps its `lint` command to source files only and runs `checks-lint --stage source` next to the repository's other source checks, so for example a site keeps `"lint": "oxlint && checks-lint --stage source && bun scripts/check-article-copy.ts"` while the site job runs `checks-lint --stage built` after `build:site`.
+- A caller of the composed parts keeps its `lint` command to source files only and runs `checks-lint --stage source` beside its other source checks.
+  A site keeps `"lint": "oxlint && checks-lint --stage source && bun scripts/check-article-copy.ts"` for example.
+  The site job runs `checks-lint --stage built` after `build:site`.
 - A caller of the single-job `site-ci.yml` or `ci.yml` keeps plain `checks-lint` in `lint`, which runs both stages after the build.
-- A caller of the composed parts needs version `0.105.0` or later of `@avi2dg/checks`, which is the first version whose `checks-lint` takes `--stage`.
+- A caller of the composed parts needs the `@avi2dg/checks` release `package.json` names, which is the first whose `checks-lint` takes `--stage`.
 
 A called job reports its check as `<caller job> / <shared job>`, such as `checks / checks`, so branch protection names that check.
 A pull request from a fork or from Dependabot runs without the repository secrets, so it gets no preview.
