@@ -9,7 +9,23 @@ on:
 permissions:
   contents: read
 jobs:
+  suite:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          fetch-depth: "0"
+          persist-credentials: "false"
+      # The subject matches the kit's release commit, so a push that releases nothing runs no suite.
+      - name: run the full test suite on the release commit
+        if: "inputs.full-test && startsWith(github.event.head_commit.message, 'chore: release ')"
+        run: bun run test --full
   release:
+    needs: suite
+    if: ${{ !cancelled() && (needs.suite.result == 'success' || needs.suite.result == 'skipped') }}
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
@@ -26,10 +42,6 @@ jobs:
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
-      # The subject matches the kit's release commit, so a push that releases nothing runs no suite.
-      - name: run the full test suite on the release commit
-        if: "inputs.full-test && startsWith(github.event.head_commit.message, 'chore: release ')"
-        run: bun run test --full
       - env:
           GH_TOKEN: ${{ github.token }}
         run: bunx checks-release-tag

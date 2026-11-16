@@ -75,7 +75,7 @@ A caller reads the output instead of writing the release rule into each job:
       skips: ${{ needs.changes.outputs.release == 'true' && 'static test' || needs.changes.outputs.docs-only == 'true' && 'test' || '' }}
 ```
 
-The `changes` job then runs on every event, and `static` starts after it, which took 23 to 58 seconds on the site runs measured.
+The `changes` job then runs on every event, and `static` starts after it.
 A caller that still writes the release rule on each job keeps working.
 
 A site's composed `ci.yml`, where the browser tests read the build the preview job made:
@@ -150,24 +150,29 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
+  changes:
+    uses: avi2d/workflows/.github/workflows/changes.yml@v3
+    permissions: { contents: read }
   static:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    needs: changes
+    if: needs.changes.outputs.release != 'true'
     uses: avi2d/workflows/.github/workflows/static.yml@v3
     permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
   test:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    needs: changes
+    if: needs.changes.outputs.release != 'true'
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     permissions: { contents: read, actions: write }
     with:
       runs-on: "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}"
   checks:
-    needs: [static, test]
+    needs: [changes, static, test]
     if: always()
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
     permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
-      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'static test' || '' }}
+      skips: ${{ needs.changes.outputs.release == 'true' && 'static test' || '' }}
 ```
 
 `ci.yml` and `site-ci.yml` keep working for every caller that still calls them, and they stay until v4.
