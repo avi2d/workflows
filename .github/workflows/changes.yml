@@ -8,7 +8,7 @@ on:
         default: ""
     outputs:
       docs-only:
-        description: true when the pull request changes only documentation, else false, and false on any other event.
+        description: true when the pull request changes only documentation, else false, and false on a release run, so every job that reads it also reads release.
         value: ${{ jobs.changes.outputs.docs-only }}
       release:
         description: true when the run checks a release pull request, dispatched on its release branch or opened from it in this repository, else false.

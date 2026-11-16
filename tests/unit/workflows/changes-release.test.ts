@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import { type Context, conditionRuns } from "../../lib/condition.ts";
+import { type Context, conditionRuns, expressionValue } from "../../lib/condition.ts";
 import { at, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
 const CHANGES = join(import.meta.dir, "../../../.github/workflows/changes.yml");
@@ -58,8 +58,12 @@ test("a release output that disagrees with the kit's release run rule on any run
 });
 
 test("a release output that does not read the release rule fails", () => {
-  expect(at(document, "jobs", "changes", "outputs", "release")).toBe("${{ env.RELEASE }}");
-  expect(at(document, "on", "workflow_call", "outputs", "release", "value")).toBe("${{ jobs.changes.outputs.release }}");
+  const jobRelease = String(at(document, "jobs", "changes", "outputs", "release"));
+  const workflowRelease = String(at(document, "on", "workflow_call", "outputs", "release", "value"));
+  for (const release of ["true", "false"]) {
+    expect(expressionValue(jobRelease, { "env.RELEASE": release })).toBe(release);
+    expect(expressionValue(workflowRelease, { "jobs.changes.outputs.release": release })).toBe(release);
+  }
 });
 
 test("a changes job that sets up or classifies on a release run, or skips that work on any other run, fails", () => {
@@ -72,5 +76,9 @@ test("a changes job that sets up or classifies on a release run, or skips that w
 });
 
 test("a docs-only output left empty on a release run fails", () => {
-  expect(at(document, "jobs", "changes", "outputs", "docs-only")).toBe("${{ steps.classify.outputs.docs-only || 'false' }}");
+  const docsOnly = String(at(document, "jobs", "changes", "outputs", "docs-only"));
+  expect(expressionValue(docsOnly, {})).toBe("false");
+  expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "" })).toBe("false");
+  expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "true" })).toBe("true");
+  expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "false" })).toBe("false");
 });

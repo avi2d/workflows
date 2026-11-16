@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import { conditionRuns, type Status } from "../../lib/condition.ts";
+import { conditionRuns, expressionValue, type Status } from "../../lib/condition.ts";
 import { at, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
 const FLAKE = join(import.meta.dir, "../../../.github/workflows/flake.yml");
@@ -22,9 +22,17 @@ test("a flake run that cannot start from a caller passing no inputs fails", () =
 });
 
 test("a flake run that sweeps other than ten runs into flake-report.json by default fails", () => {
-  expect(steps[sweep]?.["run"]).toBe('bunx checks-flake --runs "$RUNS" --report flake-report.json');
-  expect(at(steps[sweep], "env", "RUNS")).toBe("${{ inputs.runs }}");
   expect(at(document, "on", "workflow_call", "inputs", "runs", "default")).toBe("10");
+  const runs = String(at(steps[sweep], "env", "RUNS"));
+  expect(expressionValue(runs, { "inputs.runs": "7" })).toBe("7");
+  expect(expressionValue(runs, { "inputs.runs": "10" })).toBe("10");
+  const parts = String(steps[sweep]?.["run"] ?? "").split(" ");
+  expect(parts[0]).toBe("bunx");
+  expect(parts[1]).toBe("checks-flake");
+  expect(parts).toContain("--runs");
+  expect(parts).toContain('"$RUNS"');
+  expect(parts).toContain("--report");
+  expect(parts).toContain("flake-report.json");
 });
 
 test("a flake report left unsaved on a green or a red sweep fails", () => {

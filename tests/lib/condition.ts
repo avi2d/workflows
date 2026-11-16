@@ -7,19 +7,24 @@ export type Status = {
   readonly failure: boolean;
 };
 
+export type Value = string | boolean;
+
 const running: Status = { always: true, cancelled: false, success: true, failure: false };
 
-export function conditionRuns(condition: unknown, context: Context, status: Status = running): boolean {
-  if (typeof condition !== "string" || condition.trim() === "") return true;
+function isTruthy(value: Value): boolean {
+  return typeof value === "boolean" ? value : value !== "";
+}
+
+function evaluate(condition: unknown, context: Context, status: Status): { value: Value; checkedStatus: boolean } {
+  if (typeof condition !== "string" || condition.trim() === "") return { value: true, checkedStatus: false };
   const source = /^\s*\$\{\{([\s\S]*)\}\}\s*$/.exec(condition)?.[1] ?? condition;
   let pos = 0;
   let checkedStatus = false;
   const skipSpaces = (): void => {
     while (pos < source.length && /\s/.test(source[pos] ?? "")) pos += 1;
   };
-  const toBoolean = (value: string | boolean): boolean => (typeof value === "boolean" ? value : value !== "");
-  const toText = (value: string | boolean): string => (typeof value === "boolean" ? String(value) : value);
-  function parseOperand(): string | boolean {
+  const toText = (value: Value): string => (typeof value === "boolean" ? String(value) : value);
+  function parseOperand(): Value {
     skipSpaces();
     const quote = source[pos];
     if (quote === "'" || quote === '"') {
@@ -62,12 +67,10 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
     }
     if (name === "true") return true;
     if (name === "false") return false;
-    const value = context[name];
-    if (value === undefined) throw new Error(`cannot read ${condition}`);
-    return value;
+    return context[name] ?? "";
   }
-  function parseArguments(): (string | boolean)[] {
-    const args: (string | boolean)[] = [];
+  function parseArguments(): Value[] {
+    const args: Value[] = [];
     skipSpaces();
     while (source[pos] !== ")") {
       if (pos >= source.length) throw new Error(`cannot read ${condition}`);
@@ -78,7 +81,7 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
     pos += 1;
     return args;
   }
-  function parseComparison(): string | boolean {
+  function parseComparison(): Value {
     const left = parseOperand();
     skipSpaces();
     if (source.startsWith("==", pos) || source.startsWith("!=", pos)) {
@@ -89,11 +92,11 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
     }
     return left;
   }
-  function parseNot(): boolean {
+  function parseNot(): Value {
     skipSpaces();
     if (source[pos] === "!") {
       pos += 1;
-      return !parseNot();
+      return !isTruthy(parseNot());
     }
     if (source[pos] === "(") {
       pos += 1;
@@ -103,28 +106,41 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
       pos += 1;
       return inner;
     }
-    return toBoolean(parseComparison());
+    return parseComparison();
   }
-  function parseAnd(): boolean {
+  function parseAnd(): Value {
     let left = parseNot();
     for (;;) {
       skipSpaces();
       if (!source.startsWith("&&", pos)) return left;
       pos += 2;
-      left = parseNot() && left;
+      const right = parseNot();
+      left = isTruthy(left) ? right : left;
     }
   }
-  function parseOr(): boolean {
+  function parseOr(): Value {
     let left = parseAnd();
     for (;;) {
       skipSpaces();
       if (!source.startsWith("||", pos)) return left;
       pos += 2;
-      left = parseAnd() || left;
+      const right = parseAnd();
+      left = isTruthy(left) ? left : right;
     }
   }
-  const result = parseOr();
+  const value = parseOr();
   skipSpaces();
   if (pos !== source.length) throw new Error(`cannot read ${condition}`);
-  return checkedStatus ? result : result && status.success;
+  return { value, checkedStatus };
+}
+
+export function expressionValue(condition: unknown, context: Context, status: Status = running): Value {
+  return evaluate(condition, context, status).value;
+}
+
+export function conditionRuns(condition: unknown, context: Context, status: Status = running): boolean {
+  if (typeof condition !== "string" || condition.trim() === "") return true;
+  const result = evaluate(condition, context, status);
+  const runs = isTruthy(result.value);
+  return result.checkedStatus ? runs : runs && status.success;
 }

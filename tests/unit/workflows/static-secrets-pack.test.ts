@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import { conditionRuns } from "../../lib/condition.ts";
+import { conditionRuns, expressionValue } from "../../lib/condition.ts";
 import { at, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
 const STATIC = join(import.meta.dir, "../../../.github/workflows/static.yml");
@@ -12,7 +12,9 @@ const declared = at(workflowDocument(STATIC), "on", "workflow_call");
 test("a secrets pack written after lint, or one that never reaches lint, fails", () => {
   expect(pack).toBeGreaterThanOrEqual(0);
   expect(pack).toBeLessThan(lint);
-  expect(at(steps[pack], "with", "pack")).toBe("${{ secrets.CHECKS_SECRETS_PACK }}");
+  const packValue = String(at(steps[pack], "with", "pack"));
+  expect(expressionValue(packValue, { "secrets.CHECKS_SECRETS_PACK": "s3cr3t" })).toBe("s3cr3t");
+  expect(expressionValue(packValue, { "secrets.CHECKS_SECRETS_PACK": "other" })).toBe("other");
   expect(at(declared, "secrets", "CHECKS_SECRETS_PACK", "required")).toBe(false);
 });
 

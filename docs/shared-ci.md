@@ -54,6 +54,7 @@ The gate job needs `if: always()`, or a failed part skips the gate and the check
 
 `changes.yml` sets `release` to `true` on a run dispatched on a `release/` branch, and on a pull request from `release/<base>` in the same repository.
 On such a run it skips the setup and the docs-only check, and `docs-only` is `false`.
+Every job that reads `docs-only` also reads `release`.
 A caller reads the output instead of writing the release rule into each job:
 
 ```yaml
@@ -61,6 +62,10 @@ A caller reads the output instead of writing the release rule into each job:
     needs: changes
     if: needs.changes.outputs.release != 'true'
     uses: avi2d/workflows/.github/workflows/static.yml@v3
+  test:
+    needs: changes
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
+    uses: avi2d/workflows/.github/workflows/test.yml@v3
   checks:
     needs: [changes, static, test]
     if: always()
@@ -86,18 +91,18 @@ concurrency:
   cancel-in-progress: true
 jobs:
   changes:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/changes.yml@v3
     permissions: { contents: read }
   static:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    needs: changes
+    if: needs.changes.outputs.release != 'true'
     uses: avi2d/workflows/.github/workflows/static.yml@v3
     permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
     with:
       hold: "false"
   site:
     needs: changes
-    if: needs.changes.outputs.docs-only != 'true'
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
     uses: avi2d/workflows/.github/workflows/site-preview.yml@v3
     permissions: { contents: read, pull-requests: write }
     with:
@@ -107,7 +112,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   unit:
     needs: changes
-    if: needs.changes.outputs.docs-only != 'true'
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     permissions: { contents: read, actions: write }
     with:
@@ -130,7 +135,7 @@ jobs:
     permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
-      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'changes static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
+      skips: ${{ needs.changes.outputs.release == 'true' && 'static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
 ```
 
 A library's composed `ci.yml`:
@@ -218,6 +223,7 @@ The other site files call their shared workflow as follows:
 
 A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-main.yml`, and `release.yml` calling `release-pr.yml`.
 `advisories.yml`, `mutation.yml` and `flake.yml` stay where a repository has them.
+An `advisories.yml` caller keeps its own weekly `schedule` trigger.
 A `flake.yml` caller starts by hand, grants `contents: read`, and may pass `runs` and `node-version-file`.
 A `docs.yml` caller runs on a push to `main`, passes `build` and `path`, and grants `contents: read`, `pages: write` and `id-token: write`.
 It leaves out a `concurrency` group named `github-pages-deploy`, which the shared workflow holds.

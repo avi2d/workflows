@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
+import { expressionValue } from "../../lib/condition.ts";
 import { at, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
 const PAGES = join(import.meta.dir, "../../../.github/workflows/github-pages.yml");
@@ -13,10 +14,13 @@ const indexOf = (action: string): number => build.findIndex((step) => usesOf(ste
 test("a pages build that runs another command than the caller's or uploads another folder fails", () => {
   expect(at(document, "on", "workflow_call", "inputs", "build", "required")).toBe(true);
   expect(at(document, "on", "workflow_call", "inputs", "path", "required")).toBe(true);
-  const command = build.findIndex((step) => step["run"] === "${{ inputs.build }}");
+  const command = build.findIndex((step) => expressionValue(String(step["run"]), { "inputs.build": "bun run docs:build" }) === "bun run docs:build");
+  expect(expressionValue(String(build[command]?.["run"]), { "inputs.build": "bun run other:build" })).toBe("bun run other:build");
   expect(indexOf("configure-pages")).toBeLessThan(command);
   expect(command).toBeLessThan(indexOf("upload-pages-artifact"));
-  expect(at(build[indexOf("upload-pages-artifact")], "with", "path")).toBe("${{ inputs.path }}");
+  const path = String(at(build[indexOf("upload-pages-artifact")], "with", "path"));
+  expect(expressionValue(path, { "inputs.path": "docs/.vitepress/dist" })).toBe("docs/.vitepress/dist");
+  expect(expressionValue(path, { "inputs.path": "docs/.vitepress/other" })).toBe("docs/.vitepress/other");
 });
 
 test("a deploy that starts before the build, or without the Pages token, fails", () => {
