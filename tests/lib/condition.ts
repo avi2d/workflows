@@ -67,7 +67,9 @@ function evaluate(condition: unknown, context: Context, status: Status): { value
     }
     if (name === "true") return true;
     if (name === "false") return false;
-    return context[name] ?? "";
+    const value = context[name];
+    if (value === undefined) throw new Error(`cannot read ${condition}`);
+    return value;
   }
   function parseArguments(): Value[] {
     const args: Value[] = [];

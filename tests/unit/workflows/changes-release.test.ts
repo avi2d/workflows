@@ -77,7 +77,6 @@ test("a changes job that sets up or classifies on a release run, or skips that w
 
 test("a docs-only output left empty on a release run fails", () => {
   const docsOnly = String(at(document, "jobs", "changes", "outputs", "docs-only"));
-  expect(expressionValue(docsOnly, {})).toBe("false");
   expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "" })).toBe("false");
   expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "true" })).toBe("true");
   expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "false" })).toBe("false");

@@ -5,14 +5,14 @@ audience: consumers
 # The shared CI
 
 The shared CI is the set of reusable workflows that every site and every code repository calls from `@v3`.
-Each one runs one job, and every step in it is one plain command.
+Each one holds the steps its table row names, and every step in it is one plain command.
 A caller either calls one whole workflow per event, or composes [the CI parts](#the-ci-parts) into one job per concern that run in parallel.
 Each repository supplies its commands in `package.json` and each site supplies its names as workflow inputs.
 `bunx checks-workflows --write` from the checks kit writes the caller files, and the first step of each checks job runs `bunx checks-workflows` to refuse a file that differs.
 
 ## The shared workflows
 
-| Workflow | Called by | What its one job does |
+| Workflow | Called by | What it does |
 | --- | --- | --- |
 | `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled |
 | `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
@@ -55,7 +55,7 @@ The gate job needs `if: always()`, or a failed part skips the gate and the check
 `changes.yml` sets `release` to `true` on a run dispatched on a `release/` branch, and on a pull request from `release/<base>` in the same repository.
 On such a run it skips the setup and the docs-only check, and `docs-only` is `false`.
 Every job that reads `docs-only` also reads `release`.
-A caller reads the output instead of writing the release rule into each job:
+A caller with a `changes` job reads the output instead of writing the release rule into each job:
 
 ```yaml
   static:
@@ -150,29 +150,24 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
-  changes:
-    uses: avi2d/workflows/.github/workflows/changes.yml@v3
-    permissions: { contents: read }
   static:
-    needs: changes
-    if: needs.changes.outputs.release != 'true'
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/static.yml@v3
     permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
   test:
-    needs: changes
-    if: needs.changes.outputs.release != 'true'
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     permissions: { contents: read, actions: write }
     with:
       runs-on: "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}"
   checks:
-    needs: [changes, static, test]
+    needs: [static, test]
     if: always()
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
     permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
-      skips: ${{ needs.changes.outputs.release == 'true' && 'static test' || '' }}
+      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'static test' || '' }}
 ```
 
 `ci.yml` and `site-ci.yml` keep working for every caller that still calls them, and they stay until v4.

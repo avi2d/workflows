@@ -12,7 +12,7 @@ const suite = suiteSteps.findIndex((step) => step["run"] === "bun run test --ful
 const CANCELLED: Status = { always: true, cancelled: true, success: false, failure: false };
 
 function suiteRuns(fullTest: boolean, message: string): boolean {
-  return conditionRuns(suiteSteps[suite]?.["if"], { "inputs.full-test": fullTest, "github.event.head_commit.message": message });
+  return conditionRuns(at(document, "jobs", "suite", "if"), { "inputs.full-test": fullTest, "github.event.head_commit.message": message });
 }
 
 function releaseRuns(result: string, status?: Status): boolean {
