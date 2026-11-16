@@ -38,9 +38,9 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 | Part | Inputs | What its job does |
 | --- | --- | --- |
 | `changes.yml` | `paths` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output |
-| `static.yml` | `hold` | holds a draft, checks the workflow files and the title, builds, refuses a diff the build leaves, lints and typechecks |
+| `static.yml` | `hold` | holds a draft, checks the workflow files and the title, runs source lint, builds, refuses a diff the build leaves, and typechecks |
 | `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names |
-| `site-preview.yml` | `pages`, `path` | builds the site, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
+| `site-preview.yml` | `pages`, `path` | builds the site, runs built-site lint, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
 
 `static.yml` and `test.yml` hold a draft by default through `hold`, and a caller sets `hold: false` on the jobs that start before the preview so a draft still gets its preview link.
