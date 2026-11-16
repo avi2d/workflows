@@ -234,7 +234,10 @@ The suite runs when the pushed commit's message starts with `chore: release `, t
 
 - The `pages` and `path` inputs on each call to `site-preview.yml`.
 - The permissions each calling job grants, which bound what the shared job holds.
-- The secrets each calling job passes by name where the shared workflow declares them: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, `PRODUCTION_DEPLOY_KEY` for its production run, and `CHECKS_SECRETS_PACK` for a `static.yml` call with `secrets-pack: true`.
+- The secrets each calling job passes by name where the shared workflow declares them.
+  A site passes `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+  Its production run passes `PRODUCTION_DEPLOY_KEY`.
+  A `static.yml` call with `secrets-pack: true` passes `CHECKS_SECRETS_PACK`.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.

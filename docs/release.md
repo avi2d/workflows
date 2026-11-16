@@ -166,7 +166,8 @@ GitHub refuses the release pull request until the repository turns on **Allow Gi
 A caller that passes it `plan-command`, `preflight-command`, `tree-guard-command` or `tag-command` passes inputs the v3 file does not declare.
 Such a caller either keeps `@v2`, or calls `release-pr-v2.yml` at `@v3` with the same inputs.
 The tag job leaves the release pull request: a code repository's `main.yml` calls `release-main.yml`, which runs `checks-release-tag`.
-The release pull request runs no tests, so a caller that publishes passes `full-test: true`, and the release commit's main run runs `bun run test --full` before the tag and the publish.
+The release pull request runs no tests.
+A caller that publishes passes `full-test: true`, so the release commit's main run runs `bun run test --full` before the tag and the publish.
 
 ## Related topics
 
