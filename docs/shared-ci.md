@@ -65,8 +65,10 @@ permissions:
   contents: read
 jobs:
   changes:
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/changes.yml@v3
   static:
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     permissions:
       contents: read
       actions: write
@@ -114,7 +116,7 @@ jobs:
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
     with:
       results: ${{ toJSON(needs) }}
-      skips: ${{ needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
+      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'changes static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
 ```
 
 A library's composed `ci.yml`:
@@ -129,6 +131,7 @@ permissions:
   contents: read
 jobs:
   static:
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     permissions:
       contents: read
       actions: write
@@ -136,6 +139,7 @@ jobs:
       pull-requests: read
     uses: avi2d/workflows/.github/workflows/static.yml@v3
   test:
+    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     permissions:
       contents: read
       actions: write
@@ -149,6 +153,7 @@ jobs:
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
     with:
       results: ${{ toJSON(needs) }}
+      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'static test' || '' }}
 ```
 
 `ci.yml` and `site-ci.yml` keep working for every caller that still calls them, and they stay until v4.
@@ -212,6 +217,8 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.
 - The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site, and `build:production`, `test` and `test:pixel` for its production run, where `test` takes `--full`.
+- The `lint` command reads only source files and runs `checks-lint --stage source` next to the repository's other source checks, so for example a site keeps `"lint": "oxlint && checks-lint --stage source && bun scripts/check-article-copy.ts"` while the site job runs `checks-lint --stage built` after `build:site`.
+- Version `0.105.0` or later of `@avi2dg/checks`, which is the first version whose `checks-lint` takes `--stage`.
 
 A called job reports its check as `<caller job> / <shared job>`, such as `checks / checks`, so branch protection names that check.
 A pull request from a fork or from Dependabot runs without the repository secrets, so it gets no preview.
