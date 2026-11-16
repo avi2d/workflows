@@ -10,6 +10,9 @@ on:
       docs-only:
         description: true when the pull request changes only documentation, else false, and false on any other event.
         value: ${{ jobs.changes.outputs.docs-only }}
+      release:
+        description: true when the run checks a release pull request, dispatched on its release branch or opened from it in this repository, else false.
+        value: ${{ jobs.changes.outputs.release }}
 permissions:
   contents: read
 jobs:
@@ -18,15 +21,20 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    env:
+      RELEASE: ${{ (github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
-      docs-only: ${{ steps.classify.outputs.docs-only }}
+      docs-only: ${{ steps.classify.outputs.docs-only || 'false' }}
+      release: ${{ env.RELEASE }}
     steps:
-      - uses: avi2d/workflows/actions/setup@v3
+      - if: env.RELEASE != 'true'
+        uses: avi2d/workflows/actions/setup@v3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: "0"
           persist-credentials: "false"
-      - id: classify
+      - if: env.RELEASE != 'true'
+        id: classify
         uses: avi2d/workflows/actions/docs-only@v3
         with:
           paths: ${{ inputs.paths }}

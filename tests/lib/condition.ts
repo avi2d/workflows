@@ -1,4 +1,4 @@
-export type Context = Readonly<Record<string, string>>;
+export type Context = Readonly<Record<string, string | boolean>>;
 
 export type Status = {
   readonly always: boolean;
@@ -11,7 +11,7 @@ const running: Status = { always: true, cancelled: false, success: true, failure
 
 export function conditionRuns(condition: unknown, context: Context, status: Status = running): boolean {
   if (typeof condition !== "string" || condition.trim() === "") return true;
-  const source = condition;
+  const source = /^\s*\$\{\{([\s\S]*)\}\}\s*$/.exec(condition)?.[1] ?? condition;
   let pos = 0;
   let checkedStatus = false;
   const skipSpaces = (): void => {
@@ -30,14 +30,18 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
       return literal;
     }
     let name = "";
-    while (pos < source.length && /[A-Za-z0-9_.]/.test(source[pos] ?? "")) name += source[pos++] ?? "";
+    while (pos < source.length && /[A-Za-z0-9_.-]/.test(source[pos] ?? "")) name += source[pos++] ?? "";
     if (name === "") throw new Error(`cannot read ${condition}`);
     skipSpaces();
     if (source[pos] === "(") {
       pos += 1;
-      skipSpaces();
-      if (source[pos] !== ")") throw new Error(`cannot read ${condition}`);
-      pos += 1;
+      const args = parseArguments();
+      if (name === "startsWith" && args.length === 2) return toText(args[0] ?? "").toLowerCase().startsWith(toText(args[1] ?? "").toLowerCase());
+      if (name === "format" && args.length > 0) {
+        const [template = "", ...values] = args;
+        return toText(template).replaceAll(/\{(\d+)\}/g, (_, index: string) => toText(values[Number(index)] ?? ""));
+      }
+      if (args.length > 0) throw new Error(`cannot read ${condition}`);
       if (name === "always") {
         checkedStatus = true;
         return status.always;
@@ -61,6 +65,18 @@ export function conditionRuns(condition: unknown, context: Context, status: Stat
     const value = context[name];
     if (value === undefined) throw new Error(`cannot read ${condition}`);
     return value;
+  }
+  function parseArguments(): (string | boolean)[] {
+    const args: (string | boolean)[] = [];
+    skipSpaces();
+    while (source[pos] !== ")") {
+      if (pos >= source.length) throw new Error(`cannot read ${condition}`);
+      args.push(parseOperand());
+      skipSpaces();
+      if (source[pos] === ",") pos += 1;
+    }
+    pos += 1;
+    return args;
   }
   function parseComparison(): string | boolean {
     const left = parseOperand();

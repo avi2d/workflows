@@ -67,7 +67,7 @@ A caller releases on demand through two reusable workflows, as [The release runs
 | A token other than the job's own | the `token` input of commitlint-status, head-status or draft-hold, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot, or the `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` variables |
 | The browsers a job needs | the `browsers` input of playwright |
-| The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
+| The private secrets pack | the `pack` input of secrets-pack, or the `CHECKS_SECRETS_PACK` secret of `static.yml`, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
 | The site names and secrets | the site workflow inputs and `secrets: inherit` in [The shared CI](docs/shared-ci.md) |
 
 A composite action cannot read the caller's `secrets` context, so each secret reaches it as a caller-written input.
