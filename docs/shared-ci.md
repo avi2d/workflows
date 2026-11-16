@@ -61,59 +61,50 @@ on:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
-permissions:
-  contents: read
 jobs:
   changes:
     if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/changes.yml@v3
+    permissions: { contents: read }
   static:
     if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
-    permissions:
-      contents: read
-      actions: write
-      statuses: write
-      pull-requests: read
     uses: avi2d/workflows/.github/workflows/static.yml@v3
+    permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
     with:
-      hold: false
+      hold: "false"
   site:
     needs: changes
     if: needs.changes.outputs.docs-only != 'true'
-    permissions:
-      contents: read
-      pull-requests: write
     uses: avi2d/workflows/.github/workflows/site-preview.yml@v3
+    permissions: { contents: read, pull-requests: write }
     with:
-      pages: example-site
-    secrets: inherit
+      pages: "example-site"
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   unit:
     needs: changes
     if: needs.changes.outputs.docs-only != 'true'
-    permissions:
-      contents: read
-      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
+    permissions: { contents: read, actions: write }
     with:
-      hold: false
+      hold: "false"
+      runs-on: "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}"
   browser:
     needs: site
-    permissions:
-      contents: read
-      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
+    permissions: { contents: read, actions: write }
     with:
-      run: bunx checks-browser --pr
-      browsers: webkit
-      artifact: site-dist
-      heavy: true
+      run: "bunx checks-browser --pr"
+      browsers: "webkit"
+      artifact: "site-dist"
+      heavy: "true"
+      runs-on: "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}"
   checks:
     needs: [changes, static, site, unit, browser]
     if: always()
-    permissions:
-      contents: read
-      statuses: write
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
+    permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
       skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'changes static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
@@ -127,30 +118,25 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
-permissions:
-  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 jobs:
   static:
     if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
-    permissions:
-      contents: read
-      actions: write
-      statuses: write
-      pull-requests: read
     uses: avi2d/workflows/.github/workflows/static.yml@v3
+    permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
   test:
     if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
-    permissions:
-      contents: read
-      actions: write
     uses: avi2d/workflows/.github/workflows/test.yml@v3
+    permissions: { contents: read, actions: write }
+    with:
+      runs-on: "${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}"
   checks:
     needs: [static, test]
     if: always()
-    permissions:
-      contents: read
-      statuses: write
     uses: avi2d/workflows/.github/workflows/gate.yml@v3
+    permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
       skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'static test' || '' }}
@@ -187,7 +173,9 @@ jobs:
       pages: azalialaw
       domain: azalialaw.com
       production: azalialaw/azalialaw.com
-    secrets: inherit
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 ```
 
 `ready_for_review` starts the run that [draft-hold](actions.md#draft-hold) held on the draft.
@@ -212,13 +200,14 @@ A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-
 
 - The `pages` and `path` inputs on each call to `site-preview.yml`.
 - The permissions each calling job grants, which bound what the shared job holds.
-- `secrets: inherit` where the shared workflow declares secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
+- The secrets each calling job passes by name where the shared workflow declares them: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.
 - The commands its `package.json` names: `build`, `lint` and `typecheck`, plus `build:site` for a site, and `build:production`, `test` and `test:pixel` for its production run, where `test` takes `--full`.
-- The `lint` command reads only source files and runs `checks-lint --stage source` next to the repository's other source checks, so for example a site keeps `"lint": "oxlint && checks-lint --stage source && bun scripts/check-article-copy.ts"` while the site job runs `checks-lint --stage built` after `build:site`.
-- Version `0.105.0` or later of `@avi2dg/checks`, which is the first version whose `checks-lint` takes `--stage`.
+- A caller of the composed parts keeps its `lint` command to source files only and runs `checks-lint --stage source` next to the repository's other source checks, so for example a site keeps `"lint": "oxlint && checks-lint --stage source && bun scripts/check-article-copy.ts"` while the site job runs `checks-lint --stage built` after `build:site`.
+- A caller of the single-job `site-ci.yml` or `ci.yml` keeps plain `checks-lint` in `lint`, which runs both stages after the build.
+- A caller of the composed parts needs version `0.105.0` or later of `@avi2dg/checks`, which is the first version whose `checks-lint` takes `--stage`.
 
 A called job reports its check as `<caller job> / <shared job>`, such as `checks / checks`, so branch protection names that check.
 A pull request from a fork or from Dependabot runs without the repository secrets, so it gets no preview.
