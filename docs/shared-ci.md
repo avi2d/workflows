@@ -5,23 +5,25 @@ audience: consumers
 # The shared CI
 
 The shared CI is the set of reusable workflows that every site and every code repository calls from `@v3`.
-Each one runs one job, and every step in it is one plain command.
+Each one holds the steps its table row names, and every step in it is one plain command.
 A caller either calls one whole workflow per event, or composes [the CI parts](#the-ci-parts) into one job per concern that run in parallel.
 Each repository supplies its commands in `package.json` and each site supplies its names as workflow inputs.
 `bunx checks-workflows --write` from the checks kit writes the caller files, and the first step of each checks job runs `bunx checks-workflows` to refuse a file that differs.
 
 ## The shared workflows
 
-| Workflow | Called by | What its one job does |
+| Workflow | Called by | What it does |
 | --- | --- | --- |
-| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on a failure |
+| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled |
 | `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
 | `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
 | `ci.yml` | a code repository's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, lints, typechecks and runs `checks-test --pr` |
-| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up |
+| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up, after `bun run test --full` on a release commit when `full-test` is true |
 | `pr-title.yml` | every repository's `pr-title.yml` | checks the title and reports it as the `commitlint` status |
 | `release-pr.yml` | every repository's `release.yml` | opens or refreshes the release pull request through `checks-release-pr ci.yml` |
+| `flake.yml` | a code repository's `flake.yml` | runs `checks-flake --runs <runs> --report flake-report.json` in the heavy slot, and uploads `flake-report.json` on every run that is not cancelled |
+| `github-pages.yml` | a repository's `docs.yml` | builds the site with the `build` command, uploads the `path` folder, and deploys it to GitHub Pages |
 
 The kit decides what each command does on each event, so the jobs hold no condition on what to test.
 `checks-release-tag` does nothing on a merge that is not a release commit.
@@ -37,9 +39,9 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 
 | Part | Inputs | What its job does |
 | --- | --- | --- |
-| `changes.yml` | `paths` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output |
-| `static.yml` | `hold` | holds a draft, checks the workflow files and the title, runs source lint, builds, refuses a diff the build leaves, and typechecks |
-| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names |
+| `changes.yml` | `paths` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
+| `static.yml` | `hold`, `secrets-pack` | holds a draft, checks the workflow files and the title, writes the secrets pack when `secrets-pack` is true, runs source lint, builds, refuses a diff the build leaves, and typechecks |
+| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names, and uploads `artifacts/` on every run that is not cancelled |
 | `site-preview.yml` | `pages`, `path` | builds the site, runs built-site lint, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
 
@@ -49,6 +51,32 @@ Each `test.yml` job keys its own browser cache, so parallel jobs never fight ove
 `runs-on` defaults to `ubuntu-latest`, and a caller that keeps its `CI_RUNS_ON` override passes `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`.
 The caller's `checks` job calls `gate.yml`, whose job is also `checks`, so branch protection still reads `checks / checks`.
 The gate job needs `if: always()`, or a failed part skips the gate and the check never reports.
+
+`changes.yml` sets `release` to `true` on a run dispatched on a `release/` branch, and on a pull request from `release/<base>` in the same repository.
+On such a run it skips the setup and the docs-only check, and `docs-only` is `false`.
+Every job that reads `docs-only` also reads `release`.
+A caller with a `changes` job reads the output instead of writing the release rule into each job:
+
+```yaml
+  static:
+    needs: changes
+    if: needs.changes.outputs.release != 'true'
+    uses: avi2d/workflows/.github/workflows/static.yml@v3
+  test:
+    needs: changes
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
+    uses: avi2d/workflows/.github/workflows/test.yml@v3
+  checks:
+    needs: [changes, static, test]
+    if: always()
+    uses: avi2d/workflows/.github/workflows/gate.yml@v3
+    with:
+      results: ${{ toJSON(needs) }}
+      skips: ${{ needs.changes.outputs.release == 'true' && 'static test' || needs.changes.outputs.docs-only == 'true' && 'test' || '' }}
+```
+
+The `changes` job then runs on every event, and `static` starts after it.
+A caller that still writes the release rule on each job keeps working.
 
 A site's composed `ci.yml`, where the browser tests read the build the preview job made:
 
@@ -63,18 +91,18 @@ concurrency:
   cancel-in-progress: true
 jobs:
   changes:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
     uses: avi2d/workflows/.github/workflows/changes.yml@v3
     permissions: { contents: read }
   static:
-    if: ${{ !((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    needs: changes
+    if: needs.changes.outputs.release != 'true'
     uses: avi2d/workflows/.github/workflows/static.yml@v3
     permissions: { contents: read, actions: write, statuses: write, pull-requests: read }
     with:
       hold: "false"
   site:
     needs: changes
-    if: needs.changes.outputs.docs-only != 'true'
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
     uses: avi2d/workflows/.github/workflows/site-preview.yml@v3
     permissions: { contents: read, pull-requests: write }
     with:
@@ -84,7 +112,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   unit:
     needs: changes
-    if: needs.changes.outputs.docs-only != 'true'
+    if: needs.changes.outputs.release != 'true' && needs.changes.outputs.docs-only != 'true'
     uses: avi2d/workflows/.github/workflows/test.yml@v3
     permissions: { contents: read, actions: write }
     with:
@@ -107,7 +135,7 @@ jobs:
     permissions: { contents: read, statuses: write }
     with:
       results: ${{ toJSON(needs) }}
-      skips: ${{ ((github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository)) && 'changes static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
+      skips: ${{ needs.changes.outputs.release == 'true' && 'static site unit browser' || needs.changes.outputs.docs-only == 'true' && 'site unit browser' || '' }}
 ```
 
 A library's composed `ci.yml`:
@@ -195,12 +223,21 @@ The other site files call their shared workflow as follows:
 
 A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-main.yml`, and `release.yml` calling `release-pr.yml`.
 `advisories.yml`, `mutation.yml` and `flake.yml` stay where a repository has them.
+An `advisories.yml` caller keeps its own weekly `schedule` trigger.
+A `flake.yml` caller starts by hand, grants `contents: read`, and may pass `runs` and `node-version-file`.
+A `docs.yml` caller runs on a push to `main`, passes `build` and `path`, and grants `contents: read`, `pages: write` and `id-token: write`.
+It leaves out a `concurrency` group named `github-pages-deploy`, which the shared workflow holds.
+A code repository that publishes to npm passes `full-test: true` to `release-main.yml`, so its release commit runs the full suite once before the publish.
+The suite runs when the pushed commit's message starts with `chore: release `, the subject of a release commit.
 
 ## What a caller supplies
 
 - The `pages` and `path` inputs on each call to `site-preview.yml`.
 - The permissions each calling job grants, which bound what the shared job holds.
-- The secrets each calling job passes by name where the shared workflow declares them: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for a site, and `PRODUCTION_DEPLOY_KEY` for its production run.
+- The secrets each calling job passes by name where the shared workflow declares them.
+  A site passes `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+  Its production run passes `PRODUCTION_DEPLOY_KEY`.
+  A `static.yml` call with `secrets-pack: true` passes `CHECKS_SECRETS_PACK`.
 - Its `CI_RUNS_ON` repository variable when its jobs run on its own runner.
   A public caller leaves `CI_RUNS_ON` unset, so a fork pull request never runs on the self hosted runner.
 - Its `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` repository variables when its machines hold a heavy slot, as [heavy-slot](actions.md#heavy-slot) takes them.

@@ -1,10 +1,30 @@
 name: release-main
 on:
   workflow_call:
+    inputs:
+      full-test:
+        description: Whether a push of a release commit runs bun run test --full before the tag and the publish.
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
+  suite:
+    if: "inputs.full-test && startsWith(github.event.head_commit.message, 'chore: release ')"
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - name: run the full test suite on the release commit
+        run: bun run test --full
   release:
+    needs: suite
+    if: ${{ !cancelled() && (needs.suite.result == 'success' || needs.suite.result == 'skipped') }}
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:

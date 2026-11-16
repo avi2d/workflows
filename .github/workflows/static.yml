@@ -6,6 +6,13 @@ on:
         description: Whether a push to a draft pull request cancels the run until ready for review.
         type: boolean
         default: true
+      secrets-pack:
+        description: Whether lint reads the private secrets pack the caller passes as the CHECKS_SECRETS_PACK secret.
+        type: boolean
+        default: false
+    secrets:
+      CHECKS_SECRETS_PACK:
+        required: false
 permissions:
   contents: read
 jobs:
@@ -37,6 +44,10 @@ jobs:
         with:
           outcome: ${{ steps.title.outcome }}
           attempts: "5"
+      - if: inputs.secrets-pack
+        uses: avi2d/workflows/actions/secrets-pack@v3
+        with:
+          pack: ${{ secrets.CHECKS_SECRETS_PACK }}
       - run: bun run lint
       - run: bun run build
       - run: git diff --exit-code

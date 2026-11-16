@@ -1,0 +1,48 @@
+name: github-pages
+on:
+  workflow_call:
+    inputs:
+      build:
+        description: The command that builds the site, such as bun run docs:build.
+        required: true
+        type: string
+      path:
+        description: The folder the build writes, which the deploy publishes, such as docs/.vitepress/dist.
+        required: true
+        type: string
+permissions:
+  contents: read
+# A caller group of the same name would wait on itself, so this name stays apart from the caller's.
+concurrency:
+  group: github-pages-deploy
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - run: ${{ inputs.build }}
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ inputs.path }}
+  deploy:
+    needs: build
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
