@@ -128,6 +128,7 @@ Collating and equivalence names longer than one character such as `[.hyphen.]` m
 
 Restores the Playwright browser cache, installs the named browsers through `playwright-core`, and on a GitHub-hosted runner installs the system packages the machine does not hold.
 The caller's dependencies hold `playwright-core`.
+Self-hosted runners skip the cache restore and save, but still run the browser install.
 Each `install` and `install-deps` call gets 3 minutes per attempt and 3 attempts.
 An attempt that runs out of time has its processes stopped before the next one.
 The step fails with an error line when every attempt stalls or fails.
@@ -160,7 +161,7 @@ An image whose version differs from the caller's `playwright-core` holds other b
 | Input | Default | What it sets |
 | --- | --- | --- |
 | `browsers` | `webkit` | the browsers to install, separated by spaces |
-| `cache` | `true` | whether to restore and save `~/.cache/ms-playwright`, keyed on the browsers, the runner OS and `bun.lock` |
+| `cache` | `true` | whether GitHub-hosted runners restore and save `~/.cache/ms-playwright`, keyed on the browsers, the runner OS and `bun.lock` |
 | `job` | empty, no job in the key | any text that tells this job apart from parallel jobs of the run that install the same browsers, such as the test command, whose hash goes in the cache key |
 
 ## lighthouse
