@@ -14,7 +14,8 @@ const indexOf = (action: string): number => build.findIndex((step) => usesOf(ste
 test("a pages build that runs another command than the caller's or uploads another folder fails", () => {
   expect(at(document, "on", "workflow_call", "inputs", "build", "required")).toBe(true);
   expect(at(document, "on", "workflow_call", "inputs", "path", "required")).toBe(true);
-  const command = build.findIndex((step) => expressionValue(String(step["run"]), { "inputs.build": "bun run docs:build" }) === "bun run docs:build");
+  const command = build.findIndex((step) => typeof step["run"] === "string" && expressionValue(step["run"], { "inputs.build": "bun run docs:build" }) === "bun run docs:build");
+  expect(command).toBeGreaterThanOrEqual(0);
   expect(expressionValue(String(build[command]?.["run"]), { "inputs.build": "bun run other:build" })).toBe("bun run other:build");
   expect(indexOf("configure-pages")).toBeLessThan(command);
   expect(command).toBeLessThan(indexOf("upload-pages-artifact"));
