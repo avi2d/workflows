@@ -17,8 +17,8 @@ function suiteRuns(fullTest: boolean, message: string, publishWorkspaces = false
 
 function releaseRuns(result: string, status?: Status): boolean {
   return status === undefined
-    ? conditionRuns(at(document, "jobs", "release", "if"), { "needs.suite.result": result })
-    : conditionRuns(at(document, "jobs", "release", "if"), { "needs.suite.result": result }, status);
+    ? conditionRuns(at(document, "jobs", "release", "if"), { "needs.suite.result": result, "needs.static.result": "skipped" })
+    : conditionRuns(at(document, "jobs", "release", "if"), { "needs.suite.result": result, "needs.static.result": "skipped" }, status);
 }
 
 test("a full suite that runs with publish rights fails", () => {
