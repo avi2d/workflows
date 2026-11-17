@@ -11,8 +11,8 @@ const suite = suiteSteps.findIndex((step) => step["run"] === "bun run test --ful
 
 const CANCELLED: Status = { always: true, cancelled: true, success: false, failure: false };
 
-function suiteRuns(fullTest: boolean, message: string): boolean {
-  return conditionRuns(at(document, "jobs", "suite", "if"), { "inputs.full-test": fullTest, "github.event.head_commit.message": message });
+function suiteRuns(fullTest: boolean, message: string, publishWorkspaces = false): boolean {
+  return conditionRuns(at(document, "jobs", "suite", "if"), { "inputs.full-test": fullTest, "inputs.publish-workspaces": publishWorkspaces, "github.event.head_commit.message": message });
 }
 
 function releaseRuns(result: string, status?: Status): boolean {
@@ -37,6 +37,14 @@ test("a caller that never asked for the full suite and gets it fails", () => {
 test("a release commit that publishes without the suite it asked for, or a plain merge that runs it, fails", () => {
   expect(suiteRuns(true, "chore: release 1.2.3 (#40)")).toBe(true);
   expect(suiteRuns(true, "fix: keep the cache (#41)")).toBe(false);
+});
+
+test("workspace publishing that skips the full release suite or omits its kit flag fails", () => {
+  expect(at(document, "on", "workflow_call", "inputs", "publish-workspaces", "default")).toBe(false);
+  expect(suiteRuns(false, "chore: release 1.2.3", true)).toBe(true);
+  expect(suiteRuns(false, "fix: something", true)).toBe(false);
+  const publish = releaseSteps.find((step) => step["run"] === "bunx checks-release-tag");
+  expect(at(publish, "env", "CHECKS_PUBLISH_WORKSPACES")).toBe("${{ inputs.publish-workspaces }}");
 });
 
 test("a release that publishes without waiting for the suite fails", () => {

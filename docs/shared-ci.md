@@ -19,7 +19,7 @@ Each repository supplies its commands in `package.json` and each site supplies i
 | `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
 | `ci.yml` | a code repository's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, lints, typechecks and runs `checks-test --pr` |
-| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up, after `bun run test --full` on a release commit when `full-test` is true |
+| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up, after `bun run test --full` on a release commit when `full-test` or `publish-workspaces` is true |
 | `pr-title.yml` | every repository's `pr-title.yml` | checks the title and reports it as the `commitlint` status |
 | `release-pr.yml` | every repository's `release.yml` | opens or refreshes the release pull request through `checks-release-pr ci.yml` |
 | `flake.yml` | a code repository's `flake.yml` | runs `checks-flake --runs <runs> --report flake-report.json` in the heavy slot, and uploads `flake-report.json` on every run that is not cancelled |
@@ -27,6 +27,8 @@ Each repository supplies its commands in `package.json` and each site supplies i
 
 The kit decides what each command does on each event, so the jobs hold no condition on what to test.
 `checks-release-tag` does nothing on a merge that is not a release commit.
+Set `publish-workspaces: true` on `release-main.yml` to run the full release suite.
+The workflow sets `CHECKS_PUBLISH_WORKSPACES` to `true` for a checks kit that supports publishing public workspace packages from a private root.
 On a release commit it checks the files equal the release pull request that passed, then creates the tag and the GitHub release.
 A release deploy can land over a later merge deploy.
 The production gate still refuses unless staging serves a published release, and the next merge to main puts staging back.
@@ -39,11 +41,14 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 
 | Part | Inputs | What its job does |
 | --- | --- | --- |
-| `changes.yml` | `paths` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
+| `changes.yml` | `paths`, `check-release` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
 | `static.yml` | `hold`, `secrets-pack` | holds a draft, checks the workflow files and the title, writes the secrets pack when `secrets-pack` is true, runs source lint, builds, refuses a diff the build leaves, and typechecks |
-| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names, and uploads `artifacts/` on every run that is not cancelled |
+| `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on`, `claude-version` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names, and uploads `artifacts/` on every run that is not cancelled |
 | `site-preview.yml` | `pages`, `path` | builds the site, runs built-site lint, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
+
+`test.yml` and `flake.yml` accept `claude-version`, an exact Claude Code version such as `2.1.280`.
+An empty version skips installation.
 
 `static.yml` and `test.yml` hold a draft by default through `hold`, and a caller sets `hold: false` on the jobs that start before the preview so a draft still gets its preview link.
 A `test.yml` caller grants `actions: write`, since the draft hold cancels the run whatever `hold` is set to.
@@ -77,6 +82,13 @@ A caller with a `changes` job reads the output instead of writing the release ru
 
 The `changes` job then runs on every event, and `static` starts after it.
 A caller that still writes the release rule on each job keeps working.
+
+To run static checks and tests on release runs, pass `check-release: true` to `changes.yml`.
+Its `check-release` output is `true` only for those release runs.
+Use `needs.changes.outputs.release != 'true' || needs.changes.outputs.check-release == 'true'` to start static checks on those runs, and use the same condition for tests alongside the docs-only condition.
+Pass `run: bun run test` to the test job on a release run, and keep `bunx checks-test --pr` on other runs.
+Update the gate's `skips` expression so it does not accept skips when `check-release` is `true`.
+Set `full-test: true` on `release-main.yml` to run the full suite before tagging even when the root package is private.
 
 A site's composed `ci.yml`, where the browser tests read the build the preview job made:
 
