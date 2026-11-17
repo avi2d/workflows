@@ -10,14 +10,17 @@ const staticPath = join(import.meta.dir, "../../../.github/workflows/static.yml"
 const staticDocument = workflowDocument(staticPath);
 const staticSteps = workflowSteps(staticPath, "static");
 
-test("release static checks do not run when check-release is absent or false", () => {
+test("release static checks do not run on an ordinary merge or when check-release is false", () => {
   expect(at(document, "on", "workflow_call", "inputs", "check-release", "type")).toBe("boolean");
   expect(at(document, "on", "workflow_call", "inputs", "check-release", "default")).toBe(false);
-  expect(conditionRuns(at(document, "jobs", "static", "if"), { "inputs.check-release": false })).toBe(false);
+  const condition = at(document, "jobs", "static", "if");
+  expect(conditionRuns(condition, { "inputs.check-release": false, "github.event.head_commit.message": "chore: release 1.2.3" })).toBe(false);
+  expect(conditionRuns(condition, { "inputs.check-release": true, "github.event.head_commit.message": "Merge pull request #1" })).toBe(false);
+  expect(conditionRuns(condition, { "inputs.check-release": true, "github.event.head_commit.message": "chore: release 1.2.3" })).toBe(true);
 });
 
 test("check-release cannot publish without running lint and typecheck", () => {
-  expect(conditionRuns(at(document, "jobs", "static", "if"), { "inputs.check-release": true })).toBe(true);
+  expect(conditionRuns(at(document, "jobs", "static", "if"), { "inputs.check-release": true, "github.event.head_commit.message": "chore: release 1.2.3" })).toBe(true);
   expect(steps.map((step) => step["run"]).filter(Boolean)).toEqual(["bun run lint", "bun run build", "git diff --exit-code", "bun run typecheck"]);
   expect(at(document, "jobs", "static", "permissions")).toEqual({ contents: "read" });
   const release = at(document, "jobs", "release");

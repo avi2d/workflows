@@ -19,7 +19,7 @@ Each repository supplies its commands in `package.json` and each site supplies i
 | `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
 | `ci.yml` | a code repository's `ci.yml` | holds a draft, sets up, checks the workflow files and the title, builds, lints, typechecks and runs `checks-test --pr` |
-| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up, after `bun run test --full` on a release commit when `full-test` or `publish-workspaces` is true, and after lint, build, the build diff check, and typecheck when `check-release` is true |
+| `release-main.yml` | a code repository's `main.yml` | runs `checks-release-tag` with the npm registry set up, after `bun run test --full` on a release commit when `full-test` or `publish-workspaces` is true, and after lint, build, the build diff check, and typecheck on a release commit when `check-release` is true |
 | `pr-title.yml` | every repository's `pr-title.yml` | checks the title and reports it as the `commitlint` status |
 | `release-pr.yml` | every repository's `release.yml` | opens or refreshes the release pull request through `checks-release-pr ci.yml` |
 | `flake.yml` | a code repository's `flake.yml` | runs `checks-flake --runs <runs> --report flake-report.json` in the heavy slot, and uploads `flake-report.json` on every run that is not cancelled |
@@ -27,7 +27,7 @@ Each repository supplies its commands in `package.json` and each site supplies i
 
 The kit decides what each command does on each event, so the jobs hold no condition on what to test.
 `checks-release-tag` does nothing on a merge that is not a release commit.
-Set `check-release: true` on `release-main.yml` to run lint, build, the build diff check, and typecheck before tagging or publishing.
+Set `check-release: true` on `release-main.yml` to run lint, build, the build diff check, and typecheck on a release commit before tagging or publishing.
 Set `secrets-pack: true` on `release-main.yml` to write the secrets pack before lint when `check-release` is true.
 Both inputs default to `false`.
 Set `publish-workspaces: true` on `release-main.yml` to run the full release suite.
