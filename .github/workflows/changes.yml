@@ -2,11 +2,18 @@ name: changes
 on:
   workflow_call:
     inputs:
+      check-release:
+        description: Whether static checks and tests run on release pull requests and release-branch dispatches.
+        type: boolean
+        default: false
       paths:
         description: Bash patterns separated by whitespace that each match a whole documentation path, as the docs-only action takes them. Empty lets checks-docs-only decide.
         type: string
         default: ""
     outputs:
+      check-release:
+        description: true when checks are enabled on a release run, else false.
+        value: ${{ jobs.changes.outputs.check-release }}
       docs-only:
         description: true when the pull request changes only documentation, else false, and false on a release run, so every job that reads it also reads release.
         value: ${{ jobs.changes.outputs.docs-only }}
@@ -24,6 +31,7 @@ jobs:
     env:
       RELEASE: ${{ (github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'release/')) || (github.event_name == 'pull_request' && github.head_ref == format('release/{0}', github.base_ref) && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
+      check-release: ${{ env.RELEASE == 'true' && inputs.check-release }}
       docs-only: ${{ steps.classify.outputs.docs-only || 'false' }}
       release: ${{ env.RELEASE }}
     steps:

@@ -75,6 +75,14 @@ test("a changes job that sets up or classifies on a release run, or skips that w
   }
 });
 
+test("release checks enabled without an opt-in or on a non-release run fail", () => {
+  expect(at(document, "on", "workflow_call", "inputs", "check-release", "default")).toBe(false);
+  const output = at(document, "jobs", "changes", "outputs", "check-release");
+  expect(conditionRuns(output, { "env.RELEASE": "true", "inputs.check-release": true })).toBe(true);
+  expect(conditionRuns(output, { "env.RELEASE": "true", "inputs.check-release": false })).toBe(false);
+  expect(conditionRuns(output, { "env.RELEASE": "false", "inputs.check-release": true })).toBe(false);
+});
+
 test("a docs-only output left empty on a release run fails", () => {
   const docsOnly = String(at(document, "jobs", "changes", "outputs", "docs-only"));
   expect(expressionValue(docsOnly, { "steps.classify.outputs.docs-only": "" })).toBe("false");

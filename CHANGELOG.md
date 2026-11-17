@@ -3,6 +3,16 @@
 Every release of `workflows`, newest first.
 The release pull request writes each new section from the conventional commits since the last release tag.
 
+## 3.4.0
+
+Released 2026-11-17.
+
+### Features
+
+- fill v3 gaps for setup, release, and test callers [#92](https://github.com/avi2d/workflows/pull/92)
+
+The `v3` tag moves to this release.
+
 ## 3.3.0
 
 Released 2026-11-16.

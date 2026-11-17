@@ -2,6 +2,10 @@ name: release-main
 on:
   workflow_call:
     inputs:
+      publish-workspaces:
+        description: Publish public workspace packages from a private root after the full release suite.
+        type: boolean
+        default: false
       full-test:
         description: Whether a push of a release commit runs bun run test --full before the tag and the publish.
         type: boolean
@@ -10,7 +14,7 @@ permissions:
   contents: read
 jobs:
   suite:
-    if: "inputs.full-test && startsWith(github.event.head_commit.message, 'chore: release ')"
+    if: "(inputs.full-test || inputs.publish-workspaces) && startsWith(github.event.head_commit.message, 'chore: release ')"
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
@@ -43,4 +47,5 @@ jobs:
           registry-url: https://registry.npmjs.org
       - env:
           GH_TOKEN: ${{ github.token }}
+          CHECKS_PUBLISH_WORKSPACES: ${{ inputs.publish-workspaces }}
         run: bunx checks-release-tag
