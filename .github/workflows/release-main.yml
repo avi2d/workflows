@@ -2,6 +2,10 @@ name: release-main
 on:
   workflow_call:
     inputs:
+      check-release:
+        description: Whether lint and typecheck run before release.
+        type: boolean
+        default: false
       publish-workspaces:
         description: Publish public workspace packages from a private root after the full release suite.
         type: boolean
@@ -13,6 +17,21 @@ on:
 permissions:
   contents: read
 jobs:
+  static:
+    if: inputs.check-release
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: avi2d/workflows/actions/setup@v3
+        with:
+          fetch-depth: "0"
+          persist-credentials: "false"
+      - run: bun run lint
+      - run: bun run build
+      - run: git diff --exit-code
+      - run: bun run typecheck
   suite:
     if: "(inputs.full-test || inputs.publish-workspaces) && startsWith(github.event.head_commit.message, 'chore: release ')"
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
@@ -27,8 +46,8 @@ jobs:
       - name: run the full test suite on the release commit
         run: bun run test --full
   release:
-    needs: suite
-    if: ${{ !cancelled() && (needs.suite.result == 'success' || needs.suite.result == 'skipped') }}
+    needs: [suite, static]
+    if: ${{ !cancelled() && (needs.suite.result == 'success' || needs.suite.result == 'skipped') && (needs.static.result == 'success' || needs.static.result == 'skipped') }}
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:

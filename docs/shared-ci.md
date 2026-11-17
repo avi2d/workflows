@@ -27,6 +27,8 @@ Each repository supplies its commands in `package.json` and each site supplies i
 
 The kit decides what each command does on each event, so the jobs hold no condition on what to test.
 `checks-release-tag` does nothing on a merge that is not a release commit.
+Set `check-release: true` on `release-main.yml` to run lint, build, the build diff check, and typecheck before tagging or publishing.
+The input defaults to `false`.
 Set `publish-workspaces: true` on `release-main.yml` to run the full release suite.
 The workflow sets `CHECKS_PUBLISH_WORKSPACES` to `true` for a checks kit that supports publishing public workspace packages from a private root.
 On a release commit it checks the files equal the release pull request that passed, then creates the tag and the GitHub release.
