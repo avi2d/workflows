@@ -67,30 +67,10 @@ A caller releases on demand through two reusable workflows, as [The release runs
 | A token other than the job's own | the `token` input of commitlint-status, head-status or draft-hold, written as `${{ secrets.NAME }}` in the caller |
 | The heavy slot machines and command | the `runner-prefix` and `command` inputs of heavy-slot, or the `HEAVY_SLOT_RUNNER_PREFIX` and `HEAVY_SLOT_COMMAND` variables |
 | The browsers a job needs | the `browsers` input of playwright |
-| The private secrets pack | the `pack` input of secrets-pack, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
+| The private secrets pack | the `pack` input of secrets-pack, or the `CHECKS_SECRETS_PACK` secret of `static.yml`, written as `${{ secrets.CHECKS_SECRETS_PACK }}` in the caller |
 | The site names and secrets | the site workflow inputs and `secrets: inherit` in [The shared CI](docs/shared-ci.md) |
 
 A composite action cannot read the caller's `secrets` context, so each secret reaches it as a caller-written input.
-
-## Where things are
-
-| Path | What it holds |
-| --- | --- |
-| `actions/<name>/` | the composite actions, one flat directory each, holding `action.yml`, the `main.ts` or `main.sh` its steps run, and the TypeScript and shell files that entry calls |
-| `lib/` | the code more than one action shares |
-| `ci/` | the smoke scripts the CI jobs run, in place of code inside `own-ci.yml`, where [The shared actions](docs/actions.md) names the three that stay shell |
-| `release/` | the TypeScript this repository's own release runs: the changelog build and the major tag move |
-| `tests/unit/`, `tests/e2e/` | the tests, under `actions/<name>/`, `lib/`, `ci/`, `release/` and `workflows/` for the code they test |
-| `.github/workflows/runner.yml` | the reusable runner pick |
-| `.github/workflows/advisories.yml` | the reusable advisory scan, which also scans this repository weekly |
-| `.github/workflows/mutation.yml` | the reusable mutation runs |
-| `.github/workflows/` | the shared CI from `v3` on, as [The shared CI](docs/shared-ci.md) lists it, beside the files below |
-| `.github/workflows/release-pr-v2.yml` | the `v2` reusable release pull request, plan on dispatch and tag on merge |
-| `.github/workflows/release-smoke.yml` | the release pull request smoke, manual and push on edit |
-| `.github/workflows/release.yml` | the reusable release publish, guards then the caller publish command and the opt-in GitHub release |
-| `.github/workflows/own-release-pr.yml`, `.github/workflows/own-release.yml` | this repository's own release, calling the two release runs by local path |
-| `.github/workflows/own-ci.yml`, `.github/workflows/own-pr-title.yml` | this repository's CI, with actionlint and a smoke job for each action that has one, and its title check |
-| `.github/dependabot.yml` | the weekly bump of the actions this repository pins |
 
 ## Related topics
 
@@ -101,4 +81,5 @@ A composite action cannot read the caller's `secrets` context, so each secret re
 - [The mutation runs](docs/mutation.md)
 - [The release runs](docs/release.md)
 - [Bump the pin with Dependabot](docs/dependabot.md)
+- [Repository layout](docs/repository-layout.md)
 - [Changelog](CHANGELOG.md)

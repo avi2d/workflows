@@ -1,0 +1,36 @@
+import { expect, test } from "bun:test";
+import { join } from "node:path";
+import { expressionValue } from "../../lib/condition.ts";
+import { at, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
+
+const PAGES = join(import.meta.dir, "../../../.github/workflows/github-pages.yml");
+const document = workflowDocument(PAGES);
+const build = workflowSteps(PAGES, "build");
+const deploy = workflowSteps(PAGES, "deploy");
+
+const usesOf = (step: Record<string, unknown>): string => String(step["uses"] ?? "");
+const indexOf = (action: string): number => build.findIndex((step) => usesOf(step).startsWith(`actions/${action}@`));
+
+test("a pages build that runs another command than the caller's or uploads another folder fails", () => {
+  expect(at(document, "on", "workflow_call", "inputs", "build", "required")).toBe(true);
+  expect(at(document, "on", "workflow_call", "inputs", "path", "required")).toBe(true);
+  const command = build.findIndex((step) => typeof step["run"] === "string" && expressionValue(step["run"], { "inputs.build": "bun run docs:build" }) === "bun run docs:build");
+  expect(command).toBeGreaterThanOrEqual(0);
+  expect(expressionValue(String(build[command]?.["run"]), { "inputs.build": "bun run other:build" })).toBe("bun run other:build");
+  expect(indexOf("configure-pages")).toBeLessThan(command);
+  expect(command).toBeLessThan(indexOf("upload-pages-artifact"));
+  const path = String(at(build[indexOf("upload-pages-artifact")], "with", "path"));
+  expect(expressionValue(path, { "inputs.path": "docs/.vitepress/dist" })).toBe("docs/.vitepress/dist");
+  expect(expressionValue(path, { "inputs.path": "docs/.vitepress/other" })).toBe("docs/.vitepress/other");
+});
+
+test("a deploy that starts before the build, or without the Pages token, fails", () => {
+  expect(at(document, "jobs", "deploy", "needs")).toBe("build");
+  expect(at(document, "jobs", "deploy", "permissions")).toEqual({ pages: "write", "id-token": "write" });
+  expect(at(document, "jobs", "deploy", "environment", "name")).toBe("github-pages");
+  expect(deploy.map(usesOf).some((uses) => uses.startsWith("actions/deploy-pages@"))).toBe(true);
+});
+
+test("a deploy that cancels the one in flight fails", () => {
+  expect(at(document, "concurrency", "cancel-in-progress")).toBe(false);
+});
