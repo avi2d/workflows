@@ -50,6 +50,7 @@ The v3 shared workflows call `@v3` tags, so a caller with `sha_pinning_required`
 ## Call the shared CI
 
 Each workflow file of a site or a code repository calls one shared workflow from `@v3`, or composes the CI parts, as [The shared CI](docs/shared-ci.md) shows.
+The `site-preview.yml` part builds without Cloudflare secrets and deploys the artifact in a separate job on an isolated runner.
 
 ## Pick the runner
 

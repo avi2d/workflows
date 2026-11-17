@@ -18,12 +18,37 @@ on:
 permissions:
   contents: read
 jobs:
-  site:
+  address:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: write
+    outputs:
+      origin: ${{ steps.preview.outputs.origin }}
+    steps:
+      - id: secrets
+        uses: avi2d/workflows/actions/preview-secrets-check@v3
+        with:
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          missing-note: the Cloudflare secrets are not set, so this run deploys no preview
+      - if: steps.secrets.outputs.set == 'true' && github.event_name == 'pull_request'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - id: preview
+        if: steps.secrets.outputs.set == 'true' && github.event_name == 'pull_request'
+        uses: avi2d/workflows/actions/preview-address@v3
+        with:
+          project: ${{ format('{0}-preview', inputs.pages) }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  build:
+    needs: address
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     env:
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
@@ -31,46 +56,42 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: "false"
-      - id: site
-        uses: avi2d/workflows/actions/site-names@v3
-        with:
-          pages: ${{ inputs.pages }}
-      # A fork's or Dependabot's pull request runs without the repository secrets, so it gets no preview.
-      - id: secrets
-        uses: avi2d/workflows/actions/preview-secrets-check@v3
-        with:
-          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          missing-note: the Cloudflare secrets are not set, so this run deploys no preview
-      - id: preview
-        if: steps.secrets.outputs.set == 'true' && github.event_name == 'pull_request'
-        uses: avi2d/workflows/actions/preview-address@v3
-        with:
-          project: ${{ steps.site.outputs.preview }}
-          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - env:
-          VITE_PREVIEW_ORIGIN: ${{ steps.preview.outputs.origin }}
+          VITE_PREVIEW_ORIGIN: ${{ needs.address.outputs.origin }}
         run: bun run build:site
       - run: bunx checks-lint --stage built
-      - if: steps.preview.outputs.origin != ''
-        uses: avi2d/workflows/actions/preview-deploy@v3
-        with:
-          project: ${{ steps.site.outputs.preview }}
-          origin: ${{ steps.preview.outputs.origin }}
-          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          directory: ${{ inputs.path }}
-          commit-dirty: "true"
-      - if: steps.preview.outputs.origin != ''
-        uses: avi2d/workflows/actions/preview-comment@v3
-        with:
-          origin: ${{ steps.preview.outputs.origin }}
-          marker: <!-- ${{ steps.site.outputs.preview }} -->
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: site-dist
           path: ${{ inputs.path }}
           include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
+  deploy:
+    needs: [address, build]
+    if: needs.address.outputs.origin != ''
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: site-dist
+          path: ${{ runner.temp }}/site-dist
+      - uses: avi2d/workflows/actions/preview-deploy@v3
+        with:
+          project: ${{ format('{0}-preview', inputs.pages) }}
+          origin: ${{ needs.address.outputs.origin }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          directory: ${{ runner.temp }}/site-dist
+          commit-dirty: "true"
+      - uses: avi2d/workflows/actions/preview-comment@v3
+        with:
+          origin: ${{ needs.address.outputs.origin }}
+          marker: ${{ format('<!-- {0}-preview -->', inputs.pages) }}

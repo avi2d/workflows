@@ -44,8 +44,15 @@ The parts run side by side, so a run takes as long as its slowest part rather th
 | `changes.yml` | `paths`, `check-release` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
 | `static.yml` | `hold`, `secrets-pack` | holds a draft, checks the workflow files and the title, writes the secrets pack when `secrets-pack` is true, runs source lint, builds, refuses a diff the build leaves, and typechecks |
 | `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on`, `claude-version` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names, and uploads `artifacts/` on every run that is not cancelled |
-| `site-preview.yml` | `pages`, `path` | builds the site, runs built-site lint, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
+| `site-preview.yml` | `pages`, `path` | resolves the preview address, builds and lints the site without Cloudflare secrets, uploads `site-dist`, and deploys and comments from a separate job |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
+
+`site-preview.yml` resolves the public preview origin in a trusted job before the build.
+The build checks out the pull request head and receives the origin, but no Cloudflare secrets.
+A separate deploy job downloads `site-dist` without checking out the pull request and posts the preview link.
+When the Cloudflare secrets are absent, the build still runs and the deploy is skipped.
+On non-pull-request runs, the build runs without a preview origin and the deploy is skipped.
+These jobs need isolated runners so code from the build cannot persist into a secret-bearing job.
 
 `test.yml` and `flake.yml` accept `claude-version`, an exact Claude Code version such as `2.1.280`.
 An empty version skips installation.
