@@ -37,6 +37,9 @@ runs:
         key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
     - shell: bash
       run: bun install --frozen-lockfile
+    - name: expose the checked-out kit bins
+      shell: bash
+      run: bun "$GITHUB_ACTION_PATH/self-bins.ts"
     - name: cache the gitleaks the kit pins
       if: hashFiles('node_modules/@avi2dg/checks/src/delivery/gitleaks.ts') != ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
