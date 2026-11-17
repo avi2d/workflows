@@ -41,6 +41,28 @@ test("a flake report left unsaved on a green or a red sweep fails", () => {
   expect(conditionRuns(upload?.["if"], {}, RED)).toBe(true);
 });
 
+test("a requested Claude version omitted from the flake suite or installed when unset fails", () => {
+  expect(at(document, "on", "workflow_call", "inputs", "claude-version", "default")).toBe("");
+  const install = steps.findIndex((step) => String(step["run"] ?? "").includes("@anthropic-ai/claude-code@$CLAUDE_VERSION"));
+  expect(install).toBeGreaterThanOrEqual(0);
+  expect(install).toBeLessThan(sweep);
+  expect(conditionRuns(steps[install]?.["if"], { "inputs.claude-version": "2.1.280" })).toBe(true);
+  expect(conditionRuns(steps[install]?.["if"], { "inputs.claude-version": "" })).toBe(false);
+  expect(at(steps[install], "env", "CLAUDE_VERSION")).toBe("${{ inputs.claude-version }}");
+});
+
+test("test and flake workflows that install different Claude versions fail", () => {
+  const testWorkflow = join(import.meta.dir, "../../../.github/workflows/test.yml");
+  const testDocument = workflowDocument(testWorkflow);
+  const testSteps = workflowSteps(testWorkflow, "test");
+  expect(at(testDocument, "on", "workflow_call", "inputs", "claude-version", "default")).toBe("");
+  const installsClaude = (step: Record<string, unknown>): boolean => String(step["run"] ?? "").includes("@anthropic-ai/claude-code@$CLAUDE_VERSION");
+  const flakeInstall = steps.find(installsClaude);
+  const testInstall = testSteps.find(installsClaude);
+  expect(testInstall).toEqual(flakeInstall);
+  expect(testSteps.findIndex(installsClaude)).toBeLessThan(testSteps.findIndex((step) => step["run"] === "${{ inputs.run }}"));
+});
+
 test("a heavy slot taken after the sweep, or kept after a red one, fails", () => {
   const slots = steps.flatMap((step, index) => (usesOf(step).startsWith("avi2d/workflows/actions/heavy-slot@") ? [index] : []));
   const [acquire = -1, release = -1] = slots;
