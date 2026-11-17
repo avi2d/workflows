@@ -236,7 +236,7 @@ The other site files call their shared workflow as follows:
 A code repository carries `ci.yml`, `pr-title.yml`, `main.yml` calling `release-main.yml`, and `release.yml` calling `release-pr.yml`.
 `advisories.yml`, `mutation.yml` and `flake.yml` stay where a repository has them.
 An `advisories.yml` caller keeps its own weekly `schedule` trigger.
-A `flake.yml` caller starts by hand, grants `contents: read`, and may pass `runs` and `node-version-file`.
+A `flake.yml` caller starts by hand, grants `contents: read`, and may pass `runs`, `claude-version` and `node-version-file`.
 A `docs.yml` caller runs on a push to `main`, passes `build` and `path`, and grants `contents: read`, `pages: write` and `id-token: write`.
 It leaves out a `concurrency` group named `github-pages-deploy`, which the shared workflow holds.
 A code repository that publishes to npm passes `full-test: true` to `release-main.yml`, so its release commit runs the full suite once before the publish.
