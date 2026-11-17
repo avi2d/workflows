@@ -20,7 +20,8 @@ if (isRecord(manifest) && manifest["name"] === "@avi2dg/checks") {
     const wrapper = join(binDir, name);
     rmSync(wrapper, { force: true });
     const quoted = `'${target.replaceAll("'", "'\\''")}'`;
-    writeFileSync(wrapper, `#!/bin/sh\nexec bun ${quoted} "$@"\n`, { mode: 0o755 });
+    const runner = source.endsWith(".sh") ? "sh" : "bun";
+    writeFileSync(wrapper, `#!/bin/sh\nexec ${runner} ${quoted} "$@"\n`, { mode: 0o755 });
     chmodSync(wrapper, 0o755);
   }
 }
