@@ -3,7 +3,11 @@ on:
   workflow_call:
     inputs:
       check-release:
-        description: Whether lint and typecheck run before release.
+        description: Whether lint, build, the build diff check, and typecheck run before release.
+        type: boolean
+        default: false
+      secrets-pack:
+        description: Whether lint reads the private secrets pack the caller passes as the CHECKS_SECRETS_PACK secret.
         type: boolean
         default: false
       publish-workspaces:
@@ -14,6 +18,9 @@ on:
         description: Whether a push of a release commit runs bun run test --full before the tag and the publish.
         type: boolean
         default: false
+    secrets:
+      CHECKS_SECRETS_PACK:
+        required: false
 permissions:
   contents: read
 jobs:
@@ -28,6 +35,10 @@ jobs:
         with:
           fetch-depth: "0"
           persist-credentials: "false"
+      - if: inputs.secrets-pack
+        uses: avi2d/workflows/actions/secrets-pack@v3
+        with:
+          pack: ${{ secrets.CHECKS_SECRETS_PACK }}
       - run: bun run lint
       - run: bun run build
       - run: git diff --exit-code
