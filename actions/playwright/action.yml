@@ -1,11 +1,11 @@
 name: playwright
-description: Restore the Playwright browser cache, install the named browsers, and on a GitHub-hosted runner install the system packages the machine does not hold.
+description: Restore the Playwright browser cache on GitHub-hosted runners, install the named browsers, and on a GitHub-hosted runner install the system packages the machine does not hold.
 inputs:
   browsers:
     description: The browsers to install, separated by spaces.
     default: webkit
   cache:
-    description: Whether to restore and save ~/.cache/ms-playwright, keyed on the browsers and bun.lock.
+    description: Whether to restore and save ~/.cache/ms-playwright on GitHub-hosted runners, keyed on the browsers and bun.lock.
     default: "true"
   job:
     description: Any text that tells this job apart from parallel jobs of the same run that install the same browsers, such as the test command. A hash of it goes in the cache key, so each such job saves its own cache. Empty keeps the key the browsers and bun.lock make.
@@ -24,7 +24,7 @@ runs:
         BROWSERS: ${{ inputs.browsers }}
         JOB: ${{ inputs.job }}
       run: bun "$GITHUB_ACTION_PATH/main.ts" cache-key
-    - if: inputs.cache == 'true'
+    - if: inputs.cache == 'true' && runner.environment == 'github-hosted'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
