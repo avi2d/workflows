@@ -1,11 +1,14 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import { conditionRuns } from "../../lib/condition.ts";
+import { conditionRuns, expressionValue } from "../../lib/condition.ts";
 import { at, needsOf, workflowDocument, workflowSteps, isRecord } from "../../lib/workflow.ts";
 
 const path = join(import.meta.dir, "../../../.github/workflows/release-main.yml");
 const document = workflowDocument(path);
 const steps = workflowSteps(path, "static");
+const staticPath = join(import.meta.dir, "../../../.github/workflows/static.yml");
+const staticDocument = workflowDocument(staticPath);
+const staticSteps = workflowSteps(staticPath, "static");
 
 test("release static checks do not run when check-release is absent or false", () => {
   expect(at(document, "on", "workflow_call", "inputs", "check-release", "type")).toBe("boolean");
@@ -29,4 +32,23 @@ test("a failed or cancelled static check cannot publish", () => {
       expect(actual).toBe(staticResult === "success" || staticResult === "skipped");
     }
   }
+});
+
+test("a release secrets pack written after lint, or one that never reaches lint, fails", () => {
+  const pack = steps.findIndex((step) => String(step["uses"] ?? "").startsWith("avi2d/workflows/actions/secrets-pack@"));
+  const lint = steps.findIndex((step) => step["run"] === "bun run lint");
+  const oracle = staticSteps.find((step) => String(step["uses"] ?? "").startsWith("avi2d/workflows/actions/secrets-pack@"));
+  expect(pack).toBeGreaterThanOrEqual(0);
+  expect(pack).toBeLessThan(lint);
+  expect(String(at(steps[pack], "with", "pack"))).toBe(String(at(oracle, "with", "pack")));
+  expect(expressionValue(at(steps[pack], "with", "pack"), { "secrets.CHECKS_SECRETS_PACK": "s3cr3t" })).toBe("s3cr3t");
+  expect(expressionValue(at(steps[pack], "with", "pack"), { "secrets.CHECKS_SECRETS_PACK": "other" })).toBe("other");
+  expect(at(document, "on", "workflow_call", "secrets", "CHECKS_SECRETS_PACK", "required")).toBe(at(staticDocument, "on", "workflow_call", "secrets", "CHECKS_SECRETS_PACK", "required"));
+});
+
+test("a release job that writes the pack for a caller that never asked fails", () => {
+  expect(at(document, "on", "workflow_call", "inputs", "secrets-pack", "default")).toBe(at(staticDocument, "on", "workflow_call", "inputs", "secrets-pack", "default"));
+  const pack = steps.find((step) => String(step["uses"] ?? "").startsWith("avi2d/workflows/actions/secrets-pack@"));
+  expect(conditionRuns(pack?.["if"], { "inputs.secrets-pack": false })).toBe(false);
+  expect(conditionRuns(pack?.["if"], { "inputs.secrets-pack": true })).toBe(true);
 });
