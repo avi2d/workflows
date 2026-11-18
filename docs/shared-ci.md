@@ -39,10 +39,10 @@ The production run tests the release commit before it publishes, so a red releas
 
 ## The CI parts
 
-Each part is one job with one purpose, and the caller's `ci.yml` names the parts it needs.
+Each part is one workflow with one purpose, and the caller's `ci.yml` names the parts it needs.
 The parts run side by side, so a run takes as long as its slowest part rather than the sum of its steps.
 
-| Part | Inputs | What its job does |
+| Part | Inputs | What it does |
 | --- | --- | --- |
 | `changes.yml` | `paths`, `check-release` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
 | `static.yml` | `hold`, `secrets-pack` | holds a draft, checks the workflow files and the title, writes the secrets pack when `secrets-pack` is true, runs source lint, builds, refuses a diff the build leaves, and typechecks |
