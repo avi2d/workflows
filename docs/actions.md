@@ -17,7 +17,7 @@ An action whose script imports a package installs this repository's pinned depen
 ## setup
 
 Checks out the repository, fails when `.bun-version` is missing, installs the Bun version that file names and runs `bun install --frozen-lockfile`.
-`setup-bun` unpacks its download with `unzip`, so in an image without `unzip`, such as the Playwright image, setup fetches that Bun through `npm` first.
+`oven-sh/setup-bun` unpacks its download with `unzip`, so in an image without `unzip`, such as the Playwright image, setup fetches that Bun through `npm` first.
 `require-bun-version.sh` and `bun-without-unzip.sh` stay in shell because they run before Bun is on the machine.
 When the checked-out package is `@avi2dg/checks`, setup writes executable wrappers for its `bin` entries in `node_modules/.bin`.
 Each wrapper runs the checked-out source with Bun without changing the source file's mode.
