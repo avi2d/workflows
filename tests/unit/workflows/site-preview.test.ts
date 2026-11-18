@@ -45,15 +45,19 @@ test("the build job cannot read Cloudflare secrets", () => {
   expect(at(build, "permissions", "pull-requests")).toBeUndefined();
 });
 
-test("the address job cannot check out or run pull request code", () => {
-  const steps = workflowSteps(WORKFLOW, "address");
+const expectIsolatedJob = (jobName: string): void => {
+  const steps = workflowSteps(WORKFLOW, jobName);
   expect(steps.length).toBeGreaterThan(0);
   expect(steps.every((step) => !("run" in step))).toBe(true);
   expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
   expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup@"))).toBe(false);
-  const addressBunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
-  expect(addressBunSteps.length).toBeGreaterThan(0);
-  for (const step of addressBunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
+  const bunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
+  expect(bunSteps.length).toBeGreaterThan(0);
+  for (const step of bunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
+};
+
+test("the address job cannot check out or run pull request code", () => {
+  expectIsolatedJob("address");
 });
 
 test("the deploy job cannot check out or run pull request code", () => {
@@ -61,14 +65,7 @@ test("the deploy job cannot check out or run pull request code", () => {
   expect(isRecord(deploy)).toBe(true);
   if (!isRecord(deploy)) throw new Error("deploy job is missing");
   expect(needsOf(deploy)).toContain("build");
-  const steps = workflowSteps(WORKFLOW, "deploy");
-  expect(steps.length).toBeGreaterThan(0);
-  expect(steps.every((step) => !("run" in step))).toBe(true);
-  expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
-  expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup@"))).toBe(false);
-  const deployBunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
-  expect(deployBunSteps.length).toBeGreaterThan(0);
-  for (const step of deployBunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
+  expectIsolatedJob("deploy");
   const download = stepUsing("deploy", "actions/download-artifact@");
   expect(String(at(download, "with", "path"))).toContain("runner.temp");
 });
