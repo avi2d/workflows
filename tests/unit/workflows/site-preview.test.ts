@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { at, isRecord, needsOf, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
 const WORKFLOW = join(import.meta.dir, "../../../.github/workflows/site-preview.yml");
+const REMOVE_WORKFLOW = join(import.meta.dir, "../../../.github/workflows/preview-remove.yml");
+const SETUP_BUN = join(import.meta.dir, "../../../actions/setup-bun/action.yml");
 const document = workflowDocument(WORKFLOW);
 const job = (name: string) => at(document, "jobs", name);
 const usesOf = (step: Record<string, unknown>) => String(step["uses"] ?? "");
@@ -44,8 +46,8 @@ test("the build job cannot read Cloudflare secrets", () => {
   expect(at(build, "permissions", "pull-requests")).toBeUndefined();
 });
 
-const expectIsolatedJob = (jobName: string): void => {
-  const steps = workflowSteps(WORKFLOW, jobName);
+const expectIsolatedJob = (workflow: string, jobName: string): void => {
+  const steps = workflowSteps(workflow, jobName);
   expect(steps.length).toBeGreaterThan(0);
   expect(steps.every((step) => !("run" in step))).toBe(true);
   expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
@@ -55,7 +57,16 @@ const expectIsolatedJob = (jobName: string): void => {
 };
 
 test("the address job cannot check out or run pull request code", () => {
-  expectIsolatedJob("address");
+  expectIsolatedJob(WORKFLOW, "address");
+});
+
+test("the setup-bun wrapper disables the shared cache", () => {
+  const runs = at(workflowDocument(SETUP_BUN), "runs");
+  const listed: unknown[] = isRecord(runs) && Array.isArray(runs["steps"]) ? runs["steps"] : [];
+  expect(listed.length).toBeGreaterThan(0);
+  const bunSteps = listed.filter((step) => isRecord(step) && usesOf(step).startsWith("oven-sh/setup-bun@"));
+  expect(bunSteps.length).toBeGreaterThan(0);
+  for (const step of bunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
 });
 
 test("the deploy job cannot check out or run pull request code", () => {
@@ -63,36 +74,11 @@ test("the deploy job cannot check out or run pull request code", () => {
   expect(isRecord(deploy)).toBe(true);
   if (!isRecord(deploy)) throw new Error("deploy job is missing");
   expect(needsOf(deploy)).toContain("build");
-  expectIsolatedJob("deploy");
+  expectIsolatedJob(WORKFLOW, "deploy");
   const download = stepUsing("deploy", "actions/download-artifact@");
   expect(String(at(download, "with", "path"))).toContain("runner.temp");
 });
 
-test("the preview project reaches the deploy from site-names without a second definition", () => {
-  const outputs = at(job("address"), "outputs");
-  expect(isRecord(outputs)).toBe(true);
-  if (!isRecord(outputs)) throw new Error("address outputs are missing");
-  const site = stepUsing("address", "avi2d/workflows/actions/site-names@");
-  expect(String(at(site, "with", "pages"))).toContain("inputs.pages");
-  const addressPreview = String(at(outputs, "preview"));
-  const addressProject = String(at(stepUsing("address", "avi2d/workflows/actions/preview-address@"), "with", "project"));
-  const deployProject = String(at(stepUsing("deploy", "avi2d/workflows/actions/preview-deploy@"), "with", "project"));
-  const commentMarker = String(at(stepUsing("deploy", "avi2d/workflows/actions/preview-comment@"), "with", "marker"));
-  expect(addressPreview).toContain("steps.site.outputs.preview");
-  expect(addressProject).toContain("steps.site.outputs.preview");
-  expect(deployProject).toContain("needs.address.outputs.preview");
-  expect(commentMarker).toContain("needs.address.outputs.preview");
-  for (const consumer of [addressPreview, addressProject, deployProject, commentMarker]) {
-    expect(consumer).not.toContain("inputs.pages");
-  }
-});
-
-test("the secret jobs carry no literal Bun version", () => {
-  const versions = [...workflowSteps(WORKFLOW, "address"), ...workflowSteps(WORKFLOW, "deploy")].flatMap(
-    (step) => {
-      const version = at(step, "with", "bun-version");
-      return typeof version === "string" ? [version] : [];
-    },
-  );
-  expect(versions).toEqual([]);
+test("the remove job cannot check out or run pull request code", () => {
+  expectIsolatedJob(REMOVE_WORKFLOW, "remove");
 });

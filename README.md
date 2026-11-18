@@ -14,7 +14,7 @@ A private caller passes its settings in as inputs, named secrets, or repository 
 - A job with `contents: write` for the github-release action.
 - A job with `actions: write` and `gh` on the runner for the draft-hold action.
 - Chrome on the runner for the lighthouse action, which `ubuntu-latest` holds.
-- Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup action installs.
+- Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup or setup-bun action installs.
 
 ## Install
 
