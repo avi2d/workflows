@@ -14,7 +14,7 @@ A private caller passes its settings in as inputs, named secrets, or repository 
 - A job with `contents: write` for the github-release action.
 - A job with `actions: write` and `gh` on the runner for the draft-hold action.
 - Chrome on the runner for the lighthouse action, which `ubuntu-latest` holds.
-- Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup action installs.
+- Bun on the runner for the actions [The shared actions](docs/actions.md) names as needing it, which the setup or setup-bun action installs.
 
 ## Install
 
@@ -50,6 +50,9 @@ The v3 shared workflows call `@v3` tags, so a caller with `sha_pinning_required`
 ## Call the shared CI
 
 Each workflow file of a site or a code repository calls one shared workflow from `@v3`, or composes the CI parts, as [The shared CI](docs/shared-ci.md) shows.
+The `site-preview.yml` part builds without Cloudflare secrets and deploys the artifact in a separate job that needs an isolated runner.
+The `site-ci.yml` workflow builds and deploys the preview in one job and is for private repositories only.
+Public repositories and new callers use `site-preview.yml`.
 
 ## Pick the runner
 

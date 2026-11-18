@@ -14,7 +14,7 @@ Each repository supplies its commands in `package.json` and each site supplies i
 
 | Workflow | Called by | What it does |
 | --- | --- | --- |
-| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled |
+| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled. It is for private repositories only, and public repositories and new callers use `site-preview.yml` |
 | `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
 | `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
@@ -39,16 +39,23 @@ The production run tests the release commit before it publishes, so a red releas
 
 ## The CI parts
 
-Each part is one job with one purpose, and the caller's `ci.yml` names the parts it needs.
+Each part is one workflow with one purpose, and the caller's `ci.yml` names the parts it needs.
 The parts run side by side, so a run takes as long as its slowest part rather than the sum of its steps.
 
-| Part | Inputs | What its job does |
+| Part | Inputs | What it does |
 | --- | --- | --- |
 | `changes.yml` | `paths`, `check-release` | tells through [docs-only](actions.md#docs-only) whether the pull request changes only documentation, as the `docs-only` output, and whether the run checks a release pull request, as the `release` output |
 | `static.yml` | `hold`, `secrets-pack` | holds a draft, checks the workflow files and the title, writes the secrets pack when `secrets-pack` is true, runs source lint, builds, refuses a diff the build leaves, and typechecks |
 | `test.yml` | `run`, `browsers`, `artifact`, `artifact-path`, `heavy`, `hold`, `runs-on`, `claude-version` | runs the one command in `run`, by default `bunx checks-test --pr`, after it downloads the artifact, takes the heavy slot and installs the browsers it names, and uploads `artifacts/` on every run that is not cancelled |
-| `site-preview.yml` | `pages`, `path` | builds the site, runs built-site lint, deploys the preview, posts its link, and uploads the build as the `site-dist` artifact |
+| `site-preview.yml` | `pages`, `path` | resolves the preview address, builds and lints the site without Cloudflare secrets, uploads `site-dist`, and deploys and comments from a separate job |
 | `gate.yml` | `results`, `skips` | fails through [require-success](actions.md#require-success) unless every needed job passed or skipped as `skips` allows |
+
+`site-preview.yml` resolves the public preview origin in a trusted job before the build.
+The build checks out the pull request head and receives the origin, but no Cloudflare secrets.
+A separate deploy job downloads `site-dist` without checking out the pull request and posts the preview link.
+When the Cloudflare secrets are absent, the build still runs and the deploy is skipped.
+On non-pull-request runs, the build runs without a preview origin and the deploy is skipped.
+These jobs need isolated runners so code from the build cannot persist into a secret-bearing job.
 
 `test.yml` and `flake.yml` accept `claude-version`, an exact Claude Code version such as `2.1.280`.
 An empty version skips installation.
@@ -186,6 +193,8 @@ jobs:
 ```
 
 `ci.yml` and `site-ci.yml` keep working for every caller that still calls them, and they stay until v4.
+`site-ci.yml` builds and deploys in one job and is for private repositories only.
+Public repositories and new callers use `site-preview.yml`.
 
 ## The site files
 

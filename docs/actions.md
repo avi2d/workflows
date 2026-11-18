@@ -7,7 +7,7 @@ audience: consumers
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
 A caller calls it as `avi2d/workflows/actions/<name>@v3`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
-Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
+Every action but setup, setup-bun, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup or setup-bun installs, so the caller runs setup or setup-bun first.
 draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
 `ci/heavy-slot-smoke.sh` stays in shell so its job, which runs no setup, proves heavy-slot needs no Bun.
 `ci/package-hosts-smoke.sh` stays in shell because its listener starts before setup, so a setup that asked an Ubuntu package host fails the job.
@@ -17,7 +17,7 @@ An action whose script imports a package installs this repository's pinned depen
 ## setup
 
 Checks out the repository, fails when `.bun-version` is missing, installs the Bun version that file names and runs `bun install --frozen-lockfile`.
-`setup-bun` unpacks its download with `unzip`, so in an image without `unzip`, such as the Playwright image, setup fetches that Bun through `npm` first.
+`oven-sh/setup-bun` unpacks its download with `unzip`, so in an image without `unzip`, such as the Playwright image, setup fetches that Bun through `npm` first.
 `require-bun-version.sh` and `bun-without-unzip.sh` stay in shell because they run before Bun is on the machine.
 When the checked-out package is `@avi2dg/checks`, setup writes executable wrappers for its `bin` entries in `node_modules/.bin`.
 Each wrapper runs the checked-out source with Bun without changing the source file's mode.
@@ -36,6 +36,13 @@ A job that never runs gitleaks saves nothing.
 | `cache` | `false` | whether to restore and save the Bun install cache, keyed on `bun.lock` |
 
 A gate that reads the range since the base branch needs `fetch-depth: 0` and `ref: ${{ github.event.pull_request.head.sha || github.sha }}`.
+
+## setup-bun
+
+Installs the Bun version this repository's `.bun-version` names, without reading the caller's checkout and without the shared Actions cache.
+A job that holds a secret and never checks out the repository calls it before any step that needs Bun.
+It keeps a Bun the job already holds.
+In an image without `unzip`, it fetches that Bun through `npm` first, as setup does.
 
 ## commitlint-status
 

@@ -1,0 +1,20 @@
+name: setup-bun
+description: Install the Bun version this repository's .bun-version names, with no Actions cache.
+runs:
+  using: composite
+  steps:
+    - id: bun
+      name: tell whether the job already holds Bun
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../setup/main.sh" bun-held
+    - if: steps.bun.outputs.held == 'false'
+      name: fetch Bun through npm where the image holds no unzip
+      shell: bash
+      env:
+        PINNED_BUN: ${{ steps.bun.outputs.version }}
+      run: bash "$GITHUB_ACTION_PATH/../setup/main.sh" bun-without-unzip "$PINNED_BUN"
+    - if: steps.bun.outputs.held == 'false'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      with:
+        bun-version: ${{ steps.bun.outputs.version }}
+        no-cache: true
