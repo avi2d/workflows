@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       path:
-        description: The folder bun run build:site writes, which the job deploys and uploads as the site-dist artifact.
+        description: The folder bun run build:site writes, which the build job uploads as the site-dist artifact for the deploy job.
         type: string
         default: dist
     secrets:
