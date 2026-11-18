@@ -7,7 +7,7 @@ audience: consumers
 Each action is a composite action that runs as steps inside the caller's job on the caller's runner.
 A caller calls it as `avi2d/workflows/actions/<name>@v3`.
 GitHub does not enforce a composite action's required inputs, so an action that needs one checks it and fails with a message.
-Every action but setup, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
+Every action but setup, setup-bun, draft-hold, heavy-slot, pages-main-tip, require-success and preview-secrets-check runs its step on the Bun that setup installs, so the caller runs setup first.
 draft-hold, heavy-slot, pages-main-tip and preview-secrets-check stay in shell, because a Bun installed inside them would overwrite another Bun version the caller's job already put at `~/.bun/bin/bun`, and needing setup first would break a job that runs one of them alone.
 `ci/heavy-slot-smoke.sh` stays in shell so its job, which runs no setup, proves heavy-slot needs no Bun.
 `ci/package-hosts-smoke.sh` stays in shell because its listener starts before setup, so a setup that asked an Ubuntu package host fails the job.
@@ -36,6 +36,12 @@ A job that never runs gitleaks saves nothing.
 | `cache` | `false` | whether to restore and save the Bun install cache, keyed on `bun.lock` |
 
 A gate that reads the range since the base branch needs `fetch-depth: 0` and `ref: ${{ github.event.pull_request.head.sha || github.sha }}`.
+
+## setup-bun
+
+Installs the Bun version this repository's `.bun-version` names, without reading the caller's checkout and without the shared Actions cache.
+A job that holds a secret and never checks out the repository calls it before any step that needs Bun.
+In an image without `unzip`, it fetches that Bun through `npm` first, as setup does.
 
 ## commitlint-status
 

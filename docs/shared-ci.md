@@ -14,7 +14,7 @@ Each repository supplies its commands in `package.json` and each site supplies i
 
 | Workflow | Called by | What it does |
 | --- | --- | --- |
-| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled |
+| `site-ci.yml` | a site's `ci.yml` | sets up, checks the workflow files and the title, builds, deploys the preview, posts its link, holds a draft, lints, typechecks, runs `checks-test --pr` and `checks-browser --pr`, and uploads `artifacts/` on every run that is not cancelled. It is for private repositories only, and public repositories and new callers use `site-preview.yml` |
 | `site-main.yml` | a site's `main.yml` | runs `checks-release-tag`, builds the site, deploys it to staging, and waits until staging serves it |
 | `site-production.yml` | a site's `production.yml` | runs `checks-production-gate` on the staged commit, runs the full test suite and the pixel screenshots on it, builds it for production, publishes it, waits until the domain serves it, and audits the live site with Lighthouse |
 | `preview-remove.yml` | a site's `preview-close.yml` | removes the closed pull request's preview |
@@ -193,6 +193,8 @@ jobs:
 ```
 
 `ci.yml` and `site-ci.yml` keep working for every caller that still calls them, and they stay until v4.
+`site-ci.yml` builds and deploys in one job and is for private repositories only.
+Public repositories and new callers use `site-preview.yml`.
 
 ## The site files
 

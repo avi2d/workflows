@@ -26,10 +26,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: avi2d/workflows/actions/setup@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: "false"
+      - uses: avi2d/workflows/actions/setup-bun@v3
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
         with:

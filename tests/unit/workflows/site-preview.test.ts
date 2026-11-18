@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { at, isRecord, needsOf, workflowDocument, workflowSteps } from "../../lib/workflow.ts";
 
@@ -51,9 +50,8 @@ const expectIsolatedJob = (jobName: string): void => {
   expect(steps.every((step) => !("run" in step))).toBe(true);
   expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
   expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup@"))).toBe(false);
-  const bunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
-  expect(bunSteps.length).toBeGreaterThan(0);
-  for (const step of bunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
+  expect(steps.some((step) => usesOf(step).startsWith("oven-sh/setup-bun@"))).toBe(false);
+  expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup-bun@"))).toBe(true);
 };
 
 test("the address job cannot check out or run pull request code", () => {
@@ -89,11 +87,12 @@ test("the preview project reaches the deploy from site-names without a second de
   }
 });
 
-test("the setup-bun versions cannot drift from .bun-version", () => {
-  const pinned = readFileSync(join(import.meta.dir, "../../../.bun-version"), "utf8").trim();
-  const versions = [...workflowSteps(WORKFLOW, "address"), ...workflowSteps(WORKFLOW, "deploy")]
-    .filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"))
-    .map((step) => String(at(step, "with", "bun-version")));
-  expect(versions.length).toBeGreaterThan(0);
-  for (const version of versions) expect(version).toBe(pinned);
+test("the secret jobs carry no literal Bun version", () => {
+  const versions = [...workflowSteps(WORKFLOW, "address"), ...workflowSteps(WORKFLOW, "deploy")].flatMap(
+    (step) => {
+      const version = at(step, "with", "bun-version");
+      return typeof version === "string" ? [version] : [];
+    },
+  );
+  expect(versions).toEqual([]);
 });

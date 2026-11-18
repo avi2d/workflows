@@ -33,10 +33,7 @@ jobs:
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           missing-note: the Cloudflare secrets are not set, so this run deploys no preview
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.3
-          no-cache: true
+      - uses: avi2d/workflows/actions/setup-bun@v3
       - id: site
         uses: avi2d/workflows/actions/site-names@v3
         with:
@@ -81,10 +78,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.3
-          no-cache: true
+      - uses: avi2d/workflows/actions/setup-bun@v3
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: site-dist
