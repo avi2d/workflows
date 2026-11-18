@@ -51,6 +51,9 @@ test("the address job cannot check out or run pull request code", () => {
   expect(steps.every((step) => !("run" in step))).toBe(true);
   expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
   expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup@"))).toBe(false);
+  const addressBunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
+  expect(addressBunSteps.length).toBeGreaterThan(0);
+  for (const step of addressBunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
 });
 
 test("the deploy job cannot check out or run pull request code", () => {
@@ -63,6 +66,9 @@ test("the deploy job cannot check out or run pull request code", () => {
   expect(steps.every((step) => !("run" in step))).toBe(true);
   expect(steps.some((step) => usesOf(step).startsWith("actions/checkout@"))).toBe(false);
   expect(steps.some((step) => usesOf(step).startsWith("avi2d/workflows/actions/setup@"))).toBe(false);
+  const deployBunSteps = steps.filter((step) => usesOf(step).startsWith("oven-sh/setup-bun@"));
+  expect(deployBunSteps.length).toBeGreaterThan(0);
+  for (const step of deployBunSteps) expect(String(at(step, "with", "no-cache"))).toBe("true");
   const download = stepUsing("deploy", "actions/download-artifact@");
   expect(String(at(download, "with", "path"))).toContain("runner.temp");
 });
