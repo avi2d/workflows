@@ -19,7 +19,7 @@ runs:
   steps:
     # The kit's own repository holds no node_modules/.bin/checks-docs-only, where bunx would fetch an unrelated package.
     - if: inputs.paths == ''
-      uses: avi2d/workflows/actions/kit-bin@27ffb2d6889314b744a193247c07c7c75cbbaff3 # v2.2.0
+      uses: avi2d/workflows/actions/kit-bin@b74490934383fc5956569053fed62e415fb1da53 # v3.4.0
       with:
         commands: checks-docs-only
     # The script resolves effect beside itself, and the caller's install holds it only by chance.
