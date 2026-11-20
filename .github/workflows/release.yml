@@ -121,7 +121,7 @@ jobs:
         with:
           package-path: ${{ inputs.package-path }}
       - if: inputs.github-release
-        uses: avi2d/workflows/actions/kit-bin@3dc7515f3ccf65e333eba3c8a9b358533d081430 # v2.1.0
+        uses: avi2d/workflows/actions/kit-bin@b74490934383fc5956569053fed62e415fb1da53 # v3.4.0
         with:
           commands: checks-release-notes
       - name: write the release notes
