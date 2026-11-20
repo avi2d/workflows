@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 15
     steps:
       # A ./setup reference resolves in the caller's checkout, which holds no setup action.
-      - uses: avi2d/workflows/setup@ec7221448380177b37ddba9a159ea9ceb09c1781 # v1.1.2
+      - uses: avi2d/workflows/setup@b74490934383fc5956569053fed62e415fb1da53 # v3.4.0
         with:
           persist-credentials: "false"
       - uses: avi2d/workflows/kit-bin@8ddfb15dbc33ba16d67c49cccf1976e8d1cfcf04
